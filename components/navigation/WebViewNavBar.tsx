@@ -34,16 +34,16 @@ export function WebViewNavBar({ webViewRef, initialUrl }: WebViewNavBarProps) {
       orientation === 'landscape' ? styles.landscapeContainer : null
     ]}>
       <TouchableOpacity onPress={handleBack} style={styles.button}>
-        <Ionicons name="arrow-back" size={24} color="rgba(0,0,0,0.5)" />
+        <Ionicons name="arrow-back" size={22} color="rgba(0,0,0,0.5)" />
       </TouchableOpacity>
       <TouchableOpacity onPress={handleForward} style={styles.button}>
-        <Ionicons name="arrow-forward" size={24} color="rgba(0,0,0,0.5)" />
+        <Ionicons name="arrow-forward" size={22} color="rgba(0,0,0,0.5)" />
       </TouchableOpacity>
       <TouchableOpacity onPress={handleRefresh} style={styles.button}>
-        <Ionicons name="refresh" size={24} color="rgba(0,0,0,0.5)" />
+        <Ionicons name="refresh" size={22} color="rgba(0,0,0,0.5)" />
       </TouchableOpacity>
       <TouchableOpacity onPress={handleHome} style={styles.button}>
-        <Ionicons name="home" size={24} color="rgba(0,0,0,0.5)" />
+        <Ionicons name="home" size={22} color="rgba(0,0,0,0.5)" />
       </TouchableOpacity>
     </View>
   );
@@ -61,10 +61,10 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   landscapeContainer: {
-    paddingVertical: 4, // Slightly smaller in landscape
+    paddingVertical: 3, // Slightly smaller in landscape
   },
   button: {
-    padding: 8,
+    padding: 6,
     borderRadius: 20,
   },
 });
