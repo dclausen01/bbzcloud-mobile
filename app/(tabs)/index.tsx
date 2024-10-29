@@ -24,6 +24,9 @@ export default function HomeScreen() {
           <View style={styles.textContainer}>
             <ThemedText style={styles.text}>BBZ Cloud</ThemedText>
           </View>
+          <View style={styles.textContainer}>
+            <ThemedText style={styles.text}>Die All-in-One App</ThemedText>
+          </View>
         </View>
       </ThemedView>
     </SafeAreaView>

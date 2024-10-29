@@ -1,5 +1,5 @@
 import { WebView } from 'react-native-webview';
-import { StyleSheet, Platform, StatusBar, View } from 'react-native';
+import { StyleSheet, Platform, StatusBar, useColorScheme, View } from 'react-native';
 import React, { useRef } from 'react';
 import { WebViewNavBar } from '../../components/navigation/WebViewNavBar';
 import { useOrientation } from '../../hooks/useOrientation';
@@ -8,6 +8,8 @@ export default function UntisScreen() {
   const webViewRef = useRef<WebView>(null);
   const initialUrl = 'https://neilo.webuntis.com/WebUntis/?school=bbz-rd-eck#/basic/login';
   const orientation = useOrientation();
+  const isDarkMode = useColorScheme() === 'dark';
+  const backgroundColor = isDarkMode ? '#1C1C1E' : '#FFFFFF';
 
   const injectedScript = `
     (function() {
@@ -23,11 +25,11 @@ export default function UntisScreen() {
         body {
           font-size: 14px !important;
           zoom: 1.0;
-          padding-top: 10px !important;
+          padding-top: 0 !important;
+          margin-top: 0 !important;
         }
-        
         /* Increase text size in specific elements */
-        .table td, 
+        .table td,
         .table th,
         input,
         button,
@@ -39,7 +41,6 @@ export default function UntisScreen() {
         div {
           font-size: 14px !important;
         }
-
         /* Make clickable elements bigger */
         button,
         .btn,
@@ -48,9 +49,8 @@ export default function UntisScreen() {
           min-height: 36px !important;
           padding: 8px 12px !important;
         }
-
         /* Adjust table cell padding */
-        .table td, 
+        .table td,
         .table th {
           padding: 8px 6px !important;
         }
@@ -73,16 +73,25 @@ export default function UntisScreen() {
     true;
   `;
 
+  const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0;
+  const adjustedStatusBarHeight = orientation === 'landscape' ? statusBarHeight / 3 : statusBarHeight;
+
   return (
-    <View style={styles.container}>
-      <View style={[
-        styles.statusBarSpace,
-        orientation === 'landscape' ? styles.statusBarSpaceLandscape : null
-      ]} />
+    <View style={[
+      styles.container,
+      { backgroundColor }
+    ]}>
+      {Platform.OS === 'android' && (
+        <View 
+          style={[
+            { height: adjustedStatusBarHeight, backgroundColor }
+          ]} 
+        />
+      )}
       <WebViewNavBar webViewRef={webViewRef} initialUrl={initialUrl} />
-      <WebView 
+      <WebView
         ref={webViewRef}
-        style={styles.webview}
+        style={[styles.webview, { backgroundColor }]}
         source={{ uri: initialUrl }}
         userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         injectedJavaScript={injectedScript}
@@ -100,14 +109,7 @@ export default function UntisScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-  },
-  statusBarSpace: {
-    height: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
-    backgroundColor: '#fff',
-  },
-  statusBarSpaceLandscape: {
-    height: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) / 2 : 0,
+    elevation: 0,
   },
   webview: {
     flex: 1,

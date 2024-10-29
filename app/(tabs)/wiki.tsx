@@ -1,5 +1,5 @@
 import { WebView } from 'react-native-webview';
-import { StyleSheet, Platform, StatusBar, View } from 'react-native';
+import { StyleSheet, Platform, StatusBar, useColorScheme, View } from 'react-native';
 import React, { useRef } from 'react';
 import { WebViewNavBar } from '../../components/navigation/WebViewNavBar';
 import { useOrientation } from '../../hooks/useOrientation';
@@ -8,6 +8,8 @@ export default function WikiScreen() {
   const webViewRef = useRef<WebView>(null);
   const initialUrl = 'https://wiki.bbz-rd-eck.com';
   const orientation = useOrientation();
+  const isDarkMode = useColorScheme() === 'dark';
+  const backgroundColor = isDarkMode ? '#1C1C1E' : '#FFFFFF';
 
   const injectedScript = `
     (function() {
@@ -20,20 +22,18 @@ export default function WikiScreen() {
       const style = document.createElement('style');
       style.textContent = \`
         body {
-          padding-top: 10px !important;
+          padding-top: 0 !important;
+          margin-top: 0 !important;
           font-size: 1.1em !important;
         }
-        
         /* Adjust text sizes */
         p, div, span, li {
           font-size: 1.05em !important;
         }
-
         /* Keep form elements slightly smaller for better usability */
         td, th, input, button {
           font-size: 1.05em !important;
         }
-
         /* Slightly smaller headings */
         h1 { font-size: 1.1em !important; }
         h2 { font-size: 1.2em !important; }
@@ -45,16 +45,25 @@ export default function WikiScreen() {
     true;
   `;
 
+  const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0;
+  const adjustedStatusBarHeight = orientation === 'landscape' ? statusBarHeight / 3 : statusBarHeight;
+
   return (
-    <View style={styles.container}>
-      <View style={[
-        styles.statusBarSpace,
-        orientation === 'landscape' ? styles.statusBarSpaceLandscape : null
-      ]} />
+    <View style={[
+      styles.container,
+      { backgroundColor }
+    ]}>
+      {Platform.OS === 'android' && (
+        <View 
+          style={[
+            { height: adjustedStatusBarHeight, backgroundColor }
+          ]} 
+        />
+      )}
       <WebViewNavBar webViewRef={webViewRef} initialUrl={initialUrl} />
-      <WebView 
+      <WebView
         ref={webViewRef}
-        style={styles.webview}
+        style={[styles.webview, { backgroundColor }]}
         source={{ uri: initialUrl }}
         injectedJavaScript={injectedScript}
         scrollEnabled={true}
@@ -71,14 +80,7 @@ export default function WikiScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-  },
-  statusBarSpace: {
-    height: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
-    backgroundColor: '#fff',
-  },
-  statusBarSpaceLandscape: {
-    height: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) / 2 : 0,
+    elevation: 0,
   },
   webview: {
     flex: 1,
