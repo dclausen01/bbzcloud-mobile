@@ -4,29 +4,43 @@ import React, { useRef } from 'react';
 import { WebViewNavBar } from '../../components/navigation/WebViewNavBar';
 import { useOrientation } from '../../hooks/useOrientation';
 
-export default function MoodleScreen() {
+export default function WikiScreen() {
   const webViewRef = useRef<WebView>(null);
-  const initialUrl = 'https://portal.bbz-rd-eck.com/';
+  const initialUrl = 'https://wiki.bbz-rd-eck.com';
   const orientation = useOrientation();
 
   const injectedScript = `
     (function() {
+      // Add meta viewport tag for proper scaling
+      const meta = document.createElement('meta');
+      meta.name = 'viewport';
+      meta.content = 'width=device-width, initial-scale=0.95, maximum-scale=0.95, user-scalable=no';
+      document.head.appendChild(meta);
+
       const style = document.createElement('style');
       style.textContent = \`
         body {
           padding-top: 10px !important;
+          font-size: 1.1em !important;
         }
+        
+        /* Adjust text sizes */
+        p, div, span, li {
+          font-size: 1.1em !important;
+        }
+
+        /* Keep form elements slightly smaller for better usability */
+        td, th, input, button {
+          font-size: 1.05em !important;
+        }
+
+        /* Slightly smaller headings */
+        h1 { font-size: 1.0em !important; }
+        h2 { font-size: 1.2em !important; }
+        h3 { font-size: 1.15em !important; }
+        h4 { font-size: 1.1em !important; }
       \`;
       document.head.appendChild(style);
-
-      // Request notification permission
-      if ('Notification' in window) {
-        Notification.requestPermission().then(function(permission) {
-          if (permission === 'granted') {
-            console.log('Notification permission granted');
-          }
-        });
-      }
     })();
     true;
   `;
@@ -47,6 +61,8 @@ export default function MoodleScreen() {
         bounces={true}
         javaScriptEnabled={true}
         domStorageEnabled={true}
+        scalesPageToFit={true}
+        textZoom={105}
       />
     </View>
   );
