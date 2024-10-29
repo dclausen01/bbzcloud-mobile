@@ -8,6 +8,8 @@ export default function SchulCloudScreen() {
   const webViewRef = useRef<WebView>(null);
   const initialUrl = 'https://app.schul.cloud';
   const orientation = useOrientation();
+  const isDarkMode = colorScheme === 'dark';
+  const backgroundColorTopBar = isDarkMode ? 'rgba(28,28,30,0.9)' : 'rgba(255,255,255,0.9)';
 
   const injectedScript = `
     (function() {
@@ -162,7 +164,7 @@ const styles = StyleSheet.create({
   },
   statusBarSpace: {
     height: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
-    backgroundColor: '#fff',
+    backgroundColor: backgroundColorTopBar,
   },
   statusBarSpaceLandscape: {
     height: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) / 2 : 0,
