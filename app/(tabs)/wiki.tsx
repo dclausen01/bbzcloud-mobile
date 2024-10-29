@@ -26,7 +26,7 @@ export default function WikiScreen() {
         
         /* Adjust text sizes */
         p, div, span, li {
-          font-size: 1.1em !important;
+          font-size: 1.05em !important;
         }
 
         /* Keep form elements slightly smaller for better usability */
@@ -35,7 +35,7 @@ export default function WikiScreen() {
         }
 
         /* Slightly smaller headings */
-        h1 { font-size: 1.0em !important; }
+        h1 { font-size: 1.1em !important; }
         h2 { font-size: 1.2em !important; }
         h3 { font-size: 1.15em !important; }
         h4 { font-size: 1.1em !important; }
