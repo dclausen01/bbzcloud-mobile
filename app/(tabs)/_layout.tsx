@@ -1,9 +1,11 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
 
-import { TabBarIcon } from '@/components/navigation/TabBarIcon';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { TabBarIcon } from '../../components/navigation/TabBarIcon';
+import AntDesign from '@expo/vector-icons/AntDesign';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { Colors } from '../../constants/Colors';
+import { useColorScheme } from '../../hooks/useColorScheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -19,16 +21,43 @@ export default function TabLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name={focused ? 'home' : 'home-outline'} color={color} />
+            <TabBarIcon name={focused ? 'home' : 'home-outline'} color={color} size={24} />
           ),
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="schulcloud"
         options={{
-          title: 'Explore',
+          title: 'schul.cloud',
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name={focused ? 'code-slash' : 'code-slash-outline'} color={color} />
+           <Ionicons name="chatbox-ellipses" color={color} size={24} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="moodle"
+        options={{
+          title: 'Moodle',
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name={focused ? 'school' : 'school-outline'} color={color} size={24} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="office"
+        options={{
+          title: 'Office',
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name={focused ? 'document' : 'document-outline'} color={color} size={24} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="untis"
+        options={{
+          title: 'WebUntis',
+          tabBarIcon: ({ color, focused }) => (
+            <AntDesign name="calendar" color={color} size={24} />
           ),
         }}
       />
