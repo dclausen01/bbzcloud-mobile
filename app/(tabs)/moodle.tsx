@@ -55,7 +55,7 @@ export default function MoodleScreen() {
       <WebViewNavBar webViewRef={webViewRef} initialUrl={initialUrl} />
       <WebView 
         ref={webViewRef}
-        style={styles.webview}
+        style={[styles.webview, { backgroundColor }]}
         source={{ uri: initialUrl }}
         injectedJavaScript={injectedScript}
         scrollEnabled={true}
@@ -77,11 +77,9 @@ export default function MoodleScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   statusBarSpace: {
     height: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
-    backgroundColor: '#fff',
   },
   statusBarSpaceLandscape: {
     height: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) / 2 : 0,

@@ -138,7 +138,12 @@ export default function UntisScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    elevation: 0,
+  },
+  statusBarSpace: {
+    height: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+  },
+  statusBarSpaceLandscape: {
+    height: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) / 2 : 0,
   },
   webview: {
     flex: 1,
