@@ -16,43 +16,63 @@ export default function UntisScreen() {
       // Add meta viewport tag for proper scaling
       const meta = document.createElement('meta');
       meta.name = 'viewport';
-      meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+      meta.content = 'width=device-width, initial-scale=0.95, maximum-scale=0.95, user-scalable=no';
       document.head.appendChild(meta);
 
-      // Add custom styles for better visibility
       const style = document.createElement('style');
       style.textContent = \`
+        * {
+          -webkit-overflow-scrolling: touch !important;
+        }
+        
+        /* Improve scrolling for timetable and lists */
+        .timetable-container,
+        .grid-container,
+        [class*="scroll"],
+        [class*="overflow"] {
+          overflow-y: scroll !important;
+          -webkit-overflow-scrolling: touch !important;
+          touch-action: pan-y !important;
+        }
+
         body {
           font-size: 14px !important;
           zoom: 1.0;
           padding-top: 0 !important;
           margin-top: 0 !important;
         }
-        /* Increase text size in specific elements */
-        .table td,
-        .table th,
-        input,
-        button,
-        select,
-        .form-control,
-        .btn,
-        label,
-        span,
-        div {
-          font-size: 14px !important;
+
+        /* Optimize timetable cell sizes for mobile */
+        .timetable-cell,
+        [class*="gridCell"] {
+          min-height: 60px !important;
+          padding: 4px !important;
         }
-        /* Make clickable elements bigger */
-        button,
-        .btn,
-        input[type="button"],
-        input[type="submit"] {
-          min-height: 36px !important;
-          padding: 8px 12px !important;
+
+        /* Make text in cells more readable */
+        .timetable-cell *,
+        [class*="gridCell"] * {
+          font-size: 0.9em !important;
+          line-height: 1.2 !important;
         }
-        /* Adjust table cell padding */
-        .table td,
-        .table th {
-          padding: 8px 6px !important;
+
+        /* Improve touch targets */
+        button,
+        [role="button"],
+        .clickable,
+        [class*="button"] {
+          min-height: 44px !important;
+          min-width: 44px !important;
+          padding: 10px !important;
+        }
+
+        /* Optimize navigation elements */
+        .navigation-container,
+        [class*="navigation"],
+        [class*="toolbar"] {
+          height: auto !important;
+          min-height: 48px !important;
+          padding: 8px !important;
         }
       \`;
       document.head.appendChild(style);
@@ -72,9 +92,13 @@ export default function UntisScreen() {
     })();
     true;
   `;
-
+  
   const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0;
   const adjustedStatusBarHeight = orientation === 'landscape' ? statusBarHeight / 3 : statusBarHeight;
+
+  const handleContentProcessTerminate = () => {
+    webViewRef.current?.reload();
+  };
 
   return (
     <View style={[
@@ -89,7 +113,7 @@ export default function UntisScreen() {
         />
       )}
       <WebViewNavBar webViewRef={webViewRef} initialUrl={initialUrl} />
-      <WebView
+      <WebView 
         ref={webViewRef}
         style={[styles.webview, { backgroundColor }]}
         source={{ uri: initialUrl }}
@@ -99,8 +123,13 @@ export default function UntisScreen() {
         bounces={true}
         javaScriptEnabled={true}
         domStorageEnabled={true}
-        scalesPageToFit={true}
-        textZoom={110}
+        cacheEnabled={true}
+        cacheMode="LOAD_CACHE_ELSE_NETWORK"
+        incognito={false}
+        onContentProcessDidTerminate={handleContentProcessTerminate}
+        androidLayerType="hardware"
+        pullToRefreshEnabled={true}
+        thirdPartyCookiesEnabled={true}
       />
     </View>
   );

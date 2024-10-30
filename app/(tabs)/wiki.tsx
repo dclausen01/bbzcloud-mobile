@@ -44,9 +44,13 @@ export default function WikiScreen() {
     })();
     true;
   `;
-
+  
   const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0;
   const adjustedStatusBarHeight = orientation === 'landscape' ? statusBarHeight / 3 : statusBarHeight;
+
+  const handleContentProcessTerminate = () => {
+    webViewRef.current?.reload();
+  };
 
   return (
     <View style={[
@@ -61,7 +65,7 @@ export default function WikiScreen() {
         />
       )}
       <WebViewNavBar webViewRef={webViewRef} initialUrl={initialUrl} />
-      <WebView
+      <WebView 
         ref={webViewRef}
         style={[styles.webview, { backgroundColor }]}
         source={{ uri: initialUrl }}
@@ -70,8 +74,13 @@ export default function WikiScreen() {
         bounces={true}
         javaScriptEnabled={true}
         domStorageEnabled={true}
-        scalesPageToFit={true}
-        textZoom={105}
+        cacheEnabled={true}
+        cacheMode="LOAD_CACHE_ELSE_NETWORK"
+        incognito={false}
+        onContentProcessDidTerminate={handleContentProcessTerminate}
+        androidLayerType="hardware"
+        pullToRefreshEnabled={true}
+        thirdPartyCookiesEnabled={true}
       />
     </View>
   );

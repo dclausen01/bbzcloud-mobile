@@ -11,22 +11,46 @@ export default function CryptPadScreen() {
   const isDarkMode = useColorScheme() === 'dark';
   const backgroundColor = isDarkMode ? '#1C1C1E' : '#FFFFFF';
 
-
   const injectedScript = `
     (function() {
+      // Add meta viewport tag for proper scaling
+      const meta = document.createElement('meta');
+      meta.name = 'viewport';
+      meta.content = 'width=device-width, initial-scale=0.95, maximum-scale=0.95, user-scalable=no';
+      document.head.appendChild(meta);
+
       const style = document.createElement('style');
       style.textContent = \`
         body {
           padding-top: 10px !important;
+          margin-top: 0 !important;
+          font-size: 1.1em !important;
         }
+        /* Adjust text sizes */
+        p, div, span, li {
+          font-size: 1.05em !important;
+        }
+        /* Keep form elements slightly smaller for better usability */
+        td, th, input, button {
+          font-size: 1.05em !important;
+        }
+        /* Slightly smaller headings */
+        h1 { font-size: 1.1em !important; }
+        h2 { font-size: 1.2em !important; }
+        h3 { font-size: 1.15em !important; }
+        h4 { font-size: 1.1em !important; }
       \`;
       document.head.appendChild(style);
     })();
     true;
   `;
-
+  
   const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0;
   const adjustedStatusBarHeight = orientation === 'landscape' ? statusBarHeight / 3 : statusBarHeight;
+
+  const handleContentProcessTerminate = () => {
+    webViewRef.current?.reload();
+  };
 
   return (
     <View style={[
@@ -43,13 +67,20 @@ export default function CryptPadScreen() {
       <WebViewNavBar webViewRef={webViewRef} initialUrl={initialUrl} />
       <WebView 
         ref={webViewRef}
-        style={styles.webview}
+        style={[styles.webview, { backgroundColor }]}
         source={{ uri: initialUrl }}
         injectedJavaScript={injectedScript}
         scrollEnabled={true}
         bounces={true}
         javaScriptEnabled={true}
         domStorageEnabled={true}
+        cacheEnabled={true}
+        cacheMode="LOAD_CACHE_ELSE_NETWORK"
+        incognito={false}
+        onContentProcessDidTerminate={handleContentProcessTerminate}
+        androidLayerType="hardware"
+        pullToRefreshEnabled={true}
+        thirdPartyCookiesEnabled={true}
       />
     </View>
   );
@@ -58,14 +89,7 @@ export default function CryptPadScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-  },
-  statusBarSpace: {
-    height: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
-    backgroundColor: '#fff',
-  },
-  statusBarSpaceLandscape: {
-    height: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) / 2 : 0,
+    elevation: 0,
   },
   webview: {
     flex: 1,

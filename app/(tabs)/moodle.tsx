@@ -11,7 +11,6 @@ export default function MoodleScreen() {
   const isDarkMode = useColorScheme() === 'dark';
   const backgroundColor = isDarkMode ? '#1C1C1E' : '#FFFFFF';
 
-
   const injectedScript = `
     (function() {
       const style = document.createElement('style');
@@ -37,6 +36,10 @@ export default function MoodleScreen() {
   const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0;
   const adjustedStatusBarHeight = orientation === 'landscape' ? statusBarHeight / 3 : statusBarHeight;
 
+  const handleContentProcessTerminate = () => {
+    webViewRef.current?.reload();
+  };
+
   return (
     <View style={[
       styles.container,
@@ -59,6 +62,13 @@ export default function MoodleScreen() {
         bounces={true}
         javaScriptEnabled={true}
         domStorageEnabled={true}
+        cacheEnabled={true}
+        cacheMode="LOAD_CACHE_ELSE_NETWORK"
+        incognito={false}
+        onContentProcessDidTerminate={handleContentProcessTerminate}
+        androidLayerType="hardware"
+        pullToRefreshEnabled={true}
+        thirdPartyCookiesEnabled={true}
       />
     </View>
   );

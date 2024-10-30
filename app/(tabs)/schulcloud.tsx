@@ -9,12 +9,16 @@ export default function SchulCloudScreen() {
   const initialUrl = 'https://app.schul.cloud';
   const orientation = useOrientation();
   const isDarkMode = useColorScheme() === 'dark';
-  
-  // Verwende solide Farben statt transparenter Farben
   const backgroundColor = isDarkMode ? '#1C1C1E' : '#FFFFFF';
 
   const injectedScript = `
     (function() {
+      // Add meta viewport tag for proper scaling
+      const meta = document.createElement('meta');
+      meta.name = 'viewport';
+      meta.content = 'width=device-width, initial-scale=0.95, maximum-scale=0.95, user-scalable=no';
+      document.head.appendChild(meta);
+
       const style = document.createElement('style');
       style.textContent = \`
         * {
@@ -31,7 +35,7 @@ export default function SchulCloudScreen() {
           touch-action: pan-y !important;
         }
         body {
-          padding-top: 0 !important;
+          padding-top: 10px !important;
           margin-top: 0 !important;
         }
 
@@ -57,14 +61,16 @@ export default function SchulCloudScreen() {
         }
       \`;
       document.head.appendChild(style);
-      
-      // Rest of your injectedScript code remains the same
     })();
     true;
   `;
-
+  
   const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0;
   const adjustedStatusBarHeight = orientation === 'landscape' ? statusBarHeight / 3 : statusBarHeight;
+
+  const handleContentProcessTerminate = () => {
+    webViewRef.current?.reload();
+  };
 
   return (
     <View style={[
@@ -88,6 +94,13 @@ export default function SchulCloudScreen() {
         bounces={true}
         javaScriptEnabled={true}
         domStorageEnabled={true}
+        cacheEnabled={true}
+        cacheMode="LOAD_CACHE_ELSE_NETWORK"
+        incognito={false}
+        onContentProcessDidTerminate={handleContentProcessTerminate}
+        androidLayerType="hardware"
+        pullToRefreshEnabled={true}
+        thirdPartyCookiesEnabled={true}
       />
     </View>
   );
