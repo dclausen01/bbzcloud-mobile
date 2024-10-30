@@ -16,7 +16,8 @@ export default function MoodleScreen() {
       const style = document.createElement('style');
       style.textContent = \`
         body {
-          padding-top: 10px !important;
+          padding-top: 0 !important;
+          margin-top: 0 !important;
         }
       \`;
       document.head.appendChild(style);
