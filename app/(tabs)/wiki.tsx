@@ -22,7 +22,7 @@ export default function WikiScreen() {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif !important;
           -webkit-overflow-scrolling: touch !important;
           font-size: 16px !important;
-          line-height: 1.3 !important;
+          line-height: 1.1 !important;
         }
 
         /* Improve text readability */
@@ -35,7 +35,7 @@ export default function WikiScreen() {
         /* Better headings */
         h1, h2, h3, h4, h5, h6 {
           margin: 24px 0 16px 0 !important;
-          line-height: 1.2 !important;
+          /* line-height: 1.2 !important; */
           font-weight: 600 !important;
         }
         h1 { font-size: 28px !important; }
@@ -46,8 +46,8 @@ export default function WikiScreen() {
 
         /* Make links more touch-friendly */
         a {
-          padding: 4px 2px !important;
-          margin: 2px !important;
+          /* padding: 4px 2px !important; */
+          /* margin: 4px !important; */
           touch-action: manipulation !important;
         }
 
@@ -100,10 +100,10 @@ export default function WikiScreen() {
 
         nav a, .navigation a, .menu a {
           display: inline-block !important;
-          padding: 12px !important;
+         /* padding: 12px !important; */
           margin: 4px !important;
-          min-height: 44px !important;
-          min-width: 44px !important;
+         /* min-height: 44px !important; */
+         /* min-width: 44px !important; */
         }
 
         /* Better blockquotes */

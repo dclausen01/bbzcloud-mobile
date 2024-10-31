@@ -21,7 +21,7 @@ export default function OfficeScreen() {
           margin-top: 0 !important;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif !important;
           -webkit-overflow-scrolling: touch !important;
-          font-size: 16px !important;
+          font-size: 18px !important;
         }
       \`;
       document.head.appendChild(style);

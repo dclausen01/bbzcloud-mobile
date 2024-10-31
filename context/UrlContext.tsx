@@ -3,20 +3,14 @@ import React, { createContext, useContext, useState } from 'react';
 type UrlContextType = {
   urls: {
     moodle: string;
-    office: string;
-    schulcloud: string;
     wiki: string;
-    untis: string;
   };
   setUrl: (tab: keyof UrlContextType['urls'], url: string) => void;
 };
 
 const defaultUrls = {
   moodle: 'https://portal.bbz-rd-eck.com',
-  office: 'https://cryptpad.fr/drive',
-  schulcloud: 'https://app.schul.cloud',
   wiki: 'https://wiki.bbz-rd-eck.com',
-  untis: 'https://neilo.webuntis.com/WebUntis/?school=bbz-rd-eck#/basic/login',
 };
 
 const UrlContext = createContext<UrlContextType | undefined>(undefined);
