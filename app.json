@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "bbzcloud-mobile",
+    "name": "BBZ Cloud",
     "slug": "bbzcloud-mobile",
     "version": "1.0.0",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "bbzcloud",
     "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/images/splash.png",
@@ -14,14 +14,55 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.dclausen01.bbzcloudmobile"
+      "bundleIdentifier": "com.dclausen01.bbzcloudmobile",
+      "associatedDomains": [
+        "applinks:portal.bbz-rd-eck.com",
+        "applinks:cryptpad.fr",
+        "applinks:app.schul.cloud",
+        "applinks:wiki.bbz-rd-eck.com",
+        "applinks:neilo.webuntis.com"
+      ]
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.dclausen01.bbzcloudmobile"
+      "package": "com.dclausen01.bbzcloudmobile",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "portal.bbz-rd-eck.com",
+              "pathPrefix": "/"
+            },
+            {
+              "scheme": "https",
+              "host": "cryptpad.fr",
+              "pathPrefix": "/drive"
+            },
+            {
+              "scheme": "https",
+              "host": "app.schul.cloud",
+              "pathPrefix": "/"
+            },
+            {
+              "scheme": "https",
+              "host": "wiki.bbz-rd-eck.com",
+              "pathPrefix": "/"
+            },
+            {
+              "scheme": "https",
+              "host": "neilo.webuntis.com",
+              "pathPrefix": "/WebUntis"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "bundler": "metro",

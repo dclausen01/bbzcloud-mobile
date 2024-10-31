@@ -1,66 +1,70 @@
 import { WebView } from 'react-native-webview';
 import { StyleSheet, Platform, StatusBar, useColorScheme, View } from 'react-native';
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { WebViewNavBar } from '../../components/navigation/WebViewNavBar';
 import { useOrientation } from '../../hooks/useOrientation';
+import { useUrl } from '../../context/UrlContext';
 
 export default function SchulCloudScreen() {
   const webViewRef = useRef<WebView>(null);
-  const initialUrl = 'https://app.schul.cloud';
+  const { urls } = useUrl();
   const orientation = useOrientation();
   const isDarkMode = useColorScheme() === 'dark';
   const backgroundColor = isDarkMode ? '#1C1C1E' : '#FFFFFF';
 
   const injectedScript = `
     (function() {
-      // Add meta viewport tag for proper scaling
-      const meta = document.createElement('meta');
-      meta.name = 'viewport';
-      meta.content = 'width=device-width, initial-scale=0.95, maximum-scale=0.95, user-scalable=no';
-      document.head.appendChild(meta);
-
       const style = document.createElement('style');
       style.textContent = \`
-        * {
-          -webkit-overflow-scrolling: touch !important;
-        }
-        .scrollable-content, 
-        .messages-container, 
-        .channel-list,
-        .conversation-list,
-        [class*="scroll"],
-        [class*="overflow"] {
-          overflow-y: scroll !important;
-          -webkit-overflow-scrolling: touch !important;
-          touch-action: pan-y !important;
-        }
         body {
           padding-top: 0 !important;
           margin-top: 0 !important;
         }
 
-        /* Add transitions for smooth sidebar collapse/expand */
-        .sc-channel-list,
-        .sc-conversation-list,
-        .sc-sidebar,
-        [class*="channelList"],
-        [class*="conversationList"],
-        [class*="sidebar"] {
-          transition: width 0.3s ease-in-out !important;
+        /* Target specific schul.cloud elements */
+        .sc-messenger-content,
+        .sc-messenger-sidebar,
+        .sc-messenger-list,
+        .sc-messenger-channels,
+        .sc-messenger-conversations,
+        .messenger-content,
+        .messenger-sidebar,
+        .messenger-list,
+        .messenger-channels,
+        .messenger-conversations,
+        div[class*="messenger-content"],
+        div[class*="messenger-sidebar"],
+        div[class*="messenger-list"],
+        div[class*="messenger-channels"],
+        div[class*="messenger-conversations"] {
+          overflow-y: scroll !important;
+          -webkit-overflow-scrolling: touch !important;
+          height: 100% !important;
+          max-height: 100vh !important;
+          overscroll-behavior: contain !important;
         }
 
-        /* Collapsed state styles */
-        .collapsed {
-          width: 60px !important;
-          min-width: 60px !important;
-        }
-
-        .collapsed * {
+        /* Ensure parent containers don't block scrolling */
+        .sc-messenger,
+        .messenger,
+        .sc-messenger-window,
+        .messenger-window,
+        div[class*="messenger-window"] {
+          height: 100vh !important;
           overflow: hidden !important;
-          white-space: nowrap !important;
         }
       \`;
       document.head.appendChild(style);
+
+      // Add scroll event listener to prevent body scroll when scrolling channels/conversations
+      document.addEventListener('DOMContentLoaded', function() {
+        const scrollableElements = document.querySelectorAll('.sc-messenger-content, .sc-messenger-sidebar, .messenger-content, .messenger-sidebar');
+        scrollableElements.forEach(element => {
+          element.addEventListener('touchmove', function(e) {
+            e.stopPropagation();
+          }, { passive: true });
+        });
+      });
     })();
     true;
   `;
@@ -71,6 +75,13 @@ export default function SchulCloudScreen() {
   const handleContentProcessTerminate = () => {
     webViewRef.current?.reload();
   };
+
+  // Effect to handle URL updates
+  useEffect(() => {
+    if (webViewRef.current) {
+      webViewRef.current.reload();
+    }
+  }, [urls.schulcloud]);
 
   return (
     <View style={[
@@ -84,11 +95,11 @@ export default function SchulCloudScreen() {
           ]} 
         />
       )}
-      <WebViewNavBar webViewRef={webViewRef} initialUrl={initialUrl} />
+      <WebViewNavBar webViewRef={webViewRef} initialUrl={urls.schulcloud} />
       <WebView 
         ref={webViewRef}
         style={[styles.webview, { backgroundColor }]}
-        source={{ uri: initialUrl }}
+        source={{ uri: urls.schulcloud }}
         injectedJavaScript={injectedScript}
         scrollEnabled={true}
         bounces={true}

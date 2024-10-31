@@ -1,94 +1,112 @@
 import { WebView } from 'react-native-webview';
 import { StyleSheet, Platform, StatusBar, useColorScheme, View } from 'react-native';
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { WebViewNavBar } from '../../components/navigation/WebViewNavBar';
 import { useOrientation } from '../../hooks/useOrientation';
+import { useUrl } from '../../context/UrlContext';
 
 export default function UntisScreen() {
   const webViewRef = useRef<WebView>(null);
-  const initialUrl = 'https://neilo.webuntis.com/WebUntis/?school=bbz-rd-eck#/basic/login';
+  const { urls } = useUrl();
   const orientation = useOrientation();
   const isDarkMode = useColorScheme() === 'dark';
   const backgroundColor = isDarkMode ? '#1C1C1E' : '#FFFFFF';
 
   const injectedScript = `
     (function() {
-      // Add meta viewport tag for proper scaling
-      const meta = document.createElement('meta');
-      meta.name = 'viewport';
-      meta.content = 'width=device-width, initial-scale=0.95, maximum-scale=0.95, user-scalable=no';
-      document.head.appendChild(meta);
-
       const style = document.createElement('style');
       style.textContent = \`
-        * {
-          -webkit-overflow-scrolling: touch !important;
-        }
-        
-        /* Improve scrolling for timetable and lists */
-        .timetable-container,
-        .grid-container,
-        [class*="scroll"],
-        [class*="overflow"] {
-          overflow-y: scroll !important;
-          -webkit-overflow-scrolling: touch !important;
-          touch-action: pan-y !important;
-        }
-
         body {
-          font-size: 14px !important;
-          zoom: 1.0;
           padding-top: 0 !important;
           margin-top: 0 !important;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif !important;
         }
 
-        /* Optimize timetable cell sizes for mobile */
-        .timetable-cell,
-        [class*="gridCell"] {
-          min-height: 60px !important;
-          padding: 4px !important;
+        /* Increase base font size */
+        * {
+          font-size: 18px !important;
+          line-height: 1.5 !important;
         }
 
-        /* Make text in cells more readable */
-        .timetable-cell *,
-        [class*="gridCell"] * {
-          font-size: 0.9em !important;
-          line-height: 1.2 !important;
-        }
-
-        /* Improve touch targets */
-        button,
-        [role="button"],
-        .clickable,
-        [class*="button"] {
-          min-height: 44px !important;
-          min-width: 44px !important;
-          padding: 10px !important;
-        }
-
-        /* Optimize navigation elements */
-        .navigation-container,
-        [class*="navigation"],
-        [class*="toolbar"] {
-          height: auto !important;
-          min-height: 48px !important;
+        /* Specific adjustments for timetable elements */
+        .un-timetable-cell,
+        .un-timetable-period,
+        .un-timetable-subject,
+        .un-timetable-room,
+        .un-timetable-teacher,
+        [class*="timetable-cell"],
+        [class*="timetable-period"],
+        [class*="timetable-subject"],
+        [class*="timetable-room"],
+        [class*="timetable-teacher"] {
+          font-size: 20px !important;
+          line-height: 1.4 !important;
           padding: 8px !important;
+        }
+
+        /* Make headers larger */
+        h1, .un-header, [class*="header"] {
+          font-size: 24px !important;
+          font-weight: bold !important;
+        }
+
+        /* Increase size of navigation elements */
+        .un-navigation,
+        .un-menu,
+        .un-toolbar,
+        [class*="navigation"],
+        [class*="menu"],
+        [class*="toolbar"] {
+          font-size: 20px !important;
+        }
+
+        /* Make buttons and interactive elements larger */
+        button,
+        .un-button,
+        [class*="button"],
+        select,
+        input {
+          font-size: 20px !important;
+          padding: 12px !important;
+          height: auto !important;
+        }
+
+        /* Increase size of period times */
+        .un-period-time,
+        [class*="period-time"] {
+          font-size: 20px !important;
+          font-weight: bold !important;
+        }
+
+        /* Make subject names prominent */
+        .un-subject-name,
+        [class*="subject-name"] {
+          font-size: 22px !important;
+          font-weight: bold !important;
+        }
+
+        /* Ensure dropdowns and menus are readable */
+        .un-dropdown,
+        .un-menu-item,
+        [class*="dropdown"],
+        [class*="menu-item"] {
+          font-size: 20px !important;
+          padding: 12px !important;
+        }
+
+        /* Make table headers clear */
+        th, thead td {
+          font-size: 20px !important;
+          font-weight: bold !important;
+        }
+
+        /* Ensure modal content is readable */
+        .un-modal,
+        [class*="modal"] {
+          font-size: 20px !important;
         }
       \`;
       document.head.appendChild(style);
-
-      // Function to periodically check and apply styles to dynamic content
-      function applyStylesToNewElements() {
-        const elements = document.querySelectorAll('td, th, input, button, select, .form-control, .btn, label, span');
-        elements.forEach(elem => {
-          if (elem.style.fontSize !== '14px') {
-            elem.style.fontSize = '14px';
-          }
-        });
-      }
-
-      // Apply styles every second to catch dynamic content
-      setInterval(applyStylesToNewElements, 1000);
     })();
     true;
   `;
@@ -96,9 +114,16 @@ export default function UntisScreen() {
   const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0;
   const adjustedStatusBarHeight = orientation === 'landscape' ? statusBarHeight / 3 : statusBarHeight;
 
-  const handleContentProcessTerminate = () => {
+  const handleContentProcessDidTerminate = () => {
     webViewRef.current?.reload();
   };
+
+  // Effect to handle URL updates
+  useEffect(() => {
+    if (webViewRef.current) {
+      webViewRef.current.reload();
+    }
+  }, [urls.untis]);
 
   return (
     <View style={[
@@ -112,12 +137,11 @@ export default function UntisScreen() {
           ]} 
         />
       )}
-      <WebViewNavBar webViewRef={webViewRef} initialUrl={initialUrl} />
+      <WebViewNavBar webViewRef={webViewRef} initialUrl={urls.untis} />
       <WebView 
         ref={webViewRef}
         style={[styles.webview, { backgroundColor }]}
-        source={{ uri: initialUrl }}
-        userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        source={{ uri: urls.untis }}
         injectedJavaScript={injectedScript}
         scrollEnabled={true}
         bounces={true}
@@ -126,10 +150,11 @@ export default function UntisScreen() {
         cacheEnabled={true}
         cacheMode="LOAD_CACHE_ELSE_NETWORK"
         incognito={false}
-        onContentProcessDidTerminate={handleContentProcessTerminate}
+        onContentProcessDidTerminate={handleContentProcessDidTerminate}
         androidLayerType="hardware"
         pullToRefreshEnabled={true}
         thirdPartyCookiesEnabled={true}
+        userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
       />
     </View>
   );
