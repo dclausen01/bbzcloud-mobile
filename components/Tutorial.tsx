@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Image, ImageSourcePropType } from 'react-native';
 import { useRouter, Href } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTutorial } from '../context/TutorialContext';
@@ -9,32 +9,39 @@ import { useColorScheme } from '../hooks/useColorScheme';
 type TutorialStep = {
   screen: Href<string>;
   text: string;
+  image?: ImageSourcePropType;
 };
 
 const TUTORIAL_STEPS: TutorialStep[] = [
   {
     screen: '/(tabs)' as Href<string>,
-    text: 'Willkommen bei BBZ Cloud! Hier findest du eine Übersicht aller wichtigen Funktionen.',
+    text: 'Willkommen bei BBZ Cloud! In diesem Tutorial finden Sie eine Übersicht aller wichtigen Funktionen.',
+    image: require('../assets/images/tutorial/home.png'),
   },
   {
     screen: '/(tabs)/schulcloud' as Href<string>,
     text: 'In der schul.cloud können Sie mit Ihren Mitschüler:innen und Lehrer:innen chatten, Videokonferenzen starten und Dateien ablegen.',
+    image: require('../assets/images/tutorial/schulcloud.png'),
   },
   {
     screen: '/(tabs)/moodle' as Href<string>,
     text: 'Auf Moodle finden Sie Kursmaterialien und können Aufgaben bearbeiten und einreichen.',
+    image: require('../assets/images/tutorial/moodle.png'),
   },
   {
     screen: '/(tabs)/office' as Href<string>,
     text: 'Mit CryptPad können Sie Dokumente erstellen und gemeinsam mit anderen bearbeiten. Erstellen Sie sich hier als erstes ein eigenes Konto (oben rechts auf "Registrieren" klicken).',
+    image: require('../assets/images/tutorial/cryptpad.png'),
   },
   {
     screen: '/(tabs)/wiki' as Href<string>,
     text: 'Im BBZ Wiki finden Sie hilfreiche Informationen und Anleitungen.',
+    image: require('../assets/images/tutorial/wiki.png'),
   },
   {
     screen: '/(tabs)/untis' as Href<string>,
     text: 'In WebUntis sehen Sie Ihren aktuellen Stundenplan und die Abwesenheiten.',
+    image: require('../assets/images/tutorial/untis.png'),
   },
 ];
 
@@ -42,6 +49,8 @@ export const Tutorial: React.FC = () => {
   const { currentStep, setCurrentStep, setShowTutorial } = useTutorial();
   const router = useRouter();
   const colorScheme = useColorScheme();
+  const windowWidth = Dimensions.get('window').width;
+  const windowHeight = Dimensions.get('window').height;
 
   const handleNext = async () => {
     if (currentStep < TUTORIAL_STEPS.length - 1) {
@@ -58,6 +67,8 @@ export const Tutorial: React.FC = () => {
     setShowTutorial(false);
   };
 
+  const currentTutorialStep = TUTORIAL_STEPS[currentStep];
+
   return (
     <View style={styles.container}>
       <View
@@ -66,14 +77,25 @@ export const Tutorial: React.FC = () => {
           {
             backgroundColor: Colors[colorScheme ?? 'light'].background,
             borderColor: Colors[colorScheme ?? 'light'].tint,
+            width: windowWidth * 0.9,
+            maxHeight: windowHeight * 0.8,
           },
         ]}>
+        {currentTutorialStep.image && (
+          <View style={styles.imageContainer}>
+            <Image
+              source={currentTutorialStep.image}
+              style={styles.image}
+              resizeMode="contain"
+            />
+          </View>
+        )}
         <Text
           style={[
             styles.text,
             { color: Colors[colorScheme ?? 'light'].text },
           ]}>
-          {TUTORIAL_STEPS[currentStep].text}
+          {currentTutorialStep.text}
         </Text>
         <View style={styles.buttonContainer}>
           <TouchableOpacity
@@ -95,6 +117,22 @@ export const Tutorial: React.FC = () => {
             </Text>
           </TouchableOpacity>
         </View>
+        <View style={styles.progressContainer}>
+          {TUTORIAL_STEPS.map((_, index) => (
+            <View
+              key={index}
+              style={[
+                styles.progressDot,
+                {
+                  backgroundColor:
+                    index === currentStep
+                      ? Colors[colorScheme ?? 'light'].tint
+                      : Colors[colorScheme ?? 'light'].tabIconDefault,
+                },
+              ]}
+            />
+          ))}
+        </View>
       </View>
     </View>
   );
@@ -113,27 +151,56 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   tutorialBox: {
-    width: Dimensions.get('window').width * 0.8,
     padding: 20,
-    borderRadius: 10,
+    borderRadius: 15,
     borderWidth: 2,
+    alignItems: 'center',
+  },
+  imageContainer: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    marginBottom: 15,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  image: {
+    width: '100%',
+    height: '100%',
   },
   text: {
     fontSize: 16,
     marginBottom: 20,
     textAlign: 'center',
+    lineHeight: 22,
   },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 15,
   },
   button: {
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderRadius: 5,
+    borderRadius: 25,
+    minWidth: 120,
+    alignItems: 'center',
   },
   buttonText: {
     color: 'white',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+  },
+  progressDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginHorizontal: 4,
   },
 });

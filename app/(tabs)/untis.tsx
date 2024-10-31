@@ -1,112 +1,76 @@
 import { WebView } from 'react-native-webview';
 import { StyleSheet, Platform, StatusBar, useColorScheme, View } from 'react-native';
-import React, { useRef, useEffect } from 'react';
+import React, { useRef } from 'react';
 import { WebViewNavBar } from '../../components/navigation/WebViewNavBar';
 import { useOrientation } from '../../hooks/useOrientation';
-import { useUrl } from '../../context/UrlContext';
+import { GestureHandlerRootView, GestureDetector, Gesture } from 'react-native-gesture-handler';
+
+const WEBUNTIS_URL = 'https://neilo.webuntis.com/WebUntis';
 
 export default function UntisScreen() {
   const webViewRef = useRef<WebView>(null);
-  const { urls } = useUrl();
   const orientation = useOrientation();
   const isDarkMode = useColorScheme() === 'dark';
   const backgroundColor = isDarkMode ? '#1C1C1E' : '#FFFFFF';
 
+  const horizontalSwipe = Gesture.Pan()
+    .activeOffsetX([-20, 20])
+    .onEnd((event) => {
+      if (event.translationX > 50) {
+        // Swipe right - go back
+        webViewRef.current?.goBack();
+      } else if (event.translationX < -50) {
+        // Swipe left - go forward
+        webViewRef.current?.goForward();
+      }
+    });
+
   const injectedScript = `
     (function() {
+      // Add meta viewport tag for proper scaling
+      const meta = document.createElement('meta');
+      meta.name = 'viewport';
+      meta.content = 'width=device-width, initial-scale=0.95, maximum-scale=0.95, user-scalable=no';
+      document.head.appendChild(meta);
+
       const style = document.createElement('style');
       style.textContent = \`
-        body {
-          padding-top: 0 !important;
-          margin-top: 0 !important;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif !important;
-        }
-
-        /* Increase base font size */
         * {
-          font-size: 18px !important;
-          line-height: 1.5 !important;
+          -webkit-overflow-scrolling: touch !important;
+        }
+        .scrollable-content, 
+        [class*="scroll"],
+        [class*="overflow"] {
+          overflow-y: scroll !important;
+          -webkit-overflow-scrolling: touch !important;
+          touch-action: pan-y !important;
+        }
+        body {
+          padding-top: 10px !important;
+          margin-top: 0 !important;
+          overscroll-behavior-x: contain !important;
         }
 
-        /* Specific adjustments for timetable elements */
-        .un-timetable-cell,
-        .un-timetable-period,
-        .un-timetable-subject,
-        .un-timetable-room,
-        .un-timetable-teacher,
-        [class*="timetable-cell"],
-        [class*="timetable-period"],
-        [class*="timetable-subject"],
-        [class*="timetable-room"],
-        [class*="timetable-teacher"] {
-          font-size: 20px !important;
-          line-height: 1.4 !important;
-          padding: 8px !important;
-        }
-
-        /* Make headers larger */
-        h1, .un-header, [class*="header"] {
-          font-size: 24px !important;
-          font-weight: bold !important;
-        }
-
-        /* Increase size of navigation elements */
-        .un-navigation,
-        .un-menu,
-        .un-toolbar,
-        [class*="navigation"],
-        [class*="menu"],
-        [class*="toolbar"] {
-          font-size: 20px !important;
-        }
-
-        /* Make buttons and interactive elements larger */
-        button,
-        .un-button,
-        [class*="button"],
-        select,
-        input {
-          font-size: 20px !important;
-          padding: 12px !important;
-          height: auto !important;
-        }
-
-        /* Increase size of period times */
-        .un-period-time,
-        [class*="period-time"] {
-          font-size: 20px !important;
-          font-weight: bold !important;
-        }
-
-        /* Make subject names prominent */
-        .un-subject-name,
-        [class*="subject-name"] {
-          font-size: 22px !important;
-          font-weight: bold !important;
-        }
-
-        /* Ensure dropdowns and menus are readable */
-        .un-dropdown,
-        .un-menu-item,
-        [class*="dropdown"],
-        [class*="menu-item"] {
-          font-size: 20px !important;
-          padding: 12px !important;
-        }
-
-        /* Make table headers clear */
-        th, thead td {
-          font-size: 20px !important;
-          font-weight: bold !important;
-        }
-
-        /* Ensure modal content is readable */
-        .un-modal,
-        [class*="modal"] {
-          font-size: 20px !important;
+        /* WebUntis-specific styles */
+        .un-timetable-container {
+          overflow: auto !important;
+          -webkit-overflow-scrolling: touch !important;
         }
       \`;
       document.head.appendChild(style);
+
+      // Enable back/forward swipe navigation
+      history.pushState = new Proxy(history.pushState, {
+        apply: (target, thisArg, argumentsList) => {
+          const result = target.apply(thisArg, argumentsList);
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'navigationStateChange',
+            canGoBack: window.history.length > 1,
+            canGoForward: window.history.length > 1
+          }));
+          return result;
+        },
+      });
     })();
     true;
   `;
@@ -118,45 +82,53 @@ export default function UntisScreen() {
     webViewRef.current?.reload();
   };
 
-  // Effect to handle URL updates
-  useEffect(() => {
-    if (webViewRef.current) {
-      webViewRef.current.reload();
-    }
-  }, [urls.untis]);
-
   return (
-    <View style={[
-      styles.container,
-      { backgroundColor }
-    ]}>
-      {Platform.OS === 'android' && (
-        <View 
-          style={[
-            { height: adjustedStatusBarHeight, backgroundColor }
-          ]} 
-        />
-      )}
-      <WebViewNavBar webViewRef={webViewRef} initialUrl={urls.untis} />
-      <WebView 
-        ref={webViewRef}
-        style={[styles.webview, { backgroundColor }]}
-        source={{ uri: urls.untis }}
-        injectedJavaScript={injectedScript}
-        scrollEnabled={true}
-        bounces={true}
-        javaScriptEnabled={true}
-        domStorageEnabled={true}
-        cacheEnabled={true}
-        cacheMode="LOAD_CACHE_ELSE_NETWORK"
-        incognito={false}
-        onContentProcessDidTerminate={handleContentProcessDidTerminate}
-        androidLayerType="hardware"
-        pullToRefreshEnabled={true}
-        thirdPartyCookiesEnabled={true}
-        userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-      />
-    </View>
+    <GestureHandlerRootView style={styles.container}>
+      <GestureDetector gesture={horizontalSwipe}>
+        <View style={[
+          styles.container,
+          { backgroundColor }
+        ]}>
+          {Platform.OS === 'android' && (
+            <View 
+              style={[
+                { height: adjustedStatusBarHeight, backgroundColor }
+              ]} 
+            />
+          )}
+          <WebViewNavBar webViewRef={webViewRef} initialUrl={WEBUNTIS_URL} />
+          <WebView 
+            ref={webViewRef}
+            style={[styles.webview, { backgroundColor }]}
+            source={{ uri: WEBUNTIS_URL }}
+            injectedJavaScript={injectedScript}
+            scrollEnabled={true}
+            bounces={true}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+            cacheEnabled={true}
+            cacheMode="LOAD_CACHE_ELSE_NETWORK"
+            incognito={false}
+            onContentProcessDidTerminate={handleContentProcessDidTerminate}
+            androidLayerType="hardware"
+            pullToRefreshEnabled={true}
+            thirdPartyCookiesEnabled={true}
+            allowsBackForwardNavigationGestures={true} // Enable native gestures for iOS
+            onMessage={(event) => {
+              try {
+                const data = JSON.parse(event.nativeEvent.data);
+                if (data.type === 'navigationStateChange') {
+                  // Handle navigation state changes
+                  console.log('Navigation state changed:', data);
+                }
+              } catch (error) {
+                console.error('Error parsing WebView message:', error);
+              }
+            }}
+          />
+        </View>
+      </GestureDetector>
+    </GestureHandlerRootView>
   );
 }
 

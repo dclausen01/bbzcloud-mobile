@@ -1,9 +1,10 @@
 import { WebView } from 'react-native-webview';
 import { StyleSheet, Platform, StatusBar, useColorScheme, View } from 'react-native';
-import React, { useRef, useEffect } from 'react';
+import React, { useRef } from 'react';
 import { WebViewNavBar } from '../../components/navigation/WebViewNavBar';
 import { useOrientation } from '../../hooks/useOrientation';
 import { useUrl } from '../../context/UrlContext';
+import { GestureHandlerRootView, GestureDetector, Gesture } from 'react-native-gesture-handler';
 
 export default function WikiScreen() {
   const webViewRef = useRef<WebView>(null);
@@ -12,119 +13,71 @@ export default function WikiScreen() {
   const isDarkMode = useColorScheme() === 'dark';
   const backgroundColor = isDarkMode ? '#1C1C1E' : '#FFFFFF';
 
+  const horizontalSwipe = Gesture.Pan()
+    .activeOffsetX([-20, 20])
+    .onEnd((event) => {
+      if (event.translationX > 50) {
+        // Swipe right - go back
+        webViewRef.current?.goBack();
+      } else if (event.translationX < -50) {
+        // Swipe left - go forward
+        webViewRef.current?.goForward();
+      }
+    });
+
   const injectedScript = `
     (function() {
+      // Add meta viewport tag for proper scaling
+      const meta = document.createElement('meta');
+      meta.name = 'viewport';
+      meta.content = 'width=device-width, initial-scale=0.95, maximum-scale=0.95, user-scalable=no';
+      document.head.appendChild(meta);
+
       const style = document.createElement('style');
       style.textContent = \`
+        * {
+          -webkit-overflow-scrolling: touch !important;
+        }
+        .scrollable-content, 
+        [class*="scroll"],
+        [class*="overflow"] {
+          overflow-y: scroll !important;
+          -webkit-overflow-scrolling: touch !important;
+          touch-action: pan-y !important;
+        }
         body {
-          padding-top: 0 !important;
+          padding-top: 10px !important;
           margin-top: 0 !important;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif !important;
-          -webkit-overflow-scrolling: touch !important;
-          font-size: 16px !important;
-          line-height: 1.1 !important;
+          overscroll-behavior-x: contain !important;
         }
 
-        /* Improve text readability */
-        p, li, td, th {
-          font-size: 16px !important;
-          line-height: 1.3 !important;
-          margin-bottom: 8px !important;
+        /* Wiki-specific styles */
+        #mw-panel,
+        #mw-navigation {
+          display: none !important;
         }
-
-        /* Better headings */
-        h1, h2, h3, h4, h5, h6 {
-          margin: 24px 0 16px 0 !important;
-          /* line-height: 1.2 !important; */
-          font-weight: 600 !important;
+        #content {
+          margin-left: 0 !important;
+          border-left: none !important;
         }
-        h1 { font-size: 28px !important; }
-        h2 { font-size: 24px !important; }
-        h3 { font-size: 20px !important; }
-        h4 { font-size: 18px !important; }
-      
-
-        /* Make links more touch-friendly */
-        a {
-          /* padding: 4px 2px !important; */
-          /* margin: 4px !important; */
-          touch-action: manipulation !important;
-        }
-
-        /* Improve tables */
-        table {
-          width: 100% !important;
-          margin: 16px 0 !important;
-          border-collapse: collapse !important;
-        }
-
-        td, th {
-          padding: 12px !important;
-          border: 1px solid #ddd !important;
-        }
-
-        /* Better code blocks */
-        pre, code {
-          font-family: 'Menlo', 'Monaco', 'Courier New', monospace !important;
-          font-size: 14px !important;
-          padding: 16px !important;
-          margin: 16px 0 !important;
-          border-radius: 8px !important;
-          background-color: ${isDarkMode ? '#2C2C2E' : '#f5f5f5'} !important;
-          overflow-x: auto !important;
-          -webkit-overflow-scrolling: touch !important;
-        }
-
-        /* Improve lists */
-        ul, ol {
-          padding-left: 24px !important;
-          margin: 16px 0 !important;
-        }
-
-        li {
-          margin: 8px 0 !important;
-        }
-
-        /* Better images */
-        img {
-          max-width: 100% !important;
-          height: auto !important;
-          margin: 16px 0 !important;
-          border-radius: 8px !important;
-        }
-
-        /* Improve navigation */
-        nav, .navigation, .menu {
-          padding: 12px !important;
-        }
-
-        nav a, .navigation a, .menu a {
-          display: inline-block !important;
-         /* padding: 12px !important; */
-          margin: 4px !important;
-         /* min-height: 44px !important; */
-         /* min-width: 44px !important; */
-        }
-
-        /* Better blockquotes */
-        blockquote {
-          margin: 16px 0 !important;
-          padding: 12px 24px !important;
-          border-left: 4px solid #007AFF !important;
-          background-color: ${isDarkMode ? '#2C2C2E' : '#f5f5f5'} !important;
-        }
-
-        /* Ensure proper touch scrolling */
-        .content, 
-        .main-content,
-        article,
-        .article-content {
-          -webkit-overflow-scrolling: touch !important;
-          overflow-y: auto !important;
+        .mw-body {
+          margin-left: 0 !important;
         }
       \`;
       document.head.appendChild(style);
-      document.getElementById('dw__title').style.fontSize = '60%';
+
+      // Enable back/forward swipe navigation
+      history.pushState = new Proxy(history.pushState, {
+        apply: (target, thisArg, argumentsList) => {
+          const result = target.apply(thisArg, argumentsList);
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'navigationStateChange',
+            canGoBack: window.history.length > 1,
+            canGoForward: window.history.length > 1
+          }));
+          return result;
+        },
+      });
     })();
     true;
   `;
@@ -132,48 +85,57 @@ export default function WikiScreen() {
   const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0;
   const adjustedStatusBarHeight = orientation === 'landscape' ? statusBarHeight / 3 : statusBarHeight;
 
-  const handleContentProcessTerminate = () => {
+  const handleContentProcessDidTerminate = () => {
     webViewRef.current?.reload();
   };
 
-  // Effect to handle URL updates
-  useEffect(() => {
-    if (webViewRef.current) {
-      webViewRef.current.reload();
-    }
-  }, [urls.wiki]);
-
   return (
-    <View style={[
-      styles.container,
-      { backgroundColor }
-    ]}>
-      {Platform.OS === 'android' && (
-        <View 
-          style={[
-            { height: adjustedStatusBarHeight, backgroundColor }
-          ]} 
-        />
-      )}
-      <WebViewNavBar webViewRef={webViewRef} initialUrl={urls.wiki} />
-      <WebView 
-        ref={webViewRef}
-        style={[styles.webview, { backgroundColor }]}
-        source={{ uri: urls.wiki }}
-        injectedJavaScript={injectedScript}
-        scrollEnabled={true}
-        bounces={true}
-        javaScriptEnabled={true}
-        domStorageEnabled={true}
-        cacheEnabled={true}
-        cacheMode="LOAD_CACHE_ELSE_NETWORK"
-        incognito={false}
-        onContentProcessDidTerminate={handleContentProcessTerminate}
-        androidLayerType="hardware"
-        pullToRefreshEnabled={true}
-        thirdPartyCookiesEnabled={true}
-      />
-    </View>
+    <GestureHandlerRootView style={styles.container}>
+      <GestureDetector gesture={horizontalSwipe}>
+        <View style={[
+          styles.container,
+          { backgroundColor }
+        ]}>
+          {Platform.OS === 'android' && (
+            <View 
+              style={[
+                { height: adjustedStatusBarHeight, backgroundColor }
+              ]} 
+            />
+          )}
+          <WebViewNavBar webViewRef={webViewRef} initialUrl={urls.wiki} />
+          <WebView 
+            ref={webViewRef}
+            style={[styles.webview, { backgroundColor }]}
+            source={{ uri: urls.wiki }}
+            injectedJavaScript={injectedScript}
+            scrollEnabled={true}
+            bounces={true}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+            cacheEnabled={true}
+            cacheMode="LOAD_CACHE_ELSE_NETWORK"
+            incognito={false}
+            onContentProcessDidTerminate={handleContentProcessDidTerminate}
+            androidLayerType="hardware"
+            pullToRefreshEnabled={true}
+            thirdPartyCookiesEnabled={true}
+            allowsBackForwardNavigationGestures={true} // Enable native gestures for iOS
+            onMessage={(event) => {
+              try {
+                const data = JSON.parse(event.nativeEvent.data);
+                if (data.type === 'navigationStateChange') {
+                  // Handle navigation state changes
+                  console.log('Navigation state changed:', data);
+                }
+              } catch (error) {
+                console.error('Error parsing WebView message:', error);
+              }
+            }}
+          />
+        </View>
+      </GestureDetector>
+    </GestureHandlerRootView>
   );
 }
 

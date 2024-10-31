@@ -3,14 +3,27 @@ import { StyleSheet, Platform, StatusBar, useColorScheme, View } from 'react-nat
 import React, { useRef, useEffect } from 'react';
 import { WebViewNavBar } from '../../components/navigation/WebViewNavBar';
 import { useOrientation } from '../../hooks/useOrientation';
-import { useUrl } from '../../context/UrlContext';
+import { GestureHandlerRootView, GestureDetector, Gesture } from 'react-native-gesture-handler';
+
+const SCHULCLOUD_URL = 'https://app.schul.cloud';
 
 export default function SchulCloudScreen() {
   const webViewRef = useRef<WebView>(null);
-  const { urls } = useUrl();
   const orientation = useOrientation();
   const isDarkMode = useColorScheme() === 'dark';
   const backgroundColor = isDarkMode ? '#1C1C1E' : '#FFFFFF';
+
+  const horizontalSwipe = Gesture.Pan()
+    .activeOffsetX([-20, 20])
+    .onEnd((event) => {
+      if (event.translationX > 50) {
+        // Swipe right - go back
+        webViewRef.current?.goBack();
+      } else if (event.translationX < -50) {
+        // Swipe left - go forward
+        webViewRef.current?.goForward();
+      }
+    });
 
   const injectedScript = `
     (function() {
@@ -38,6 +51,7 @@ export default function SchulCloudScreen() {
         body {
           padding-top: 10px !important;
           margin-top: 0 !important;
+          overscroll-behavior-x: contain !important;
         }
 
         /* Add transitions for smooth sidebar collapse/expand */
@@ -62,6 +76,19 @@ export default function SchulCloudScreen() {
         }
       \`;
       document.head.appendChild(style);
+
+      // Enable back/forward swipe navigation
+      history.pushState = new Proxy(history.pushState, {
+        apply: (target, thisArg, argumentsList) => {
+          const result = target.apply(thisArg, argumentsList);
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'navigationStateChange',
+            canGoBack: window.history.length > 1,
+            canGoForward: window.history.length > 1
+          }));
+          return result;
+        },
+      });
     })();
     true;
   `;
@@ -73,44 +100,53 @@ export default function SchulCloudScreen() {
     webViewRef.current?.reload();
   };
 
-  // Effect to handle URL updates
-  useEffect(() => {
-    if (webViewRef.current) {
-      webViewRef.current.reload();
-    }
-  }, [urls.schulcloud]);
-
   return (
-    <View style={[
-      styles.container,
-      { backgroundColor }
-    ]}>
-      {Platform.OS === 'android' && (
-        <View 
-          style={[
-            { height: adjustedStatusBarHeight, backgroundColor }
-          ]} 
-        />
-      )}
-      <WebViewNavBar webViewRef={webViewRef} initialUrl={urls.schulcloud} />
-      <WebView 
-        ref={webViewRef}
-        style={[styles.webview, { backgroundColor }]}
-        source={{ uri: urls.schulcloud }}
-        injectedJavaScript={injectedScript}
-        scrollEnabled={true}
-        bounces={true}
-        javaScriptEnabled={true}
-        domStorageEnabled={true}
-        cacheEnabled={true}
-        cacheMode="LOAD_CACHE_ELSE_NETWORK"
-        incognito={false}
-        onContentProcessDidTerminate={handleContentProcessDidTerminate}
-        androidLayerType="hardware"
-        pullToRefreshEnabled={true}
-        thirdPartyCookiesEnabled={true}
-      />
-    </View>
+    <GestureHandlerRootView style={styles.container}>
+      <GestureDetector gesture={horizontalSwipe}>
+        <View style={[
+          styles.container,
+          { backgroundColor }
+        ]}>
+          {Platform.OS === 'android' && (
+            <View 
+              style={[
+                { height: adjustedStatusBarHeight, backgroundColor }
+              ]} 
+            />
+          )}
+          <WebViewNavBar webViewRef={webViewRef} initialUrl={SCHULCLOUD_URL} />
+          <WebView 
+            ref={webViewRef}
+            style={[styles.webview, { backgroundColor }]}
+            source={{ uri: SCHULCLOUD_URL }}
+            injectedJavaScript={injectedScript}
+            scrollEnabled={true}
+            bounces={true}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+            cacheEnabled={true}
+            cacheMode="LOAD_CACHE_ELSE_NETWORK"
+            incognito={false}
+            onContentProcessDidTerminate={handleContentProcessDidTerminate}
+            androidLayerType="hardware"
+            pullToRefreshEnabled={true}
+            thirdPartyCookiesEnabled={true}
+            allowsBackForwardNavigationGestures={true} // Enable native gestures for iOS
+            onMessage={(event) => {
+              try {
+                const data = JSON.parse(event.nativeEvent.data);
+                if (data.type === 'navigationStateChange') {
+                  // Handle navigation state changes
+                  console.log('Navigation state changed:', data);
+                }
+              } catch (error) {
+                console.error('Error parsing WebView message:', error);
+              }
+            }}
+          />
+        </View>
+      </GestureDetector>
+    </GestureHandlerRootView>
   );
 }
 
