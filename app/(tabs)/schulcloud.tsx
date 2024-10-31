@@ -19,51 +19,113 @@ export default function SchulCloudScreen() {
         body {
           padding-top: 0 !important;
           margin-top: 0 !important;
+          height: 100% !important;
         }
 
-        /* Target specific schul.cloud elements */
-        .sc-messenger-content,
-        .sc-messenger-sidebar,
-        .sc-messenger-list,
-        .sc-messenger-channels,
-        .sc-messenger-conversations,
-        .messenger-content,
-        .messenger-sidebar,
-        .messenger-list,
-        .messenger-channels,
-        .messenger-conversations,
-        div[class*="messenger-content"],
-        div[class*="messenger-sidebar"],
-        div[class*="messenger-list"],
-        div[class*="messenger-channels"],
-        div[class*="messenger-conversations"] {
-          overflow-y: scroll !important;
+        /* Enable touch scrolling globally */
+        * {
           -webkit-overflow-scrolling: touch !important;
+          touch-action: pan-y !important;
+        }
+
+        /* Target messenger container */
+        .messenger-window,
+        .messenger-component,
+        [class*="messenger-window"],
+        [class*="messenger-component"] {
+          height: 100vh !important;
+          max-height: 100vh !important;
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          bottom: 0 !important;
+          overflow: hidden !important;
+        }
+
+        /* Target sidebar container */
+        .messenger-sidebar,
+        [class*="messenger-sidebar"],
+        .sidebar-container,
+        [class*="sidebar-container"] {
           height: 100% !important;
           max-height: 100vh !important;
-          overscroll-behavior: contain !important;
+          overflow-y: scroll !important;
+          -webkit-overflow-scrolling: touch !important;
+          touch-action: pan-y !important;
+          position: relative !important;
         }
 
-        /* Ensure parent containers don't block scrolling */
-        .sc-messenger,
-        .messenger,
-        .sc-messenger-window,
-        .messenger-window,
-        div[class*="messenger-window"] {
-          height: 100vh !important;
-          overflow: hidden !important;
+        /* Target main content container */
+        .messenger-content,
+        [class*="messenger-content"],
+        .content-container,
+        [class*="content-container"] {
+          height: 100% !important;
+          max-height: 100vh !important;
+          overflow-y: scroll !important;
+          -webkit-overflow-scrolling: touch !important;
+          touch-action: pan-y !important;
+          position: relative !important;
+        }
+
+        /* Target channels list */
+        .channels-list,
+        [class*="channels-list"],
+        .channel-list,
+        [class*="channel-list"] {
+          height: auto !important;
+          max-height: none !important;
+          overflow-y: scroll !important;
+          -webkit-overflow-scrolling: touch !important;
+          touch-action: pan-y !important;
+        }
+
+        /* Target conversations list */
+        .conversations-list,
+        [class*="conversations-list"],
+        .conversation-list,
+        [class*="conversation-list"] {
+          height: auto !important;
+          max-height: none !important;
+          overflow-y: scroll !important;
+          -webkit-overflow-scrolling: touch !important;
+          touch-action: pan-y !important;
+        }
+
+        /* Ensure list items are properly spaced */
+        .channel-item,
+        .conversation-item,
+        [class*="channel-item"],
+        [class*="conversation-item"] {
+          padding: 12px !important;
+          touch-action: pan-y !important;
         }
       \`;
       document.head.appendChild(style);
 
-      // Add scroll event listener to prevent body scroll when scrolling channels/conversations
-      document.addEventListener('DOMContentLoaded', function() {
-        const scrollableElements = document.querySelectorAll('.sc-messenger-content, .sc-messenger-sidebar, .messenger-content, .messenger-sidebar');
-        scrollableElements.forEach(element => {
-          element.addEventListener('touchmove', function(e) {
-            e.stopPropagation();
-          }, { passive: true });
+      // Create a mutation observer to ensure styles are applied to dynamically loaded content
+      const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+          if (mutation.addedNodes.length) {
+            mutation.addedNodes.forEach(function(node) {
+              if (node.nodeType === 1) { // Only process Element nodes
+                const elements = node.querySelectorAll('.messenger-sidebar, .messenger-content, [class*="messenger-sidebar"], [class*="messenger-content"], .channels-list, .conversations-list, [class*="channels-list"], [class*="conversations-list"]');
+                elements.forEach(function(element) {
+                  element.style.overflowY = 'scroll';
+                  element.style.webkitOverflowScrolling = 'touch';
+                  element.style.touchAction = 'pan-y';
+                });
+              }
+            });
+          }
         });
+      });
+
+      // Start observing the document with the configured parameters
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
       });
     })();
     true;
@@ -72,7 +134,7 @@ export default function SchulCloudScreen() {
   const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0;
   const adjustedStatusBarHeight = orientation === 'landscape' ? statusBarHeight / 3 : statusBarHeight;
 
-  const handleContentProcessTerminate = () => {
+  const handleContentProcessDidTerminate = () => {
     webViewRef.current?.reload();
   };
 
@@ -108,7 +170,7 @@ export default function SchulCloudScreen() {
         cacheEnabled={true}
         cacheMode="LOAD_CACHE_ELSE_NETWORK"
         incognito={false}
-        onContentProcessDidTerminate={handleContentProcessTerminate}
+        onContentProcessDidTerminate={handleContentProcessDidTerminate}
         androidLayerType="hardware"
         pullToRefreshEnabled={true}
         thirdPartyCookiesEnabled={true}

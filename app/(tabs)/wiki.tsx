@@ -22,20 +22,20 @@ export default function WikiScreen() {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif !important;
           -webkit-overflow-scrolling: touch !important;
           font-size: 16px !important;
-          line-height: 1.6 !important;
+          line-height: 1.2 !important;
         }
 
         /* Improve text readability */
         p, li, td, th {
           font-size: 16px !important;
-          line-height: 1.6 !important;
-          margin-bottom: 12px !important;
+          line-height: 1.2 !important;
+          margin-bottom: 8px !important;
         }
 
         /* Better headings */
         h1, h2, h3, h4, h5, h6 {
           margin: 24px 0 16px 0 !important;
-          line-height: 1.3 !important;
+          line-height: 1.1 !important;
           font-weight: 600 !important;
         }
         h1 { font-size: 28px !important; }
