@@ -4,7 +4,6 @@ import React, { useRef, useEffect } from 'react';
 import { WebViewNavBar } from '../../components/navigation/WebViewNavBar';
 import { useOrientation } from '../../hooks/useOrientation';
 import { useUrl } from '../../context/UrlContext';
-import { GestureHandlerRootView, GestureDetector, Gesture } from 'react-native-gesture-handler';
 
 export default function MoodleScreen() {
   const webViewRef = useRef<WebView>(null);
@@ -27,18 +26,6 @@ export default function MoodleScreen() {
       return () => backHandler.remove();
     }
   }, [canGoBack]);
-
-  const horizontalSwipe = Gesture.Pan()
-    .activeOffsetX([-20, 20])
-    .onEnd((event) => {
-      if (event.translationX > 50) {
-        // Swipe right - go back
-        webViewRef.current?.goBack();
-      } else if (event.translationX < -50) {
-        // Swipe left - go forward
-        webViewRef.current?.goForward();
-      }
-    });
 
   const injectedScript = `
     (function() {
@@ -96,52 +83,45 @@ export default function MoodleScreen() {
   };
 
   return (
-    <GestureHandlerRootView style={styles.container}>
-      <GestureDetector gesture={horizontalSwipe}>
-        <View style={[
-          styles.container,
-          { backgroundColor }
-        ]}>
-          {Platform.OS === 'android' && (
-            <View 
-              style={[
-                { height: adjustedStatusBarHeight, backgroundColor }
-              ]} 
-            />
-          )}
-          <WebViewNavBar webViewRef={webViewRef} initialUrl={urls.moodle} />
-          <WebView 
-            ref={webViewRef}
-            style={[styles.webview, { backgroundColor }]}
-            source={{ uri: urls.moodle }}
-            injectedJavaScript={injectedScript}
-            scrollEnabled={true}
-            bounces={true}
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-            cacheEnabled={true}
-            cacheMode="LOAD_CACHE_ELSE_NETWORK"
-            incognito={false}
-            onContentProcessDidTerminate={handleContentProcessDidTerminate}
-            androidLayerType="hardware"
-            pullToRefreshEnabled={true}
-            thirdPartyCookiesEnabled={true}
-            allowsBackForwardNavigationGestures={true} // Enable native gestures for iOS
-            onNavigationStateChange={handleNavigationStateChange}
-            onMessage={(event) => {
-              try {
-                const data = JSON.parse(event.nativeEvent.data);
-                if (data.type === 'navigationStateChange') {
-                  setCanGoBack(data.canGoBack);
-                }
-              } catch (error) {
-                console.error('Error parsing WebView message:', error);
-              }
-            }}
-          />
-        </View>
-      </GestureDetector>
-    </GestureHandlerRootView>
+    <View style={[styles.container, { backgroundColor }]}>
+      {Platform.OS === 'android' && (
+        <View 
+          style={[
+            { height: adjustedStatusBarHeight, backgroundColor }
+          ]} 
+        />
+      )}
+      <WebViewNavBar webViewRef={webViewRef} initialUrl={urls.moodle} />
+      <WebView 
+        ref={webViewRef}
+        style={[styles.webview, { backgroundColor }]}
+        source={{ uri: urls.moodle }}
+        injectedJavaScript={injectedScript}
+        scrollEnabled={true}
+        bounces={true}
+        javaScriptEnabled={true}
+        domStorageEnabled={true}
+        cacheEnabled={true}
+        cacheMode="LOAD_CACHE_ELSE_NETWORK"
+        incognito={false}
+        onContentProcessDidTerminate={handleContentProcessDidTerminate}
+        androidLayerType="hardware"
+        pullToRefreshEnabled={true}
+        thirdPartyCookiesEnabled={true}
+        allowsBackForwardNavigationGestures={true} // Enable native gestures for iOS
+        onNavigationStateChange={handleNavigationStateChange}
+        onMessage={(event) => {
+          try {
+            const data = JSON.parse(event.nativeEvent.data);
+            if (data.type === 'navigationStateChange') {
+              setCanGoBack(data.canGoBack);
+            }
+          } catch (error) {
+            console.error('Error parsing WebView message:', error);
+          }
+        }}
+      />
+    </View>
   );
 }
 
