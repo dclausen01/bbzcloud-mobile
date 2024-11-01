@@ -3,7 +3,6 @@ import { StyleSheet, Platform, StatusBar, useColorScheme, View, BackHandler } fr
 import React, { useRef, useEffect } from 'react';
 import { WebViewNavBar } from '../../components/navigation/WebViewNavBar';
 import { useOrientation } from '../../hooks/useOrientation';
-import { GestureHandlerRootView, GestureDetector, Gesture } from 'react-native-gesture-handler';
 
 const WEBUNTIS_URL = 'https://neilo.webuntis.com/WebUntis';
 
@@ -27,18 +26,6 @@ export default function UntisScreen() {
       return () => backHandler.remove();
     }
   }, [canGoBack]);
-
-  const horizontalSwipe = Gesture.Pan()
-    .activeOffsetX([-20, 20])
-    .onEnd((event) => {
-      if (event.translationX > 50) {
-        // Swipe right - go back
-        webViewRef.current?.goBack();
-      } else if (event.translationX < -50) {
-        // Swipe left - go forward
-        webViewRef.current?.goForward();
-      }
-    });
 
   const injectedScript = `
     (function() {
@@ -102,53 +89,46 @@ export default function UntisScreen() {
   };
 
   return (
-    <GestureHandlerRootView style={styles.container}>
-      <GestureDetector gesture={horizontalSwipe}>
-        <View style={[
-          styles.container,
-          { backgroundColor }
-        ]}>
-          {Platform.OS === 'android' && (
-            <View 
-              style={[
-                { height: adjustedStatusBarHeight, backgroundColor }
-              ]} 
-            />
-          )}
-          <WebViewNavBar webViewRef={webViewRef} initialUrl={WEBUNTIS_URL} />
-          <WebView 
-            ref={webViewRef}
-            style={[styles.webview, { backgroundColor }]}
-            source={{ uri: WEBUNTIS_URL }}
-            injectedJavaScript={injectedScript}
-            scrollEnabled={true}
-            bounces={true}
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-            cacheEnabled={true}
-            cacheMode="LOAD_CACHE_ELSE_NETWORK"
-            incognito={false}
-            onContentProcessDidTerminate={handleContentProcessDidTerminate}
-            userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            androidLayerType="hardware"
-            pullToRefreshEnabled={true}
-            thirdPartyCookiesEnabled={true}
-            allowsBackForwardNavigationGestures={true} // Enable native gestures for iOS
-            onNavigationStateChange={handleNavigationStateChange}
-            onMessage={(event) => {
-              try {
-                const data = JSON.parse(event.nativeEvent.data);
-                if (data.type === 'navigationStateChange') {
-                  setCanGoBack(data.canGoBack);
-                }
-              } catch (error) {
-                console.error('Error parsing WebView message:', error);
-              }
-            }}
-          />
-        </View>
-      </GestureDetector>
-    </GestureHandlerRootView>
+    <View style={[styles.container, { backgroundColor }]}>
+      {Platform.OS === 'android' && (
+        <View 
+          style={[
+            { height: adjustedStatusBarHeight, backgroundColor }
+          ]} 
+        />
+      )}
+      <WebViewNavBar webViewRef={webViewRef} initialUrl={WEBUNTIS_URL} />
+      <WebView 
+        ref={webViewRef}
+        style={[styles.webview, { backgroundColor }]}
+        source={{ uri: WEBUNTIS_URL }}
+        injectedJavaScript={injectedScript}
+        scrollEnabled={true}
+        bounces={true}
+        javaScriptEnabled={true}
+        domStorageEnabled={true}
+        cacheEnabled={true}
+        cacheMode="LOAD_CACHE_ELSE_NETWORK"
+        incognito={false}
+        onContentProcessDidTerminate={handleContentProcessDidTerminate}
+        userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        androidLayerType="hardware"
+        pullToRefreshEnabled={true}
+        thirdPartyCookiesEnabled={true}
+        allowsBackForwardNavigationGestures={true} // Enable native gestures for iOS
+        onNavigationStateChange={handleNavigationStateChange}
+        onMessage={(event) => {
+          try {
+            const data = JSON.parse(event.nativeEvent.data);
+            if (data.type === 'navigationStateChange') {
+              setCanGoBack(data.canGoBack);
+            }
+          } catch (error) {
+            console.error('Error parsing WebView message:', error);
+          }
+        }}
+      />
+    </View>
   );
 }
 
