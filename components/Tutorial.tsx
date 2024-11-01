@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Image, ImageSourcePropType } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Image, ImageSourcePropType, Switch } from 'react-native';
 import { useRouter, Href } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTutorial } from '../context/TutorialContext';
@@ -46,11 +46,16 @@ const TUTORIAL_STEPS: TutorialStep[] = [
 ];
 
 export const Tutorial: React.FC = () => {
-  const { currentStep, setCurrentStep, setShowTutorial } = useTutorial();
+  const { 
+    currentStep, 
+    setCurrentStep, 
+    setShowTutorial,
+    showTutorialNextTime,
+    setShowTutorialNextTime 
+  } = useTutorial();
   const router = useRouter();
   const colorScheme = useColorScheme();
-  const windowWidth = Dimensions.get('window').width;
-  const windowHeight = Dimensions.get('window').height;
+  const isLastStep = currentStep === TUTORIAL_STEPS.length - 1;
 
   const handleNext = async () => {
     if (currentStep < TUTORIAL_STEPS.length - 1) {
@@ -58,16 +63,20 @@ export const Tutorial: React.FC = () => {
       setCurrentStep(currentStep + 1);
     } else {
       await AsyncStorage.setItem('hasSeenTutorial', 'true');
+      await AsyncStorage.setItem('showTutorialNextTime', showTutorialNextTime.toString());
       setShowTutorial(false);
     }
   };
 
   const handleSkip = async () => {
     await AsyncStorage.setItem('hasSeenTutorial', 'true');
+    await AsyncStorage.setItem('showTutorialNextTime', showTutorialNextTime.toString());
     setShowTutorial(false);
   };
 
-  const currentTutorialStep = TUTORIAL_STEPS[currentStep];
+  const handleShowNextTimeChange = (value: boolean) => {
+    setShowTutorialNextTime(value);
+  };
 
   return (
     <View style={styles.container}>
@@ -77,14 +86,12 @@ export const Tutorial: React.FC = () => {
           {
             backgroundColor: Colors[colorScheme ?? 'light'].background,
             borderColor: Colors[colorScheme ?? 'light'].tint,
-            width: windowWidth * 0.9,
-            maxHeight: windowHeight * 0.8,
           },
         ]}>
-        {currentTutorialStep.image && (
+        {TUTORIAL_STEPS[currentStep].image && (
           <View style={styles.imageContainer}>
             <Image
-              source={currentTutorialStep.image}
+              source={TUTORIAL_STEPS[currentStep].image}
               style={styles.image}
               resizeMode="contain"
             />
@@ -95,8 +102,30 @@ export const Tutorial: React.FC = () => {
             styles.text,
             { color: Colors[colorScheme ?? 'light'].text },
           ]}>
-          {currentTutorialStep.text}
+          {TUTORIAL_STEPS[currentStep].text}
         </Text>
+        
+        {isLastStep && (
+          <View style={styles.checkboxContainer}>
+            <Text
+              style={[
+                styles.checkboxLabel,
+                { color: Colors[colorScheme ?? 'light'].text },
+              ]}>
+              Tutorial beim nächsten Start anzeigen
+            </Text>
+            <Switch
+              value={showTutorialNextTime}
+              onValueChange={handleShowNextTimeChange}
+              trackColor={{ 
+                false: Colors[colorScheme ?? 'light'].tabIconDefault, 
+                true: Colors[colorScheme ?? 'light'].tint 
+              }}
+              thumbColor={Colors[colorScheme ?? 'light'].background}
+            />
+          </View>
+        )}
+
         <View style={styles.buttonContainer}>
           <TouchableOpacity
             style={[
@@ -113,10 +142,11 @@ export const Tutorial: React.FC = () => {
             ]}
             onPress={handleNext}>
             <Text style={styles.buttonText}>
-              {currentStep === TUTORIAL_STEPS.length - 1 ? 'Fertig' : 'Weiter'}
+              {isLastStep ? 'Fertig' : 'Weiter'}
             </Text>
           </TouchableOpacity>
         </View>
+
         <View style={styles.progressContainer}>
           {TUTORIAL_STEPS.map((_, index) => (
             <View
@@ -151,6 +181,7 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   tutorialBox: {
+    width: Dimensions.get('window').width * 0.9,
     padding: 20,
     borderRadius: 15,
     borderWidth: 2,
@@ -172,6 +203,18 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: 'center',
     lineHeight: 22,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 20,
+    paddingHorizontal: 10,
+  },
+  checkboxLabel: {
+    fontSize: 14,
+    marginRight: 10,
   },
   buttonContainer: {
     flexDirection: 'row',

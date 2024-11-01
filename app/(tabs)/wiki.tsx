@@ -1,6 +1,6 @@
 import { WebView } from 'react-native-webview';
-import { StyleSheet, Platform, StatusBar, useColorScheme, View } from 'react-native';
-import React, { useRef } from 'react';
+import { StyleSheet, Platform, StatusBar, useColorScheme, View, BackHandler } from 'react-native';
+import React, { useRef, useEffect } from 'react';
 import { WebViewNavBar } from '../../components/navigation/WebViewNavBar';
 import { useOrientation } from '../../hooks/useOrientation';
 import { useUrl } from '../../context/UrlContext';
@@ -12,6 +12,21 @@ export default function WikiScreen() {
   const orientation = useOrientation();
   const isDarkMode = useColorScheme() === 'dark';
   const backgroundColor = isDarkMode ? '#1C1C1E' : '#FFFFFF';
+  const [canGoBack, setCanGoBack] = React.useState(false);
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+        if (canGoBack && webViewRef.current) {
+          webViewRef.current.goBack();
+          return true;
+        }
+        return false;
+      });
+
+      return () => backHandler.remove();
+    }
+  }, [canGoBack]);
 
   const horizontalSwipe = Gesture.Pan()
     .activeOffsetX([-20, 20])
@@ -89,6 +104,10 @@ export default function WikiScreen() {
     webViewRef.current?.reload();
   };
 
+  const handleNavigationStateChange = (navState: { canGoBack: boolean }) => {
+    setCanGoBack(navState.canGoBack);
+  };
+
   return (
     <GestureHandlerRootView style={styles.container}>
       <GestureDetector gesture={horizontalSwipe}>
@@ -121,12 +140,12 @@ export default function WikiScreen() {
             pullToRefreshEnabled={true}
             thirdPartyCookiesEnabled={true}
             allowsBackForwardNavigationGestures={true} // Enable native gestures for iOS
+            onNavigationStateChange={handleNavigationStateChange}
             onMessage={(event) => {
               try {
                 const data = JSON.parse(event.nativeEvent.data);
                 if (data.type === 'navigationStateChange') {
-                  // Handle navigation state changes
-                  console.log('Navigation state changed:', data);
+                  setCanGoBack(data.canGoBack);
                 }
               } catch (error) {
                 console.error('Error parsing WebView message:', error);
