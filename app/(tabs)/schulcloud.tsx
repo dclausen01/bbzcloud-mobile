@@ -1,10 +1,18 @@
 import { WebView } from 'react-native-webview';
-import { StyleSheet, Platform, StatusBar, useColorScheme, View, BackHandler } from 'react-native';
+import { StyleSheet, Platform, StatusBar, useColorScheme, View, BackHandler, Dimensions } from 'react-native';
 import React, { useRef, useEffect } from 'react';
 import { WebViewNavBar } from '../../components/navigation/WebViewNavBar';
 import { useOrientation } from '../../hooks/useOrientation';
 
 const SCHULCLOUD_URL = 'https://app.schul.cloud';
+const WINDOWS_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+// Function to detect if device is a tablet based on screen size
+const isTablet = () => {
+  const { width, height } = Dimensions.get('window');
+  const screenSize = Math.sqrt(Math.pow(width, 2) + Math.pow(height, 2));
+  return screenSize >= 1000; // Common threshold for tablet detection (in pixels)
+};
 
 export default function SchulCloudScreen() {
   const webViewRef = useRef<WebView>(null);
@@ -12,6 +20,9 @@ export default function SchulCloudScreen() {
   const isDarkMode = useColorScheme() === 'dark';
   const backgroundColor = isDarkMode ? '#1C1C1E' : '#FFFFFF';
   const [canGoBack, setCanGoBack] = React.useState(false);
+
+  // Determine if we should use Windows user agent
+  const shouldUseWindowsUA = isTablet() && orientation === 'landscape';
 
   useEffect(() => {
     if (Platform.OS === 'android') {
@@ -132,8 +143,9 @@ export default function SchulCloudScreen() {
         androidLayerType="hardware"
         pullToRefreshEnabled={true}
         thirdPartyCookiesEnabled={true}
-        allowsBackForwardNavigationGestures={true} // Enable native gestures for iOS
+        allowsBackForwardNavigationGestures={true}
         onNavigationStateChange={handleNavigationStateChange}
+        userAgent={shouldUseWindowsUA ? WINDOWS_USER_AGENT : undefined}
         onMessage={(event) => {
           try {
             const data = JSON.parse(event.nativeEvent.data);

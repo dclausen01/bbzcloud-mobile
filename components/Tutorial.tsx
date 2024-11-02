@@ -130,18 +130,32 @@ export const Tutorial: React.FC = () => {
           <TouchableOpacity
             style={[
               styles.button,
-              { backgroundColor: Colors[colorScheme ?? 'light'].tint },
+              { 
+                backgroundColor: colorScheme === 'dark' ? Colors.dark.background : Colors.dark.tint,
+                borderWidth: colorScheme === 'dark' ? 1 : 0,
+                borderColor: Colors.dark.tint,
+              },
             ]}
             onPress={handleSkip}>
-            <Text style={styles.buttonText}>Überspringen</Text>
+            <Text style={[
+              styles.buttonText,
+              { color: colorScheme === 'dark' ? Colors.dark.tint : Colors.light.background }
+            ]}>Überspringen</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[
               styles.button,
-              { backgroundColor: Colors[colorScheme ?? 'light'].tint },
+              { 
+                backgroundColor: colorScheme === 'dark' ? Colors.dark.background : Colors.dark.tint,
+                borderWidth: colorScheme === 'dark' ? 1 : 0,
+                borderColor: Colors.dark.tint,
+              },
             ]}
             onPress={handleNext}>
-            <Text style={styles.buttonText}>
+            <Text style={[
+              styles.buttonText,
+              { color: colorScheme === 'dark' ? Colors.dark.tint : Colors.light.background }
+            ]}>
               {isLastStep ? 'Fertig' : 'Weiter'}
             </Text>
           </TouchableOpacity>
@@ -230,7 +244,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonText: {
-    color: 'white',
     fontSize: 16,
     fontWeight: '600',
   },
