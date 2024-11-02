@@ -1,6 +1,6 @@
 import { WebView } from 'react-native-webview';
 import { StyleSheet, Platform, StatusBar, useColorScheme, View, BackHandler, Dimensions } from 'react-native';
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { WebViewNavBar } from '../../components/navigation/WebViewNavBar';
 import { useOrientation } from '../../hooks/useOrientation';
 
@@ -12,7 +12,7 @@ const WINDOWS_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKi
 const isTablet = () => {
   const { width, height } = Dimensions.get('window');
   const screenSize = Math.sqrt(Math.pow(width, 2) + Math.pow(height, 2));
-  return screenSize >= 1000; // Common threshold for tablet detection (in pixels)
+  return screenSize >= 750; // Lowered threshold to better detect tablets (typical 7-inch tablet diagonal is around 750-800 pixels)
 };
 
 export default function SchulCloudScreen() {
@@ -21,14 +21,28 @@ export default function SchulCloudScreen() {
   const isDarkMode = useColorScheme() === 'dark';
   const backgroundColor = isDarkMode ? '#1C1C1E' : '#FFFFFF';
   const [canGoBack, setCanGoBack] = React.useState(false);
+  const [currentUserAgent, setCurrentUserAgent] = useState('');
 
   // Determine which user agent to use
   const getUserAgent = () => {
-    if (Platform.OS === 'android') {
-      return isTablet() && orientation === 'landscape' ? WINDOWS_USER_AGENT : CHROME_USER_AGENT;
+    // Always use Windows user agent for tablets in landscape mode
+    if (isTablet() && orientation === 'landscape') {
+      return WINDOWS_USER_AGENT;
     }
-    return undefined;
+    return CHROME_USER_AGENT;
   };
+
+  // Update user agent when orientation changes
+  useEffect(() => {
+    const newUserAgent = getUserAgent();
+    if (newUserAgent !== currentUserAgent) {
+      setCurrentUserAgent(newUserAgent);
+      // Reload WebView when user agent changes
+      if (webViewRef.current && currentUserAgent !== '') {
+        webViewRef.current.reload();
+      }
+    }
+  }, [orientation]);
 
   useEffect(() => {
     if (Platform.OS === 'android') {
@@ -65,9 +79,9 @@ export default function SchulCloudScreen() {
 
       // Override browser detection methods
       const navigatorProps = {
-        userAgent: '${CHROME_USER_AGENT}',
+        userAgent: '${getUserAgent()}',
         appVersion: '5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-        platform: 'Win64',
+        platform: '${isTablet() && orientation === 'landscape' ? 'Win64' : 'Android'}',
         vendor: 'Google Inc.',
         language: 'de-DE',
         languages: ['de-DE', 'de', 'en-US', 'en'],
@@ -147,10 +161,10 @@ export default function SchulCloudScreen() {
         };
       }
 
-      // Add viewport meta tag
+      // Add viewport meta tag for better tablet support
       const meta = document.createElement('meta');
       meta.name = 'viewport';
-      meta.content = 'width=device-width, initial-scale=0.95, maximum-scale=0.95, user-scalable=no';
+      meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
       document.head.appendChild(meta);
 
       const style = document.createElement('style');
@@ -205,6 +219,18 @@ export default function SchulCloudScreen() {
         audio {
           width: 100% !important;
           max-width: 600px !important;
+        }
+
+        /* Tablet-specific styles when in landscape mode */
+        @media (min-width: 768px) and (orientation: landscape) {
+          .main-content {
+            max-width: none !important;
+            margin: 0 auto !important;
+          }
+          
+          .sidebar {
+            width: 280px !important;
+          }
         }
       \`;
       document.head.appendChild(style);
