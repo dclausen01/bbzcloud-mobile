@@ -5,7 +5,8 @@ import { WebViewNavBar } from '../../components/navigation/WebViewNavBar';
 import { useOrientation } from '../../hooks/useOrientation';
 
 const SCHULCLOUD_URL = 'https://app.schul.cloud';
-const WINDOWS_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
+const MODERN_CHROME_USER_AGENT = 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36';
+const WINDOWS_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
 
 // Function to detect if device is a tablet based on screen size
 const isTablet = () => {
@@ -21,8 +22,13 @@ export default function SchulCloudScreen() {
   const backgroundColor = isDarkMode ? '#1C1C1E' : '#FFFFFF';
   const [canGoBack, setCanGoBack] = React.useState(false);
 
-  // Determine if we should use Windows user agent
-  const shouldUseWindowsUA = isTablet() && orientation === 'landscape';
+  // Determine which user agent to use
+  const getUserAgent = () => {
+    if (Platform.OS === 'android') {
+      return isTablet() && orientation === 'landscape' ? WINDOWS_USER_AGENT : MODERN_CHROME_USER_AGENT;
+    }
+    return undefined;
+  };
 
   useEffect(() => {
     if (Platform.OS === 'android') {
@@ -40,6 +46,39 @@ export default function SchulCloudScreen() {
 
   const injectedScript = `
     (function() {
+      // Override browser detection
+      const overrideNavigator = {
+        userAgent: '${MODERN_CHROME_USER_AGENT}',
+        vendor: 'Google Inc.',
+        platform: 'Android',
+        appVersion: '130.0.0.0',
+        maxTouchPoints: 5,
+        mediaDevices: {
+          getUserMedia: navigator.mediaDevices?.getUserMedia || (() => Promise.resolve()),
+          enumerateDevices: navigator.mediaDevices?.enumerateDevices || (() => Promise.resolve([])),
+          getSupportedConstraints: navigator.mediaDevices?.getSupportedConstraints || (() => ({}))
+        },
+        permissions: {
+          query: () => Promise.resolve({ state: 'granted' })
+        },
+        hardwareConcurrency: 8,
+        deviceMemory: 8,
+        webkitGetUserMedia: navigator.webkitGetUserMedia || (() => {}),
+        mozGetUserMedia: navigator.mozGetUserMedia || (() => {})
+      };
+
+      // Apply the overrides
+      Object.defineProperties(navigator, {
+        ...Object.getOwnPropertyDescriptors(overrideNavigator),
+        webdriver: { get: () => undefined },
+        languages: { get: () => ['de-DE', 'de', 'en-US', 'en'] }
+      });
+
+      // Add WebRTC support indicators
+      window.RTCPeerConnection = window.RTCPeerConnection || function() {};
+      window.RTCSessionDescription = window.RTCSessionDescription || function() {};
+      window.RTCIceCandidate = window.RTCIceCandidate || function() {};
+
       // Add meta viewport tag for proper scaling
       const meta = document.createElement('meta');
       meta.name = 'viewport';
@@ -157,7 +196,7 @@ export default function SchulCloudScreen() {
         thirdPartyCookiesEnabled={true}
         allowsBackForwardNavigationGestures={true}
         onNavigationStateChange={handleNavigationStateChange}
-        userAgent={shouldUseWindowsUA ? WINDOWS_USER_AGENT : undefined}
+        userAgent={getUserAgent()}
         mediaPlaybackRequiresUserAction={false}
         allowsInlineMediaPlayback={true}
         allowsFullscreenVideo={true}
