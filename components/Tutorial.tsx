@@ -131,30 +131,30 @@ export const Tutorial: React.FC = () => {
             style={[
               styles.button,
               { 
-                backgroundColor: colorScheme === 'dark' ? Colors.dark.background : Colors.dark.tint,
+                backgroundColor: Colors[colorScheme ?? 'light'].tint,
                 borderWidth: colorScheme === 'dark' ? 1 : 0,
-                borderColor: Colors.dark.tint,
+                borderColor: Colors[colorScheme ?? 'light'].tint,
               },
             ]}
             onPress={handleSkip}>
             <Text style={[
               styles.buttonText,
-              { color: colorScheme === 'dark' ? Colors.dark.tint : Colors.light.background }
+              { color: Colors[colorScheme === 'dark' ? 'dark' : 'light'].background }
             ]}>Überspringen</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[
               styles.button,
               { 
-                backgroundColor: colorScheme === 'dark' ? Colors.dark.background : Colors.dark.tint,
+                backgroundColor: Colors[colorScheme ?? 'light'].tint,
                 borderWidth: colorScheme === 'dark' ? 1 : 0,
-                borderColor: Colors.dark.tint,
+                borderColor: Colors[colorScheme ?? 'light'].tint,
               },
             ]}
             onPress={handleNext}>
             <Text style={[
               styles.buttonText,
-              { color: colorScheme === 'dark' ? Colors.dark.tint : Colors.light.background }
+              { color: Colors[colorScheme === 'dark' ? 'dark' : 'light'].background }
             ]}>
               {isLastStep ? 'Fertig' : 'Weiter'}
             </Text>
