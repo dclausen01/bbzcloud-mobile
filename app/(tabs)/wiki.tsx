@@ -4,14 +4,18 @@ import React, { useRef, useEffect } from 'react';
 import { WebViewNavBar } from '../../components/navigation/WebViewNavBar';
 import { useOrientation } from '../../hooks/useOrientation';
 import { useUrl } from '../../context/UrlContext';
+import { useLocalSearchParams } from 'expo-router';
 
 export default function WikiScreen() {
   const webViewRef = useRef<WebView>(null);
   const { urls } = useUrl();
+  const params = useLocalSearchParams<{ url?: string }>();
   const orientation = useOrientation();
   const isDarkMode = useColorScheme() === 'dark';
   const backgroundColor = isDarkMode ? '#1C1C1E' : '#FFFFFF';
   const [canGoBack, setCanGoBack] = React.useState(false);
+
+  const initialUrl = params.url || urls.wiki;
 
   useEffect(() => {
     if (Platform.OS === 'android') {
@@ -104,11 +108,11 @@ export default function WikiScreen() {
           ]} 
         />
       )}
-      <WebViewNavBar webViewRef={webViewRef} initialUrl={urls.wiki} />
+      <WebViewNavBar webViewRef={webViewRef} initialUrl={initialUrl} />
       <WebView 
         ref={webViewRef}
         style={[styles.webview, { backgroundColor }]}
-        source={{ uri: urls.wiki }}
+        source={{ uri: initialUrl }}
         injectedJavaScript={injectedScript}
         scrollEnabled={true}
         bounces={true}

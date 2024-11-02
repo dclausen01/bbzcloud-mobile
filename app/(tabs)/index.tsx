@@ -7,6 +7,7 @@ import { useTutorial } from '../../context/TutorialContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '../../hooks/useColorScheme';
 import { Colors } from '../../constants/Colors';
+import { router } from 'expo-router';
 
 export default function HomeScreen() {
   const orientation = useOrientation();
@@ -18,23 +19,46 @@ export default function HomeScreen() {
     setShowTutorial(true);
   };
 
+  const handleInfoPress = () => {
+    router.push({
+      pathname: '/(tabs)/wiki',
+      params: { url: 'https://wiki.bbz-rd-eck.com/doku.php?id=anleitungen_allgemein:uebersicht' }
+    });
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ThemedView style={styles.container}>
-        <Pressable
-          onPress={handleRestartTutorial}
-          style={({ pressed }) => [
-            styles.tutorialButton,
-            { opacity: pressed ? 0.7 : 1 }
-          ]}
-        >
-          <Ionicons
-            name="refresh-circle"
-            size={32}
-            color={Colors[colorScheme].tint}
-          />
-          <ThemedText style={styles.buttonText}>Tutorial</ThemedText>
-        </Pressable>
+        <View style={styles.buttonContainer}>
+          <Pressable
+            onPress={handleRestartTutorial}
+            style={({ pressed }) => [
+              styles.button,
+              { opacity: pressed ? 0.7 : 1 }
+            ]}
+          >
+            <Ionicons
+              name="refresh-circle"
+              size={32}
+              color={Colors[colorScheme].tint}
+            />
+            <ThemedText style={styles.buttonText}>Tutorial</ThemedText>
+          </Pressable>
+          <Pressable
+            onPress={handleInfoPress}
+            style={({ pressed }) => [
+              styles.button,
+              { opacity: pressed ? 0.7 : 1 }
+            ]}
+          >
+            <Ionicons
+              name="information-circle"
+              size={32}
+              color={Colors[colorScheme].tint}
+            />
+            <ThemedText style={styles.buttonText}>Schulinfos</ThemedText>
+          </Pressable>
+        </View>
         <View style={[
           styles.contentContainer,
           orientation === 'landscape' ? styles.landscapeContent : null
@@ -66,6 +90,20 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  buttonContainer: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    flexDirection: 'row',
+    gap: 16,
+    zIndex: 1,
+  },
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    borderRadius: 20,
   },
   contentContainer: {
     alignItems: 'center',
@@ -100,16 +138,6 @@ const styles = StyleSheet.create({
     textAlignVertical: 'center',
     includeFontPadding: true,
     padding: 5,
-  },
-  tutorialButton: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 8,
-    borderRadius: 20,
-    zIndex: 1,
   },
   buttonText: {
     marginLeft: 4,
