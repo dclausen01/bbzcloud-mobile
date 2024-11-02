@@ -5,7 +5,7 @@ import { WebViewNavBar } from '../../components/navigation/WebViewNavBar';
 import { useOrientation } from '../../hooks/useOrientation';
 
 const SCHULCLOUD_URL = 'https://app.schul.cloud';
-const WINDOWS_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+const WINDOWS_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
 
 // Function to detect if device is a tablet based on screen size
 const isTablet = () => {
@@ -146,6 +146,8 @@ export default function SchulCloudScreen() {
         allowsBackForwardNavigationGestures={true}
         onNavigationStateChange={handleNavigationStateChange}
         userAgent={shouldUseWindowsUA ? WINDOWS_USER_AGENT : undefined}
+        mediaPlaybackRequiresUserAction={false}
+        allowsInlineMediaPlayback={true}
         onMessage={(event) => {
           try {
             const data = JSON.parse(event.nativeEvent.data);

@@ -121,6 +121,8 @@ export default function WikiScreen() {
         androidLayerType="hardware"
         pullToRefreshEnabled={true}
         thirdPartyCookiesEnabled={true}
+        mediaPlaybackRequiresUserAction={false}
+        allowsInlineMediaPlayback={true}
         allowsBackForwardNavigationGestures={true} // Enable native gestures for iOS
         onNavigationStateChange={handleNavigationStateChange}
         onMessage={(event) => {
