@@ -87,6 +87,18 @@ export default function SchulCloudScreen() {
           overflow: hidden !important;
           white-space: nowrap !important;
         }
+
+        /* Ensure video elements are properly sized and positioned */
+        video {
+          max-width: 100% !important;
+          height: auto !important;
+        }
+
+        /* Ensure audio elements are properly styled */
+        audio {
+          width: 100% !important;
+          max-width: 600px !important;
+        }
       \`;
       document.head.appendChild(style);
 
@@ -148,6 +160,10 @@ export default function SchulCloudScreen() {
         userAgent={shouldUseWindowsUA ? WINDOWS_USER_AGENT : undefined}
         mediaPlaybackRequiresUserAction={false}
         allowsInlineMediaPlayback={true}
+        allowsFullscreenVideo={true}
+        javaScriptCanOpenWindowsAutomatically={true}
+        mixedContentMode="compatibility"
+        webviewDebuggingEnabled={true}
         onMessage={(event) => {
           try {
             const data = JSON.parse(event.nativeEvent.data);

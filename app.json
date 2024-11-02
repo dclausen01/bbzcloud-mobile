@@ -21,7 +21,12 @@
         "applinks:app.schul.cloud",
         "applinks:wiki.bbz-rd-eck.com",
         "applinks:neilo.webuntis.com"
-      ]
+      ],
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow camera access for video calls",
+        "NSMicrophoneUsageDescription": "Allow microphone access for audio in calls",
+        "NSPhotoLibraryUsageDescription": "Allow photo library access for sharing media"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -29,6 +34,11 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.dclausen01.bbzcloudmobile",
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "MODIFY_AUDIO_SETTINGS"
+      ],
       "intentFilters": [
         {
           "action": "VIEW",
