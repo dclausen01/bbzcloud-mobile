@@ -123,6 +123,8 @@ export default function WikiScreen() {
         thirdPartyCookiesEnabled={true}
         mediaPlaybackRequiresUserAction={false}
         allowsInlineMediaPlayback={true}
+        javaScriptCanOpenWindowsAutomatically={true}
+        mixedContentMode="compatibility"
         allowsBackForwardNavigationGestures={true} // Enable native gestures for iOS
         onNavigationStateChange={handleNavigationStateChange}
         onMessage={(event) => {
