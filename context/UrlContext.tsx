@@ -4,6 +4,7 @@ type UrlContextType = {
   urls: {
     moodle: string;
     wiki: string;
+    office: string;
   };
   setUrl: (tab: keyof UrlContextType['urls'], url: string) => void;
 };
@@ -11,6 +12,7 @@ type UrlContextType = {
 const defaultUrls = {
   moodle: 'https://portal.bbz-rd-eck.com',
   wiki: 'https://wiki.bbz-rd-eck.com',
+  office: 'https://www.office.com/?auth=2',
 };
 
 const UrlContext = createContext<UrlContextType | undefined>(undefined);

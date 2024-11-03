@@ -1,66 +1,24 @@
 import { WebView } from 'react-native-webview';
-import { StyleSheet, Platform, StatusBar, useColorScheme, View, BackHandler, Dimensions, ActivityIndicator } from 'react-native';
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { StyleSheet, Platform, StatusBar, useColorScheme, View, BackHandler, Dimensions } from 'react-native';
+import React, { useRef, useEffect, useState } from 'react';
 import { WebViewNavBar } from '../../components/navigation/WebViewNavBar';
 import { useOrientation } from '../../hooks/useOrientation';
-import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
+import { useUrl } from '../../context/UrlContext';
+import { useLocalSearchParams } from 'expo-router';
 
-const OFFICE_URL = 'https://www.microsoft365.com/?auth=2';
-const CHROME_USER_AGENT = 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36';
-const WINDOWS_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
-
-const isTablet = () => {
-  const { width, height } = Dimensions.get('window');
-  const screenSize = Math.sqrt(Math.pow(width, 2) + Math.pow(height, 2));
-  return screenSize >= 750;
-};
-
-interface WebViewError {
-  nativeEvent: {
-    code: string;
-    description: string;
-    url: string;
-  };
-}
+const OFFICE_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
 
 export default function OfficeScreen() {
   const webViewRef = useRef<WebView>(null);
+  const { urls } = useUrl();
   const orientation = useOrientation();
+  const params = useLocalSearchParams<{ url?: string }>();
   const isDarkMode = useColorScheme() === 'dark';
   const backgroundColor = isDarkMode ? '#1C1C1E' : '#FFFFFF';
   const [canGoBack, setCanGoBack] = React.useState(false);
-  const [currentUserAgent, setCurrentUserAgent] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [isOffline, setIsOffline] = useState(false);
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const getUserAgent = () => {
-    return isTablet() && orientation === 'landscape' ? WINDOWS_USER_AGENT : CHROME_USER_AGENT;
-  };
-
-  useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener((state: NetInfoState) => {
-      setIsOffline(!state.isConnected);
-    });
-
-    return () => {
-      unsubscribe();
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    const newUserAgent = getUserAgent();
-    if (newUserAgent !== currentUserAgent) {
-      setCurrentUserAgent(newUserAgent);
-      if (webViewRef.current && currentUserAgent !== '') {
-        setIsLoading(true);
-        webViewRef.current.reload();
-      }
-    }
-  }, [orientation]);
+  // Use params.url for initial loading, but keep base wiki URL for home button
+  const currentUrl = params.url || urls.office;
 
   useEffect(() => {
     if (Platform.OS === 'android') {
@@ -76,53 +34,118 @@ export default function OfficeScreen() {
     }
   }, [canGoBack]);
 
-  const handleLoadStart = useCallback(() => {
-    setIsLoading(true);
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-    }
-    loadingTimeoutRef.current = setTimeout(() => {
-      setIsLoading(false);
-    }, 5000);
-  }, []);
-
-  const handleLoadEnd = useCallback(() => {
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-    }
-    setIsLoading(false);
-  }, []);
-
-  const handleError = useCallback((syntheticEvent: WebViewError) => {
-    const { nativeEvent } = syntheticEvent;
-    console.warn('WebView error:', nativeEvent);
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-    }
-    setIsLoading(false);
-  }, []);
-
   const injectedScript = `
     (function() {
-      // Handle offline/online events
-      window.addEventListener('online', () => {
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'connectionChange', isOnline: true }));
-      });
-      
-      window.addEventListener('offline', () => {
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'connectionChange', isOnline: false }));
+      // Chrome version detection override
+      const chromeVersion = '121.0.0.0';
+      Object.defineProperty(window, 'chrome', {
+        enumerable: true,
+        writable: true,
+        value: {
+          runtime: {},
+          webstore: {},
+          app: {},
+          loadTimes: function() {},
+          csi: function() {},
+          app: {
+            isInstalled: false,
+          },
+        },
       });
 
-      // Office 365 specific optimizations
+      // Override browser detection methods
+      const navigatorProps = {
+        userAgent: '${OFFICE_USER_AGENT}',
+        appVersion: '5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        platform: 'Win64',
+        vendor: 'Google Inc.',
+        language: 'de-DE',
+        languages: ['de-DE', 'de', 'en-US', 'en'],
+        hardwareConcurrency: 8,
+        deviceMemory: 8,
+        maxTouchPoints: 5,
+        connection: {
+          downlink: 10,
+          effectiveType: "4g",
+          rtt: 50,
+          saveData: false
+        }
+      };
+
+      // Override navigator properties
+      Object.defineProperties(navigator, {
+        ...Object.getOwnPropertyDescriptors(navigatorProps),
+        webdriver: { get: () => undefined },
+      });
+
+      // Add comprehensive WebRTC support
+      if (!window.RTCPeerConnection) {
+        window.RTCPeerConnection = class RTCPeerConnection {
+          constructor() {
+            this.localDescription = null;
+            this.remoteDescription = null;
+            this.signalingState = 'stable';
+            this.iceGatheringState = 'complete';
+            this.iceConnectionState = 'connected';
+            this.connectionState = 'connected';
+          }
+          createOffer() { return Promise.resolve({}); }
+          createAnswer() { return Promise.resolve({}); }
+          setLocalDescription() { return Promise.resolve(); }
+          setRemoteDescription() { return Promise.resolve(); }
+          addIceCandidate() { return Promise.resolve(); }
+          getStats() { return Promise.resolve({}); }
+        };
+      }
+
+      // Add comprehensive media devices support
+      if (!navigator.mediaDevices) {
+        navigator.mediaDevices = {
+          enumerateDevices: () => Promise.resolve([
+            { deviceId: 'default', kind: 'audioinput', label: 'Default Audio Input', groupId: '' },
+            { deviceId: 'default', kind: 'audiooutput', label: 'Default Audio Output', groupId: '' },
+            { deviceId: 'default', kind: 'videoinput', label: 'Default Video Input', groupId: '' }
+          ]),
+          getUserMedia: (constraints) => Promise.resolve({
+            getTracks: () => [{
+              enabled: true,
+              id: 'mock-track-id',
+              kind: constraints.video ? 'video' : 'audio',
+              label: constraints.video ? 'Mock Video Track' : 'Mock Audio Track',
+              stop: () => {}
+            }]
+          }),
+          getSupportedConstraints: () => ({
+            aspectRatio: true,
+            deviceId: true,
+            echoCancellation: true,
+            facingMode: true,
+            frameRate: true,
+            height: true,
+            width: true,
+            sampleRate: true,
+            sampleSize: true,
+            volume: true
+          })
+        };
+      }
+
+      // Add permissions API
+      if (!navigator.permissions) {
+        navigator.permissions = {
+          query: () => Promise.resolve({ state: 'granted' })
+        };
+      }
+
       const style = document.createElement('style');
       style.textContent = \`
-        /* General mobile optimizations */
+        /* General optimizations */
         * {
           -webkit-overflow-scrolling: touch !important;
           touch-action: manipulation !important;
         }
 
-        /* Improve button and control sizes for touch */
+        /* Improve button and control sizes */
         button, 
         [role="button"],
         .ms-Button,
@@ -130,22 +153,13 @@ export default function OfficeScreen() {
           min-height: 44px !important;
           min-width: 44px !important;
           padding: 12px !important;
-          touch-action: manipulation !important;
-        }
-
-        /* Optimize Office UI for mobile */
-        .o365cs-base,
-        .o365sx-navbar,
-        .o365cs-nav-header {
-          height: auto !important;
-          min-height: 48px !important;
         }
 
         /* Improve text input fields */
         input[type="text"],
         input[type="email"],
         input[type="password"] {
-          font-size: 16px !important; /* Prevents iOS zoom on focus */
+          font-size: 16px !important;
           padding: 12px !important;
         }
 
@@ -159,55 +173,63 @@ export default function OfficeScreen() {
           padding: 0 !important;
         }
 
-        /* Responsive layout adjustments */
-        @media (max-width: 768px) {
-          .ms-CommandBar {
-            height: auto !important;
-            flex-wrap: wrap !important;
-          }
+        /* Enhanced scrolling support */
+        .scrollable-content, 
+        .document-container,
+        .ribbon-container,
+        [class*="scroll"],
+        [class*="overflow"] {
+          overflow-y: scroll !important;
+          -webkit-overflow-scrolling: touch !important;
+          touch-action: pan-y !important;
+        }
 
-          .ms-CommandBar-primaryCommand {
-            flex-wrap: wrap !important;
+        /* Tablet-specific styles when in landscape mode */
+        @media (min-width: 768px) and (orientation: landscape) {
+          .main-content {
+            max-width: none !important;
+            margin: 0 auto !important;
+          }
+          
+          .ribbon {
+            height: auto !important;
+            overflow-x: auto !important;
           }
         }
 
-        /* Tablet optimizations */
-        @media (min-width: 768px) and (max-width: 1024px) {
-          .ms-CommandBar-item {
-            padding: 0 8px !important;
-          }
+        /* Ensure video elements are properly sized */
+        video {
+          max-width: 100% !important;
+          height: auto !important;
+        }
+
+        /* Office-specific optimizations */
+        .office-ribbon {
+          overflow-x: auto !important;
+          -webkit-overflow-scrolling: touch !important;
+        }
+
+        .office-contextual-menu {
+          touch-action: manipulation !important;
         }
       \`;
       document.head.appendChild(style);
 
-      // Add viewport meta tag for better mobile support
+      // Add viewport meta tag
       const meta = document.createElement('meta');
       meta.name = 'viewport';
       meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
       document.head.appendChild(meta);
 
-      // Override browser detection methods
-      const navigatorProps = {
-        userAgent: '${getUserAgent()}',
-        appVersion: '5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-        platform: '${isTablet() && orientation === 'landscape' ? 'Win64' : 'Android'}',
-        vendor: 'Google Inc.',
-        language: 'de-DE',
-        languages: ['de-DE', 'de', 'en-US', 'en'],
-      };
-
-      Object.defineProperties(navigator, {
-        ...Object.getOwnPropertyDescriptors(navigatorProps),
-        webdriver: { get: () => undefined },
+      // Override platform detection
+      Object.defineProperty(navigator, 'platform', {
+        get: function() { return 'Win32'; }
       });
-
-      // Handle authentication persistence
-      if (document.cookie.includes('office_auth')) {
-        window.ReactNativeWebView.postMessage(JSON.stringify({ 
-          type: 'authStatus', 
-          isAuthenticated: true 
-        }));
-      }
+      // Force links to open in same tab
+      window.open = function(url) {
+        window.location.href = url;
+        return null;
+      };
 
       // Navigation state handling
       history.pushState = new Proxy(history.pushState, {
@@ -221,9 +243,6 @@ export default function OfficeScreen() {
           return result;
         },
       });
-
-      // Signal that the script has finished loading
-      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'scriptLoaded' }));
     })();
     true;
   `;
@@ -231,46 +250,27 @@ export default function OfficeScreen() {
   const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0;
   const adjustedStatusBarHeight = orientation === 'landscape' ? statusBarHeight / 3 : statusBarHeight;
 
-  const handleContentProcessDidTerminate = useCallback(() => {
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-    }
-    setIsLoading(true);
+  const handleContentProcessDidTerminate = () => {
     webViewRef.current?.reload();
-  }, []);
+  };
 
-  const handleNavigationStateChange = useCallback((navState: { canGoBack: boolean }) => {
+  const handleNavigationStateChange = (navState: { canGoBack: boolean }) => {
     setCanGoBack(navState.canGoBack);
-  }, []);
-
-  const handleMessage = useCallback((event: { nativeEvent: { data: string } }) => {
-    try {
-      const data = JSON.parse(event.nativeEvent.data);
-      if (data.type === 'navigationStateChange') {
-        setCanGoBack(data.canGoBack);
-      } else if (data.type === 'connectionChange') {
-        setIsOffline(!data.isOnline);
-      } else if (data.type === 'scriptLoaded') {
-        setIsLoading(false);
-      }
-    } catch (error) {
-      console.error('Error parsing WebView message:', error);
-    }
-  }, []);
+  };
 
   return (
     <View style={[styles.container, { backgroundColor }]}>
       {Platform.OS === 'android' && (
-        <View style={[{ height: adjustedStatusBarHeight, backgroundColor }]} />
+        <View style={[{ height: statusBarHeight, backgroundColor }]} />
       )}
-      <WebViewNavBar webViewRef={webViewRef} initialUrl={OFFICE_URL} />
+      <WebViewNavBar webViewRef={webViewRef} initialUrl={urls.office} />
       <WebView 
         ref={webViewRef}
         style={[styles.webview, { backgroundColor }]}
-        source={{ uri: OFFICE_URL }}
+        source={{ uri: currentUrl }}
         injectedJavaScript={injectedScript}
+        userAgent={OFFICE_USER_AGENT}
         scrollEnabled={true}
-        bounces={true}
         javaScriptEnabled={true}
         domStorageEnabled={true}
         cacheEnabled={true}
@@ -281,32 +281,25 @@ export default function OfficeScreen() {
         pullToRefreshEnabled={true}
         thirdPartyCookiesEnabled={true}
         allowsBackForwardNavigationGestures={true}
-        onNavigationStateChange={handleNavigationStateChange}
-        userAgent={getUserAgent()}
         mediaPlaybackRequiresUserAction={false}
         allowsInlineMediaPlayback={true}
         allowsFullscreenVideo={true}
+        sharedCookiesEnabled={true}
         javaScriptCanOpenWindowsAutomatically={true}
         mixedContentMode="compatibility"
         webviewDebuggingEnabled={true}
-        onMessage={handleMessage}
-        onLoadStart={handleLoadStart}
-        onLoadEnd={handleLoadEnd}
-        onError={handleError}
-        decelerationRate="normal"
-        sharedCookiesEnabled={true}
-        startInLoadingState={true}
-        renderLoading={() => (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#007AFF" />
-          </View>
-        )}
+        onNavigationStateChange={handleNavigationStateChange}
+        onMessage={(event) => {
+          try {
+            const data = JSON.parse(event.nativeEvent.data);
+            if (data.type === 'navigationStateChange') {
+              setCanGoBack(data.canGoBack);
+            }
+          } catch (error) {
+            console.error('Error parsing WebView message:', error);
+          }
+        }}
       />
-      {isLoading && (
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#007AFF" />
-        </View>
-      )}
     </View>
   );
 }
@@ -323,21 +316,5 @@ const styles = StyleSheet.create({
   },
   webview: {
     flex: 1,
-  },
-  loadingContainer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-  },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });
