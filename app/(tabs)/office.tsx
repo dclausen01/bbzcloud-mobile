@@ -147,31 +147,31 @@ export default function OfficeScreen() {
 
         /* Improve text readability */
         body, p, div, span, li {
-          line-height: 1.5 !important;
-          margin-bottom: 1em !important;
-          font-size: 16px !important;
+          line-height: 1.4 !important;
+          margin-bottom: 0.5em !important;
+          font-size: 14px !important;
         }
 
         /* Heading adjustments */
         h1, h2, h3, h4, h5, h6 {
-          line-height: 1.3 !important;
-          margin-top: 1.5em !important;
-          margin-bottom: 0.8em !important;
+          line-height: 1.2 !important;
+          margin-top: 0.8em !important;
+          margin-bottom: 0.4em !important;
         }
 
-        h1 { font-size: 24px !important; }
-        h2 { font-size: 22px !important; }
-        h3 { font-size: 20px !important; }
-        h4 { font-size: 18px !important; }
+        h1 { font-size: 20px !important; }
+        h2 { font-size: 18px !important; }
+        h3 { font-size: 16px !important; }
+        h4 { font-size: 15px !important; }
 
         /* List spacing */
         ul, ol {
-          margin: 1em 0 !important;
-          padding-left: 2em !important;
+          margin: 0.5em 0 !important;
+          padding-left: 1.5em !important;
         }
 
         li {
-          margin-bottom: 0.5em !important;
+          margin-bottom: 0.3em !important;
         }
 
         /* Improve button and control sizes */
@@ -179,18 +179,18 @@ export default function OfficeScreen() {
         [role="button"],
         .ms-Button,
         .office-button {
-          min-height: 44px !important;
-          min-width: 44px !important;
-          padding: 12px !important;
+          min-height: 36px !important;
+          min-width: 36px !important;
+          padding: 8px !important;
         }
 
         /* Improve text input fields */
         input[type="text"],
         input[type="email"],
         input[type="password"] {
-          font-size: 16px !important;
-          padding: 12px !important;
-          line-height: 1.4 !important;
+          font-size: 14px !important;
+          padding: 8px !important;
+          line-height: 1.3 !important;
         }
 
         /* Document content spacing */
@@ -200,14 +200,14 @@ export default function OfficeScreen() {
         .PowerPointCanvas {
           max-width: 100% !important;
           margin: 0 !important;
-          padding: 16px !important;
+          padding: 8px !important;
         }
 
         /* Paragraph spacing in documents */
         .Document p,
         .WordDocument p {
-          margin-bottom: 1.2em !important;
-          line-height: 1.6 !important;
+          margin-bottom: 0.6em !important;
+          line-height: 1.4 !important;
         }
 
         /* Enhanced scrolling support */
@@ -233,9 +233,9 @@ export default function OfficeScreen() {
             overflow-x: auto !important;
           }
 
-          /* Larger text for tablets */
+          /* Slightly larger text for tablets */
           body, p, div, span, li {
-            font-size: 18px !important;
+            font-size: 15px !important;
           }
         }
 
@@ -257,13 +257,13 @@ export default function OfficeScreen() {
 
         /* Table spacing */
         table {
-          margin: 1.2em 0 !important;
-          border-spacing: 2px !important;
+          margin: 0.8em 0 !important;
+          border-spacing: 1px !important;
         }
 
         td, th {
-          padding: 8px !important;
-          line-height: 1.4 !important;
+          padding: 6px !important;
+          line-height: 1.3 !important;
         }
       \`;
       document.head.appendChild(style);
