@@ -17,7 +17,7 @@
       "bundleIdentifier": "com.dclausen01.bbzcloudmobile",
       "associatedDomains": [
         "applinks:portal.bbz-rd-eck.com",
-        "applinks:cryptpad.fr",
+        "applinks:www.microsoft365.com",
         "applinks:app.schul.cloud",
         "applinks:wiki.bbz-rd-eck.com",
         "applinks:neilo.webuntis.com"
@@ -51,8 +51,8 @@
             },
             {
               "scheme": "https",
-              "host": "cryptpad.fr",
-              "pathPrefix": "/drive"
+              "host": "www.office.com",
+              "pathPrefix": "/"
             },
             {
               "scheme": "https",
