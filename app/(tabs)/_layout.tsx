@@ -57,7 +57,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="office"
         options={{
-          title: 'CryptPad',
+          title: 'Office',
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon name={focused ? 'document' : 'document-outline'} color={color} size={orientation === 'landscape' ? 20 : 24} />
           ),
