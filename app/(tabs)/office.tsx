@@ -1,19 +1,38 @@
 import { WebView } from 'react-native-webview';
-import { StyleSheet, Platform, StatusBar, useColorScheme, View } from 'react-native';
-import React, { useRef, useCallback } from 'react';
+import { StyleSheet, Platform, StatusBar, useColorScheme, View, BackHandler } from 'react-native';
+import React, { useRef, useEffect } from 'react';
 import { WebViewNavBar } from '../../components/navigation/WebViewNavBar';
+import { useOrientation } from '../../hooks/useOrientation';
+import { useUrl } from '../../context/UrlContext';
+import { useLocalSearchParams } from 'expo-router';
 
-const OFFICE_URL = 'https://www.microsoft365.com/?auth=2';
 const OFFICE_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
 
 export default function OfficeScreen() {
   const webViewRef = useRef<WebView>(null);
+  const { urls } = useUrl();
+  const orientation = useOrientation();
+  const params = useLocalSearchParams<{ url?: string }>();
   const isDarkMode = useColorScheme() === 'dark';
   const backgroundColor = isDarkMode ? '#1C1C1E' : '#FFFFFF';
+  const [canGoBack, setCanGoBack] = React.useState(false);
 
-  const handleContentProcessDidTerminate = useCallback(() => {
-    webViewRef.current?.reload();
-  }, []);
+  // Use params.url for initial loading, but keep base wiki URL for home button
+  const currentUrl = params.url || urls.wiki;
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+        if (canGoBack && webViewRef.current) {
+          webViewRef.current.goBack();
+          return true;
+        }
+        return false;
+      });
+
+      return () => backHandler.remove();
+    }
+  }, [canGoBack]);
 
   const injectedScript = `
     (function() {
@@ -75,17 +94,25 @@ export default function OfficeScreen() {
   `;
 
   const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0;
+  const adjustedStatusBarHeight = orientation === 'landscape' ? statusBarHeight / 3 : statusBarHeight;
 
+  const handleContentProcessDidTerminate = () => {
+    webViewRef.current?.reload();
+  };
+
+  const handleNavigationStateChange = (navState: { canGoBack: boolean }) => {
+    setCanGoBack(navState.canGoBack);
+  };
   return (
     <View style={[styles.container, { backgroundColor }]}>
       {Platform.OS === 'android' && (
         <View style={[{ height: statusBarHeight, backgroundColor }]} />
       )}
-      <WebViewNavBar webViewRef={webViewRef} initialUrl={OFFICE_URL} />
+      <WebViewNavBar webViewRef={webViewRef} initialUrl={urls.office} />
       <WebView 
         ref={webViewRef}
         style={[styles.webview, { backgroundColor }]}
-        source={{ uri: OFFICE_URL }}
+        source={{ uri: currentUrl }}
         injectedJavaScript={injectedScript}
         userAgent={OFFICE_USER_AGENT}
         scrollEnabled={true}
@@ -103,6 +130,17 @@ export default function OfficeScreen() {
         allowsInlineMediaPlayback={true}
         allowsFullscreenVideo={true}
         sharedCookiesEnabled={true}
+        onNavigationStateChange={handleNavigationStateChange}
+        onMessage={(event) => {
+          try {
+            const data = JSON.parse(event.nativeEvent.data);
+            if (data.type === 'navigationStateChange') {
+              setCanGoBack(data.canGoBack);
+            }
+          } catch (error) {
+            console.error('Error parsing WebView message:', error);
+          }
+        }}
       />
     </View>
   );
@@ -112,7 +150,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  statusBarSpace: {
+    height: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+  },
+  statusBarSpaceLandscape: {
+    height: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) / 2 : 0,
+  },
   webview: {
     flex: 1,
-  }
+  },
 });
