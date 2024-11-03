@@ -4,6 +4,7 @@ import React, { useRef, useCallback } from 'react';
 import { WebViewNavBar } from '../../components/navigation/WebViewNavBar';
 
 const OFFICE_URL = 'https://www.microsoft365.com/?auth=2';
+const OFFICE_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
 
 export default function OfficeScreen() {
   const webViewRef = useRef<WebView>(null);
@@ -18,13 +19,13 @@ export default function OfficeScreen() {
     (function() {
       const style = document.createElement('style');
       style.textContent = \`
-        /* General mobile optimizations */
+        /* General optimizations */
         * {
           -webkit-overflow-scrolling: touch !important;
           touch-action: manipulation !important;
         }
 
-        /* Improve button and control sizes for touch */
+        /* Improve button and control sizes */
         button, 
         [role="button"],
         .ms-Button,
@@ -54,12 +55,16 @@ export default function OfficeScreen() {
       \`;
       document.head.appendChild(style);
 
-      // Add viewport meta tag for better mobile support
+      // Add viewport meta tag
       const meta = document.createElement('meta');
       meta.name = 'viewport';
       meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
       document.head.appendChild(meta);
 
+      // Override platform detection
+      Object.defineProperty(navigator, 'platform', {
+        get: function() { return 'Win32'; }
+      });
       // Force links to open in same tab
       window.open = function(url) {
         window.location.href = url;
@@ -82,6 +87,7 @@ export default function OfficeScreen() {
         style={[styles.webview, { backgroundColor }]}
         source={{ uri: OFFICE_URL }}
         injectedJavaScript={injectedScript}
+        userAgent={OFFICE_USER_AGENT}
         scrollEnabled={true}
         javaScriptEnabled={true}
         domStorageEnabled={true}
