@@ -145,6 +145,35 @@ export default function OfficeScreen() {
           touch-action: manipulation !important;
         }
 
+        /* Improve text readability */
+        body, p, div, span, li {
+          line-height: 1.5 !important;
+          margin-bottom: 1em !important;
+          font-size: 16px !important;
+        }
+
+        /* Heading adjustments */
+        h1, h2, h3, h4, h5, h6 {
+          line-height: 1.3 !important;
+          margin-top: 1.5em !important;
+          margin-bottom: 0.8em !important;
+        }
+
+        h1 { font-size: 24px !important; }
+        h2 { font-size: 22px !important; }
+        h3 { font-size: 20px !important; }
+        h4 { font-size: 18px !important; }
+
+        /* List spacing */
+        ul, ol {
+          margin: 1em 0 !important;
+          padding-left: 2em !important;
+        }
+
+        li {
+          margin-bottom: 0.5em !important;
+        }
+
         /* Improve button and control sizes */
         button, 
         [role="button"],
@@ -161,16 +190,24 @@ export default function OfficeScreen() {
         input[type="password"] {
           font-size: 16px !important;
           padding: 12px !important;
+          line-height: 1.4 !important;
         }
 
-        /* Optimize document view */
+        /* Document content spacing */
         .DocumentCanvas,
         .WordCanvas,
         .ExcelCanvas,
         .PowerPointCanvas {
           max-width: 100% !important;
           margin: 0 !important;
-          padding: 0 !important;
+          padding: 16px !important;
+        }
+
+        /* Paragraph spacing in documents */
+        .Document p,
+        .WordDocument p {
+          margin-bottom: 1.2em !important;
+          line-height: 1.6 !important;
         }
 
         /* Enhanced scrolling support */
@@ -195,6 +232,11 @@ export default function OfficeScreen() {
             height: auto !important;
             overflow-x: auto !important;
           }
+
+          /* Larger text for tablets */
+          body, p, div, span, li {
+            font-size: 18px !important;
+          }
         }
 
         /* Ensure video elements are properly sized */
@@ -211,6 +253,17 @@ export default function OfficeScreen() {
 
         .office-contextual-menu {
           touch-action: manipulation !important;
+        }
+
+        /* Table spacing */
+        table {
+          margin: 1.2em 0 !important;
+          border-spacing: 2px !important;
+        }
+
+        td, th {
+          padding: 8px !important;
+          line-height: 1.4 !important;
         }
       \`;
       document.head.appendChild(style);
