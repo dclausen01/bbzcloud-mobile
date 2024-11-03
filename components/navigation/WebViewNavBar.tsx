@@ -35,7 +35,14 @@ export function WebViewNavBar({ webViewRef, initialUrl }: WebViewNavBarProps) {
   };
 
   const handleHome = () => {
-    webViewRef.current?.injectJavaScript(`window.location.href = '${initialUrl}';`);
+    if (webViewRef.current) {
+      // Clear history and load initial URL
+      webViewRef.current.injectJavaScript(`
+        window.history.pushState({}, '', '${initialUrl}');
+        window.location.replace('${initialUrl}');
+        true;
+      `);
+    }
   };
 
   return (

@@ -15,7 +15,8 @@ export default function WikiScreen() {
   const backgroundColor = isDarkMode ? '#1C1C1E' : '#FFFFFF';
   const [canGoBack, setCanGoBack] = React.useState(false);
 
-  const initialUrl = params.url || urls.wiki;
+  // Use params.url for initial loading, but keep base wiki URL for home button
+  const currentUrl = params.url || urls.wiki;
 
   useEffect(() => {
     if (Platform.OS === 'android') {
@@ -108,11 +109,11 @@ export default function WikiScreen() {
           ]} 
         />
       )}
-      <WebViewNavBar webViewRef={webViewRef} initialUrl={initialUrl} />
+      <WebViewNavBar webViewRef={webViewRef} initialUrl={urls.wiki} />
       <WebView 
         ref={webViewRef}
         style={[styles.webview, { backgroundColor }]}
-        source={{ uri: initialUrl }}
+        source={{ uri: currentUrl }}
         injectedJavaScript={injectedScript}
         scrollEnabled={true}
         bounces={true}
