@@ -18,7 +18,7 @@ export default function OfficeScreen() {
   const [canGoBack, setCanGoBack] = React.useState(false);
 
   // Use params.url for initial loading, but keep base wiki URL for home button
-  const currentUrl = params.url || urls.wiki;
+  const currentUrl = params.url || urls.office;
 
   useEffect(() => {
     if (Platform.OS === 'android') {
