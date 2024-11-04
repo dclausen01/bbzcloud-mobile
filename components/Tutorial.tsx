@@ -43,6 +43,11 @@ const TUTORIAL_STEPS: TutorialStep[] = [
     text: 'In WebUntis sehen Sie Ihren aktuellen Stundenplan und die Abwesenheiten.',
     image: require('../assets/images/tutorial/untis.png'),
   },
+  {
+    screen: '/(tabs)/apps' as Href<string>,
+    text: 'Im Tab mit den drei Punkten (...) können Sie eigene Web Apps hinzufügen, die Sie oft nutzen (z. B. ein Online-Kalender).',
+    image: require('../assets/images/tutorial/apps.png'),
+  },
 ];
 
 export const Tutorial: React.FC = () => {
