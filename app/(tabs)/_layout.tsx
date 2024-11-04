@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { useOrientation } from '../../hooks/useOrientation';
+import { useThemeColor } from '../../hooks/useThemeColor';
 
 import { TabBarIcon } from '../../components/navigation/TabBarIcon';
 import AntDesign from '@expo/vector-icons/AntDesign';
@@ -11,6 +12,7 @@ import { useColorScheme } from '../../hooks/useColorScheme';
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const orientation = useOrientation();
+  const backgroundColor = useThemeColor({}, 'background');
 
   return (
     <Tabs
@@ -19,6 +21,8 @@ export default function TabLayout() {
         headerShown: false,
         tabBarStyle: {
           height: orientation === 'landscape' ? 40 : 50,
+          backgroundColor: backgroundColor,
+          borderTopColor: Colors[colorScheme ?? 'light'].text + '20',
         },
         tabBarLabelStyle: {
           fontSize: orientation === 'landscape' ? 10 : 12,
@@ -26,11 +30,12 @@ export default function TabLayout() {
         tabBarIconStyle: {
           marginTop: orientation === 'landscape' ? 0 : 5,
         },
+        tabBarInactiveTintColor: Colors[colorScheme ?? 'light'].tabIconDefault,
       }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: 'Start',
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon name={focused ? 'home' : 'home-outline'} color={color} size={orientation === 'landscape' ? 20 : 24} />
           ),
@@ -66,7 +71,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="wiki"
         options={{
-          title: 'BBZ Wiki',
+          title: 'Wiki',
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon name={focused ? 'book' : 'book-outline'} color={color} size={orientation === 'landscape' ? 20 : 24} />
           ),
@@ -75,7 +80,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="untis"
         options={{
-          title: 'WebUntis',
+          title: 'Untis',
           tabBarIcon: ({ color, focused }) => (
             <AntDesign name="calendar" color={color} size={orientation === 'landscape' ? 20 : 24} />
           ),
@@ -84,7 +89,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="apps"
         options={{
-          title: 'More Apps',
+          title: '...',
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon name={focused ? 'apps' : 'apps-outline'} color={color} size={orientation === 'landscape' ? 20 : 24} />
           ),

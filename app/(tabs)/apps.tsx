@@ -14,15 +14,17 @@ import { WebView } from 'react-native-webview';
 import { useCustomApps, CustomApp } from '../../context/CustomAppsContext';
 import { WebViewNavBar } from '../../components/navigation/WebViewNavBar';
 import { useOrientation } from '../../hooks/useOrientation';
-import { useColorScheme } from 'react-native';
+import { useThemeColor } from '../../hooks/useThemeColor';
 import { ThemedText } from '../../components/ThemedText';
+import { ThemedView } from '../../components/ThemedView';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '../../constants/Colors';
 
 export default function AppsScreen() {
-  const colorScheme = useColorScheme();
   const orientation = useOrientation();
-  const backgroundColor = colorScheme === 'dark' ? '#1C1C1E' : '#FFFFFF';
-  const textColor = colorScheme === 'dark' ? '#FFFFFF' : '#000000';
+  const backgroundColor = useThemeColor({}, 'background');
+  const textColor = useThemeColor({}, 'text');
+  const tintColor = useThemeColor({}, 'tint');
 
   const { apps, addApp, deleteApp } = useCustomApps();
 
@@ -34,7 +36,7 @@ export default function AppsScreen() {
 
   const handleAddApp = async () => {
     if (!newTitle.trim() || !newUrl.trim()) {
-      Alert.alert('Error', 'Please enter both title and URL');
+      Alert.alert('Fehler', 'Bitte sowohl Titel als auch URL der App angeben!');
       return;
     }
 
@@ -51,18 +53,18 @@ export default function AppsScreen() {
       setNewUrl('');
       setIsAddingNew(false);
     } catch (error) {
-      Alert.alert('Error', 'Please enter a valid URL');
+      Alert.alert('Fehler', 'Bitte eine gültige URL angeben!');
     }
   };
 
   const handleDeleteApp = (app: CustomApp) => {
     Alert.alert(
-      'Delete App',
-      `Are you sure you want to delete ${app.title}?`,
+      'App löschen',
+      `${app.title} wirklich löschen?`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Abbrechen', style: 'cancel' },
         { 
-          text: 'Delete',
+          text: 'Löschen',
           style: 'destructive',
           onPress: async () => {
             try {
@@ -72,7 +74,7 @@ export default function AppsScreen() {
               }
             } catch (error) {
               console.error('Error deleting app:', error);
-              Alert.alert('Error', 'Failed to delete app');
+              Alert.alert('Fehler', 'App konnte nicht gelöscht werden!');
             }
           }
         },
@@ -85,11 +87,11 @@ export default function AppsScreen() {
 
   if (selectedApp) {
     return (
-      <View style={[styles.container, { backgroundColor }]}>
+      <ThemedView style={styles.container}>
         {Platform.OS === 'android' && (
           <View style={{ height: adjustedStatusBarHeight, backgroundColor }} />
         )}
-        <View style={[styles.header, { backgroundColor }]}>
+        <View style={[styles.header, { borderBottomColor: textColor + '20' }]}>
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => setSelectedApp(null)}
@@ -111,12 +113,12 @@ export default function AppsScreen() {
             console.warn('WebView error:', nativeEvent);
           }}
         />
-      </View>
+      </ThemedView>
     );
   }
 
   const renderItem = ({ item }: { item: CustomApp }) => (
-    <View style={[styles.appItem, { borderColor: textColor }]}>
+    <View style={[styles.appItem, { borderColor: textColor + '30' }]}>
       <TouchableOpacity
         style={styles.appButton}
         onPress={() => setSelectedApp(item)}
@@ -134,13 +136,13 @@ export default function AppsScreen() {
         style={styles.deleteButton}
         onPress={() => handleDeleteApp(item)}
       >
-        <Ionicons name="remove-circle" size={24} color="red" />
+        <Ionicons name="remove-circle" size={24} color="#ff4444" />
       </TouchableOpacity>
     </View>
   );
 
   return (
-    <View style={[styles.container, { backgroundColor }]}>
+    <ThemedView style={styles.container}>
       {Platform.OS === 'android' && (
         <View style={{ height: adjustedStatusBarHeight, backgroundColor }} />
       )}
@@ -162,15 +164,23 @@ export default function AppsScreen() {
           isAddingNew ? (
             <View style={styles.addForm}>
               <TextInput
-                style={[styles.input, { color: textColor, borderColor: textColor }]}
-                placeholder="App Title"
+                style={[styles.input, { 
+                  color: textColor,
+                  borderColor: textColor + '30',
+                  backgroundColor: backgroundColor,
+                }]}
+                placeholder="Titel der App"
                 placeholderTextColor={textColor + '80'}
                 value={newTitle}
                 onChangeText={setNewTitle}
               />
               <TextInput
-                style={[styles.input, { color: textColor, borderColor: textColor }]}
-                placeholder="App URL"
+                style={[styles.input, { 
+                  color: textColor,
+                  borderColor: textColor + '30',
+                  backgroundColor: backgroundColor,
+                }]}
+                placeholder="URL der App"
                 placeholderTextColor={textColor + '80'}
                 value={newUrl}
                 onChangeText={setNewUrl}
@@ -179,7 +189,7 @@ export default function AppsScreen() {
               />
               <View style={styles.addFormButtons}>
                 <TouchableOpacity
-                  style={[styles.button, styles.cancelButton]}
+                  style={[styles.button, styles.cancelButton, { backgroundColor: textColor + '20' }]}
                   onPress={() => {
                     setIsAddingNew(false);
                     setNewTitle('');
@@ -189,7 +199,7 @@ export default function AppsScreen() {
                   <ThemedText>Cancel</ThemedText>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.button, styles.saveButton]}
+                  style={[styles.button, styles.saveButton, { backgroundColor: tintColor }]}
                   onPress={handleAddApp}
                 >
                   <ThemedText style={styles.saveButtonText}>Save</ThemedText>
@@ -204,10 +214,10 @@ export default function AppsScreen() {
           style={styles.addButton}
           onPress={() => setIsAddingNew(true)}
         >
-          <Ionicons name="add-circle" size={50} color={textColor} />
+          <Ionicons name="add-circle" size={50} color={tintColor} />
         </TouchableOpacity>
       )}
-    </View>
+    </ThemedView>
   );
 }
 
@@ -218,7 +228,6 @@ const styles = StyleSheet.create({
   header: {
     padding: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
   },
   backButton: {
     flexDirection: 'row',
@@ -288,10 +297,12 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   cancelButton: {
-    backgroundColor: '#ccc',
+    minWidth: 70,
+    alignItems: 'center',
   },
   saveButton: {
-    backgroundColor: '#007AFF',
+    minWidth: 70,
+    alignItems: 'center',
   },
   saveButtonText: {
     color: 'white',
