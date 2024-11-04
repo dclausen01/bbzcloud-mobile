@@ -36,7 +36,7 @@ export default function AppsScreen() {
 
   const handleAddApp = async () => {
     if (!newTitle.trim() || !newUrl.trim()) {
-      Alert.alert('Fehler', 'Bitte sowohl Titel als auch URL der App angeben!');
+      Alert.alert('Fehler', 'Bitte geben Sie einen Titel und eine URL ein');
       return;
     }
 
@@ -53,14 +53,14 @@ export default function AppsScreen() {
       setNewUrl('');
       setIsAddingNew(false);
     } catch (error) {
-      Alert.alert('Fehler', 'Bitte eine gültige URL angeben!');
+      Alert.alert('Fehler', 'Bitte geben Sie eine gültige URL ein');
     }
   };
 
   const handleDeleteApp = (app: CustomApp) => {
     Alert.alert(
       'App löschen',
-      `${app.title} wirklich löschen?`,
+      `Möchten Sie "${app.title}" wirklich löschen?`,
       [
         { text: 'Abbrechen', style: 'cancel' },
         { 
@@ -74,7 +74,7 @@ export default function AppsScreen() {
               }
             } catch (error) {
               console.error('Error deleting app:', error);
-              Alert.alert('Fehler', 'App konnte nicht gelöscht werden!');
+              Alert.alert('Fehler', 'App konnte nicht gelöscht werden');
             }
           }
         },
@@ -97,7 +97,7 @@ export default function AppsScreen() {
             onPress={() => setSelectedApp(null)}
           >
             <Ionicons name="arrow-back" size={24} color={textColor} />
-            <ThemedText style={styles.backButtonText}>Back to Apps</ThemedText>
+            <ThemedText style={styles.backButtonText}>Zurück zur Liste</ThemedText>
           </TouchableOpacity>
         </View>
         <WebViewNavBar
@@ -155,7 +155,7 @@ export default function AppsScreen() {
           !isAddingNew ? (
             <View style={styles.emptyContainer}>
               <ThemedText style={styles.emptyText}>
-                No apps added yet. Tap the + button to add your first app.
+                Noch keine Apps hinzugefügt. Tippen Sie auf das + Symbol, um Ihre erste App hinzuzufügen.
               </ThemedText>
             </View>
           ) : null
@@ -169,7 +169,7 @@ export default function AppsScreen() {
                   borderColor: textColor + '30',
                   backgroundColor: backgroundColor,
                 }]}
-                placeholder="Titel der App"
+                placeholder="App Titel"
                 placeholderTextColor={textColor + '80'}
                 value={newTitle}
                 onChangeText={setNewTitle}
@@ -180,7 +180,7 @@ export default function AppsScreen() {
                   borderColor: textColor + '30',
                   backgroundColor: backgroundColor,
                 }]}
-                placeholder="URL der App"
+                placeholder="App URL"
                 placeholderTextColor={textColor + '80'}
                 value={newUrl}
                 onChangeText={setNewUrl}
@@ -196,13 +196,13 @@ export default function AppsScreen() {
                     setNewUrl('');
                   }}
                 >
-                  <ThemedText>Cancel</ThemedText>
+                  <ThemedText>Abbrechen</ThemedText>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.button, styles.saveButton, { backgroundColor: tintColor }]}
                   onPress={handleAddApp}
                 >
-                  <ThemedText style={styles.saveButtonText}>Save</ThemedText>
+                  <ThemedText style={styles.saveButtonText}>Speichern</ThemedText>
                 </TouchableOpacity>
               </View>
             </View>
