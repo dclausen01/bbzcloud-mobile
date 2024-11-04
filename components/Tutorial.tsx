@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Image, ImageSourcePropType, Switch } from 'react-native';
 import { useRouter, Href } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -62,21 +62,39 @@ export const Tutorial: React.FC = () => {
   const colorScheme = useColorScheme();
   const isLastStep = currentStep === TUTORIAL_STEPS.length - 1;
 
+  useEffect(() => {
+    const navigateToStep = async () => {
+      try {
+        await router.push(TUTORIAL_STEPS[currentStep].screen);
+      } catch (error) {
+        console.error('Error navigating to tutorial step:', error);
+      }
+    };
+    navigateToStep();
+  }, [currentStep]);
+
   const handleNext = async () => {
-    if (currentStep < TUTORIAL_STEPS.length - 1) {
-      router.push(TUTORIAL_STEPS[currentStep + 1].screen);
-      setCurrentStep(currentStep + 1);
-    } else {
-      await AsyncStorage.setItem('hasSeenTutorial', 'true');
-      await AsyncStorage.setItem('showTutorialNextTime', showTutorialNextTime.toString());
-      setShowTutorial(false);
+    try {
+      if (currentStep < TUTORIAL_STEPS.length - 1) {
+        await setCurrentStep(currentStep + 1);
+      } else {
+        await AsyncStorage.setItem('hasSeenTutorial', 'true');
+        await AsyncStorage.setItem('showTutorialNextTime', showTutorialNextTime.toString());
+        await setShowTutorial(false);
+      }
+    } catch (error) {
+      console.error('Error handling next step:', error);
     }
   };
 
   const handleSkip = async () => {
-    await AsyncStorage.setItem('hasSeenTutorial', 'true');
-    await AsyncStorage.setItem('showTutorialNextTime', showTutorialNextTime.toString());
-    setShowTutorial(false);
+    try {
+      await AsyncStorage.setItem('hasSeenTutorial', 'true');
+      await AsyncStorage.setItem('showTutorialNextTime', showTutorialNextTime.toString());
+      await setShowTutorial(false);
+    } catch (error) {
+      console.error('Error handling skip:', error);
+    }
   };
 
   const handleShowNextTimeChange = (value: boolean) => {

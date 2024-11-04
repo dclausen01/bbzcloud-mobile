@@ -3,9 +3,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type TutorialContextType = {
   showTutorial: boolean;
-  setShowTutorial: (show: boolean) => void;
+  setShowTutorial: (show: boolean) => Promise<void>;
   currentStep: number;
-  setCurrentStep: (step: number) => void;
+  setCurrentStep: (step: number) => Promise<void>;
   showTutorialNextTime: boolean;
   setShowTutorialNextTime: (show: boolean) => void;
 };
@@ -13,49 +13,44 @@ type TutorialContextType = {
 const TutorialContext = createContext<TutorialContextType | undefined>(undefined);
 
 export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [showTutorial, setShowTutorial] = useState(true);
+  const [showTutorial, setShowTutorial] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [showTutorialNextTime, setShowTutorialNextTime] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     checkFirstTime();
   }, []);
 
   const checkFirstTime = async () => {
+    if (isInitialized) return;
+    
     try {
       const hasSeenTutorial = await AsyncStorage.getItem('hasSeenTutorial');
       const shouldShowNextTime = await AsyncStorage.getItem('showTutorialNextTime');
       
-      if (hasSeenTutorial === null || shouldShowNextTime === 'true') {
+      // Only show tutorial on first app launch
+      if (hasSeenTutorial === null) {
         setShowTutorial(true);
-      } else {
-        setShowTutorial(false);
       }
 
-      // Set the checkbox state based on stored preference
       setShowTutorialNextTime(shouldShowNextTime !== 'false');
+      setIsInitialized(true);
     } catch (error) {
       console.error('Error checking tutorial status:', error);
     }
   };
 
-  // Wrap the setShowTutorial function to handle AsyncStorage
   const handleSetShowTutorial = async (show: boolean) => {
     setShowTutorial(show);
     if (show) {
       // When manually showing tutorial, reset the storage state
       await AsyncStorage.removeItem('hasSeenTutorial');
-      await AsyncStorage.setItem('showTutorialNextTime', 'true');
-      setShowTutorialNextTime(true);
     }
   };
 
-  // Wrap the setCurrentStep function to ensure tutorial is shown
-  const handleSetCurrentStep = (step: number) => {
+  const handleSetCurrentStep = async (step: number) => {
     setCurrentStep(step);
-    if (step === 0) {
-      handleSetShowTutorial(true);
-    }
   };
 
   const handleSetShowTutorialNextTime = async (show: boolean) => {

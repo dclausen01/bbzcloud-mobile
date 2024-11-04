@@ -14,9 +14,13 @@ export default function HomeScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const backgroundColor = colorScheme === 'dark' ? '#1C1C1E' : '#FFFFFF';
 
-  const handleRestartTutorial = () => {
-    setCurrentStep(0);
-    setShowTutorial(true);
+  const handleRestartTutorial = async () => {
+    try {
+      await setShowTutorial(true);  // First make tutorial visible
+      await setCurrentStep(0);      // Then set the step
+    } catch (error) {
+      console.error('Error restarting tutorial:', error);
+    }
   };
 
   const handleInfoPress = () => {
