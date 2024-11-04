@@ -39,15 +39,39 @@ export const TutorialProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
+  // Wrap the setShowTutorial function to handle AsyncStorage
+  const handleSetShowTutorial = async (show: boolean) => {
+    setShowTutorial(show);
+    if (show) {
+      // When manually showing tutorial, reset the storage state
+      await AsyncStorage.removeItem('hasSeenTutorial');
+      await AsyncStorage.setItem('showTutorialNextTime', 'true');
+      setShowTutorialNextTime(true);
+    }
+  };
+
+  // Wrap the setCurrentStep function to ensure tutorial is shown
+  const handleSetCurrentStep = (step: number) => {
+    setCurrentStep(step);
+    if (step === 0) {
+      handleSetShowTutorial(true);
+    }
+  };
+
+  const handleSetShowTutorialNextTime = async (show: boolean) => {
+    setShowTutorialNextTime(show);
+    await AsyncStorage.setItem('showTutorialNextTime', show.toString());
+  };
+
   return (
     <TutorialContext.Provider
       value={{
         showTutorial,
-        setShowTutorial,
+        setShowTutorial: handleSetShowTutorial,
         currentStep,
-        setCurrentStep,
+        setCurrentStep: handleSetCurrentStep,
         showTutorialNextTime,
-        setShowTutorialNextTime,
+        setShowTutorialNextTime: handleSetShowTutorialNextTime,
       }}>
       {children}
     </TutorialContext.Provider>

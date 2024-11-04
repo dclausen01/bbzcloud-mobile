@@ -1,11 +1,10 @@
-import { StyleSheet, Image, View, Pressable } from 'react-native';
+import { StyleSheet, Image, View, Pressable, useColorScheme } from 'react-native';
 import { ThemedText } from '../../components/ThemedText';
 import { ThemedView } from '../../components/ThemedView';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useOrientation } from '../../hooks/useOrientation';
 import { useTutorial } from '../../context/TutorialContext';
 import { Ionicons } from '@expo/vector-icons';
-import { useColorScheme } from '../../hooks/useColorScheme';
 import { Colors } from '../../constants/Colors';
 import { router } from 'expo-router';
 
@@ -13,6 +12,7 @@ export default function HomeScreen() {
   const orientation = useOrientation();
   const { setShowTutorial, setCurrentStep } = useTutorial();
   const colorScheme = useColorScheme() ?? 'light';
+  const backgroundColor = colorScheme === 'dark' ? '#1C1C1E' : '#FFFFFF';
 
   const handleRestartTutorial = () => {
     setCurrentStep(0);
@@ -27,8 +27,8 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ThemedView style={styles.container}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor }]}>
+      <ThemedView style={[styles.container, { backgroundColor }]}>
         <View style={styles.buttonContainer}>
           <Pressable
             onPress={handleRestartTutorial}
