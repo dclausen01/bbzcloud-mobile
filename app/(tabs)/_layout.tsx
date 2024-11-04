@@ -81,6 +81,15 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="apps"
+        options={{
+          title: 'More Apps',
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name={focused ? 'apps' : 'apps-outline'} color={color} size={orientation === 'landscape' ? 20 : 24} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }
