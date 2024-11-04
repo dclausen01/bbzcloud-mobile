@@ -25,6 +25,7 @@ export default function AppsScreen() {
   const backgroundColor = useThemeColor({}, 'background');
   const textColor = useThemeColor({}, 'text');
   const tintColor = useThemeColor({}, 'tint');
+  const invertedTextColor = useThemeColor({}, 'background'); // For text on colored backgrounds
 
   const { apps, addApp, deleteApp } = useCustomApps();
 
@@ -202,7 +203,7 @@ export default function AppsScreen() {
                   style={[styles.button, styles.saveButton, { backgroundColor: tintColor }]}
                   onPress={handleAddApp}
                 >
-                  <ThemedText style={styles.saveButtonText}>Speichern</ThemedText>
+                  <ThemedText style={[styles.saveButtonText, { color: invertedTextColor }]}>Speichern</ThemedText>
                 </TouchableOpacity>
               </View>
             </View>
@@ -305,7 +306,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   saveButtonText: {
-    color: 'white',
+    // color property is now applied dynamically
   },
   webview: {
     flex: 1,
