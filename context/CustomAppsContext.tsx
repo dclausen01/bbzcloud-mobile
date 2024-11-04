@@ -43,21 +43,31 @@ export const CustomAppsProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const addApp = async (title: string, url: string) => {
-    const newApp: CustomApp = {
-      id: Date.now().toString(),
-      title,
-      url,
-      favicon: `${new URL(url).origin}/favicon.ico`
-    };
-    const newApps = [...apps, newApp];
-    setApps(newApps);
-    await saveApps(newApps);
+    try {
+      const newApp: CustomApp = {
+        id: Date.now().toString(),
+        title,
+        url,
+        favicon: `${new URL(url).origin}/favicon.ico`
+      };
+      const newApps = [...apps, newApp];
+      setApps(newApps);
+      await saveApps(newApps);
+    } catch (error) {
+      console.error('Error adding app:', error);
+      throw error;
+    }
   };
 
   const deleteApp = async (id: string) => {
-    const newApps = apps.filter(app => app.id !== id);
-    setApps(newApps);
-    await saveApps(newApps);
+    try {
+      const newApps = apps.filter(app => app.id !== id);
+      setApps(newApps);
+      await saveApps(newApps);
+    } catch (error) {
+      console.error('Error deleting app:', error);
+      throw error;
+    }
   };
 
   return (

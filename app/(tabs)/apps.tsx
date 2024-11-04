@@ -19,16 +19,18 @@ import { ThemedText } from '../../components/ThemedText';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function AppsScreen() {
+  const colorScheme = useColorScheme();
+  const orientation = useOrientation();
+  const backgroundColor = colorScheme === 'dark' ? '#1C1C1E' : '#FFFFFF';
+  const textColor = colorScheme === 'dark' ? '#FFFFFF' : '#000000';
+
   const { apps, addApp, deleteApp } = useCustomApps();
+
   const [selectedApp, setSelectedApp] = useState<CustomApp | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newUrl, setNewUrl] = useState('');
   const webViewRef = useRef<WebView>(null);
-  const orientation = useOrientation();
-  const colorScheme = useColorScheme();
-  const backgroundColor = colorScheme === 'dark' ? '#1C1C1E' : '#FFFFFF';
-  const textColor = colorScheme === 'dark' ? '#FFFFFF' : '#000000';
 
   const handleAddApp = async () => {
     if (!newTitle.trim() || !newUrl.trim()) {
@@ -37,8 +39,14 @@ export default function AppsScreen() {
     }
 
     try {
-      new URL(newUrl); // Validate URL
-      await addApp(newTitle.trim(), newUrl.trim());
+      // Ensure URL has protocol
+      let urlToAdd = newUrl.trim();
+      if (!urlToAdd.startsWith('http://') && !urlToAdd.startsWith('https://')) {
+        urlToAdd = 'https://' + urlToAdd;
+      }
+      
+      new URL(urlToAdd); // Validate URL
+      await addApp(newTitle.trim(), urlToAdd);
       setNewTitle('');
       setNewUrl('');
       setIsAddingNew(false);
@@ -56,10 +64,15 @@ export default function AppsScreen() {
         { 
           text: 'Delete',
           style: 'destructive',
-          onPress: () => {
-            deleteApp(app.id);
-            if (selectedApp?.id === app.id) {
-              setSelectedApp(null);
+          onPress: async () => {
+            try {
+              await deleteApp(app.id);
+              if (selectedApp?.id === app.id) {
+                setSelectedApp(null);
+              }
+            } catch (error) {
+              console.error('Error deleting app:', error);
+              Alert.alert('Error', 'Failed to delete app');
             }
           }
         },
@@ -93,6 +106,10 @@ export default function AppsScreen() {
           ref={webViewRef}
           source={{ uri: selectedApp.url }}
           style={styles.webview}
+          onError={(syntheticEvent) => {
+            const { nativeEvent } = syntheticEvent;
+            console.warn('WebView error:', nativeEvent);
+          }}
         />
       </View>
     );
@@ -104,11 +121,13 @@ export default function AppsScreen() {
         style={styles.appButton}
         onPress={() => setSelectedApp(item)}
       >
-        <Image
-          source={{ uri: item.favicon }}
-          style={styles.favicon}
-          defaultSource={require('../../assets/images/favicon.png')}
-        />
+        <View style={styles.faviconContainer}>
+          <Image
+            source={{ uri: item.favicon }}
+            style={styles.favicon}
+            defaultSource={require('../../assets/images/favicon.png')}
+          />
+        </View>
         <ThemedText style={styles.appTitle}>{item.title}</ThemedText>
       </TouchableOpacity>
       <TouchableOpacity
@@ -130,6 +149,15 @@ export default function AppsScreen() {
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         style={styles.list}
+        ListEmptyComponent={
+          !isAddingNew ? (
+            <View style={styles.emptyContainer}>
+              <ThemedText style={styles.emptyText}>
+                No apps added yet. Tap the + button to add your first app.
+              </ThemedText>
+            </View>
+          ) : null
+        }
         ListHeaderComponent={
           isAddingNew ? (
             <View style={styles.addForm}>
@@ -217,10 +245,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  favicon: {
+  faviconContainer: {
     width: 24,
     height: 24,
     marginRight: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  favicon: {
+    width: 20,
+    height: 20,
   },
   appTitle: {
     fontSize: 16,
@@ -264,5 +298,13 @@ const styles = StyleSheet.create({
   },
   webview: {
     flex: 1,
+  },
+  emptyContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  emptyText: {
+    textAlign: 'center',
+    fontSize: 16,
   },
 });
