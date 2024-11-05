@@ -33,15 +33,19 @@ export default function AppsScreen() {
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newUrl, setNewUrl] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const webViewRef = useRef<WebView>(null);
 
   const handleAddApp = async () => {
+    if (isSaving) return; // Prevent multiple clicks while saving
+    
     if (!newTitle.trim() || !newUrl.trim()) {
       Alert.alert('Fehler', 'Bitte geben Sie einen Titel und eine URL ein');
       return;
     }
 
     try {
+      setIsSaving(true);
       // Ensure URL has protocol
       let urlToAdd = newUrl.trim();
       if (!urlToAdd.startsWith('http://') && !urlToAdd.startsWith('https://')) {
@@ -55,6 +59,8 @@ export default function AppsScreen() {
       setIsAddingNew(false);
     } catch (error) {
       Alert.alert('Fehler', 'Bitte geben Sie eine gültige URL ein');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -202,8 +208,11 @@ export default function AppsScreen() {
                 <TouchableOpacity
                   style={[styles.button, styles.saveButton, { backgroundColor: tintColor }]}
                   onPress={handleAddApp}
+                  disabled={isSaving}
                 >
-                  <ThemedText style={[styles.saveButtonText, { color: invertedTextColor }]}>Speichern</ThemedText>
+                  <ThemedText style={[styles.saveButtonText, { color: invertedTextColor }]}>
+                    {isSaving ? 'Speichern...' : 'Speichern'}
+                  </ThemedText>
                 </TouchableOpacity>
               </View>
             </View>
