@@ -33,34 +33,33 @@ export default function AppsScreen() {
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newUrl, setNewUrl] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
   const webViewRef = useRef<WebView>(null);
 
-  const handleAddApp = async () => {
-    if (isSaving) return; // Prevent multiple clicks while saving
-    
+  const handleAddApp = () => {
     if (!newTitle.trim() || !newUrl.trim()) {
       Alert.alert('Fehler', 'Bitte geben Sie einen Titel und eine URL ein');
       return;
     }
 
     try {
-      setIsSaving(true);
-      // Ensure URL has protocol
       let urlToAdd = newUrl.trim();
       if (!urlToAdd.startsWith('http://') && !urlToAdd.startsWith('https://')) {
         urlToAdd = 'https://' + urlToAdd;
       }
       
       new URL(urlToAdd); // Validate URL
-      await addApp(newTitle.trim(), urlToAdd);
-      setNewTitle('');
-      setNewUrl('');
-      setIsAddingNew(false);
+      addApp(newTitle.trim(), urlToAdd)
+        .then(() => {
+          setNewTitle('');
+          setNewUrl('');
+          setIsAddingNew(false);
+        })
+        .catch((error) => {
+          console.error('Error saving app:', error);
+          Alert.alert('Fehler', 'App konnte nicht gespeichert werden');
+        });
     } catch (error) {
       Alert.alert('Fehler', 'Bitte geben Sie eine gültige URL ein');
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -73,16 +72,14 @@ export default function AppsScreen() {
         { 
           text: 'Löschen',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteApp(app.id);
-              if (selectedApp?.id === app.id) {
-                setSelectedApp(null);
-              }
-            } catch (error) {
+          onPress: () => {
+            if (selectedApp?.id === app.id) {
+              setSelectedApp(null);
+            }
+            deleteApp(app.id).catch(error => {
               console.error('Error deleting app:', error);
               Alert.alert('Fehler', 'App konnte nicht gelöscht werden');
-            }
+            });
           }
         },
       ]
@@ -208,10 +205,9 @@ export default function AppsScreen() {
                 <TouchableOpacity
                   style={[styles.button, styles.saveButton, { backgroundColor: tintColor }]}
                   onPress={handleAddApp}
-                  disabled={isSaving}
                 >
                   <ThemedText style={[styles.saveButtonText, { color: invertedTextColor }]}>
-                    {isSaving ? 'Speichern...' : 'Speichern'}
+                    Speichern
                   </ThemedText>
                 </TouchableOpacity>
               </View>
