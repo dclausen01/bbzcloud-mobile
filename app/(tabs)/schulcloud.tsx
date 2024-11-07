@@ -120,6 +120,51 @@ export default function SchulCloudScreen() {
         return false;
       }
 
+      // Monitor DOM changes for iframe creation
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          mutation.addedNodes.forEach((node) => {
+            if (node.nodeName === 'IFRAME') {
+              const iframe = node;
+              const iframeSrc = iframe.src;
+              if (iframeSrc) {
+                // Check if the iframe src is a downloadable file
+                if (/\\.(pdf|doc|docx|xls|xlsx|zip|rar|7z|txt|jpg|jpeg|png|gif)$/i.test(iframeSrc)) {
+                  console.log('Iframe download detected:', iframeSrc);
+                  detectDownload(iframeSrc);
+                  // Remove the iframe to prevent the default download behavior
+                  iframe.remove();
+                }
+              }
+            }
+          });
+        });
+      });
+
+      // Start observing the document with the configured parameters
+      observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true
+      });
+
+      // Override createElement to catch iframe creation
+      const originalCreateElement = document.createElement;
+      document.createElement = function(tagName) {
+        const element = originalCreateElement.call(document, tagName);
+        if (tagName.toLowerCase() === 'iframe') {
+          const originalSetAttribute = element.setAttribute;
+          element.setAttribute = function(name, value) {
+            if (name === 'src' && /\\.(pdf|doc|docx|xls|xlsx|zip|rar|7z|txt|jpg|jpeg|png|gif)$/i.test(value)) {
+              console.log('Prevented iframe download:', value);
+              detectDownload(value);
+              return;
+            }
+            originalSetAttribute.call(this, name, value);
+          };
+        }
+        return element;
+      };
+
       // Intercept click events on download links
       document.addEventListener('click', function(e) {
         const link = e.target.closest('a');
