@@ -1,4 +1,4 @@
-import { WebView } from 'react-native-webview';
+import { WebView, WebViewNavigation } from 'react-native-webview';
 import { StyleSheet, Platform, StatusBar, useColorScheme, View, BackHandler, Dimensions } from 'react-native';
 import React, { useRef, useEffect, useState } from 'react';
 import { WebViewNavBar } from '../../components/navigation/WebViewNavBar';
@@ -12,7 +12,7 @@ const WINDOWS_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKi
 const isTablet = () => {
   const { width, height } = Dimensions.get('window');
   const screenSize = Math.sqrt(Math.pow(width, 2) + Math.pow(height, 2));
-  return screenSize >= 750; // Lowered threshold to better detect tablets (typical 7-inch tablet diagonal is around 750-800 pixels)
+  return screenSize >= 750;
 };
 
 export default function SchulCloudScreen() {
@@ -101,6 +101,30 @@ export default function SchulCloudScreen() {
         ...Object.getOwnPropertyDescriptors(navigatorProps),
         webdriver: { get: () => undefined },
       });
+
+      // Handle iframe downloads
+      const originalCreateElement = document.createElement;
+      document.createElement = function(tagName) {
+        const element = originalCreateElement.call(document, tagName);
+        if (tagName.toLowerCase() === 'iframe') {
+          setTimeout(() => {
+            if (element.src && (
+              element.src.includes('.pdf') ||
+              element.src.includes('.doc') ||
+              element.src.includes('.docx') ||
+              element.src.includes('.xls') ||
+              element.src.includes('.xlsx') ||
+              element.src.includes('.ppt') ||
+              element.src.includes('.pptx') ||
+              element.src.includes('/download/') ||
+              element.src.includes('/files/')
+            )) {
+              window.location.href = element.src;
+            }
+          }, 0);
+        }
+        return element;
+      };
 
       // Add comprehensive WebRTC support
       if (!window.RTCPeerConnection) {
@@ -258,7 +282,7 @@ export default function SchulCloudScreen() {
     webViewRef.current?.reload();
   };
 
-  const handleNavigationStateChange = (navState: { canGoBack: boolean }) => {
+  const handleNavigationStateChange = (navState: WebViewNavigation) => {
     setCanGoBack(navState.canGoBack);
   };
 
@@ -297,6 +321,22 @@ export default function SchulCloudScreen() {
         javaScriptCanOpenWindowsAutomatically={true}
         mixedContentMode="compatibility"
         webviewDebuggingEnabled={true}
+        onShouldStartLoadWithRequest={(request) => {
+          // Allow direct file downloads
+          if (request.url.includes('.pdf') ||
+              request.url.includes('.doc') ||
+              request.url.includes('.docx') ||
+              request.url.includes('.xls') ||
+              request.url.includes('.xlsx') ||
+              request.url.includes('.ppt') ||
+              request.url.includes('.pptx') ||
+              request.url.includes('/download/') ||
+              request.url.includes('/files/')) {
+            return true;
+          }
+          // Allow normal navigation
+          return request.navigationType === 'other' || request.url === SCHULCLOUD_URL;
+        }}
         onMessage={(event) => {
           try {
             const data = JSON.parse(event.nativeEvent.data);
