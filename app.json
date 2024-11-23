@@ -5,74 +5,30 @@
     "version": "1.0.0",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
-    "scheme": "bbzcloud",
+    "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.dclausen01.bbzcloudmobile",
-      "associatedDomains": [
-        "applinks:portal.bbz-rd-eck.com",
-        "applinks:www.office.com",
-        "applinks:app.schul.cloud",
-        "applinks:wiki.bbz-rd-eck.com",
-        "applinks:neilo.webuntis.com"
-      ],
-      "infoPlist": {
-        "NSCameraUsageDescription": "Allow camera access for video calls",
-        "NSMicrophoneUsageDescription": "Allow microphone access for audio in calls",
-        "NSPhotoLibraryUsageDescription": "Allow photo library access for sharing media"
-      }
+      "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.dclausen01.bbzcloudmobile",
       "permissions": [
-        "CAMERA",
-        "RECORD_AUDIO",
-        "MODIFY_AUDIO_SETTINGS"
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_EXTERNAL_STORAGE",
+        "DOWNLOAD_WITHOUT_NOTIFICATION"
       ],
-      "intentFilters": [
-        {
-          "action": "VIEW",
-          "autoVerify": true,
-          "data": [
-            {
-              "scheme": "https",
-              "host": "portal.bbz-rd-eck.com",
-              "pathPrefix": "/"
-            },
-            {
-              "scheme": "https",
-              "host": "www.office.com",
-              "pathPrefix": "/"
-            },
-            {
-              "scheme": "https",
-              "host": "app.schul.cloud",
-              "pathPrefix": "/"
-            },
-            {
-              "scheme": "https",
-              "host": "wiki.bbz-rd-eck.com",
-              "pathPrefix": "/"
-            },
-            {
-              "scheme": "https",
-              "host": "neilo.webuntis.com",
-              "pathPrefix": "/WebUntis"
-            }
-          ],
-          "category": ["BROWSABLE", "DEFAULT"]
-        }
-      ]
+      "package": "de.bbzrdeck.cloud"
     },
     "web": {
       "bundler": "metro",
@@ -84,11 +40,6 @@
     ],
     "experiments": {
       "typedRoutes": true
-    },
-    "extra": {
-      "eas": {
-        "projectId": "f082268a-a99d-48b2-ad0f-0fb7b6a69962"
-      }
     }
   }
 }

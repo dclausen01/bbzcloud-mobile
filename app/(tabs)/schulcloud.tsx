@@ -3,7 +3,6 @@ import { StyleSheet, Platform, StatusBar, useColorScheme, View, BackHandler, Dim
 import React, { useRef, useEffect, useState } from 'react';
 import { WebViewNavBar } from '../../components/navigation/WebViewNavBar';
 import { useOrientation } from '../../hooks/useOrientation';
-import RNBlobUtil from 'react-native-blob-util';
 
 const SCHULCLOUD_URL = 'https://app.schul.cloud';
 const CHROME_USER_AGENT = 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36';
@@ -55,22 +54,6 @@ export default function SchulCloudScreen() {
       return () => backHandler.remove();
     }
   }, [canGoBack]);
-
-  const handleMessage = async (event: any) => {
-    try {
-      const { base64Data, fileName } = JSON.parse(event.nativeEvent.data);
-      if (!base64Data) {
-        throw new Error('Base64 data is undefined');
-      }
-      const filePath = `${RNBlobUtil.fs.dirs.DownloadDir}/${fileName}`;
-      // Save the Base64 data as a file
-      await RNBlobUtil.fs.writeFile(filePath, base64Data, 'base64');
-      // Trigger a download intent on Android
-      await RNBlobUtil.android.actionViewIntent(filePath);
-    } catch (error) {
-      console.error('File download error:', error);
-    }
-  };
 
   const injectedScript = `
     (function() {
@@ -264,42 +247,6 @@ export default function SchulCloudScreen() {
     })();
     true;
   `;
-
-  const downloadScript = `
-    (function() {
-      window.ReactNativeWebView.postMessage = function(data) {
-        window.ReactNativeWebView.postMessage(JSON.stringify(data));
-      };
-      
-      document.addEventListener('click', function(e) {
-        const element = e.target;
-        const anchor = document.querySelector('a[href^="blob:"]');
-        if (anchor && anchor.getAttribute('href')) {
-          e.preventDefault();
-          const xhr = new XMLHttpRequest();
-          let href = anchor.getAttribute('href');
-          const fileName = anchor.getAttribute('download') || 'downloaded-file';
-          
-          fetch(href)
-            .then(response => response.blob())
-            .then(blob => {
-              const reader = new FileReader();
-              reader.readAsDataURL(blob);
-              reader.onloadend = function() {
-                const base64Data = reader.result.split(',')[1];
-                window.ReactNativeWebView.postMessage(JSON.stringify({
-                  base64Data: base64Data,
-                  fileName: fileName
-                }));
-              };
-            })
-            .catch(error => {
-              console.error('Failed to fetch blob data:', error);
-            });
-        }
-      });
-    })();
-  `;
   
   const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight || 0 : 0;
   const adjustedStatusBarHeight = orientation === 'landscape' ? statusBarHeight / 3 : statusBarHeight;
@@ -347,11 +294,17 @@ export default function SchulCloudScreen() {
         javaScriptCanOpenWindowsAutomatically={true}
         mixedContentMode="compatibility"
         webviewDebuggingEnabled={true}
-        setSupportMultipleWindows={false}
-        onLoadEnd={() => {
-          webViewRef.current?.injectJavaScript(downloadScript);
+        setSupportMultipleWindows={true}
+        onMessage={(event) => {
+          try {
+            const data = JSON.parse(event.nativeEvent.data);
+            if (data.type === 'navigationStateChange') {
+              setCanGoBack(data.canGoBack);
+            }
+          } catch (error) {
+            console.error('Error parsing WebView message:', error);
+          }
         }}
-        onMessage={handleMessage}
       />
     </View>
   );
