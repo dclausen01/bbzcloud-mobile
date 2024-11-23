@@ -4,6 +4,8 @@ import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeColor } from '../hooks/useThemeColor';
+import { useColorScheme } from '../hooks/useColorScheme';
+import { Colors } from '../constants/Colors';
 
 interface NetworkErrorProps {
   onRetry: () => void;
@@ -11,6 +13,7 @@ interface NetworkErrorProps {
 
 export function NetworkError({ onRetry }: NetworkErrorProps) {
   const tintColor = useThemeColor({}, 'tint');
+  const colorScheme = useColorScheme();
 
   return (
     <ThemedView style={styles.container}>
@@ -28,8 +31,16 @@ export function NetworkError({ onRetry }: NetworkErrorProps) {
           { backgroundColor: tintColor, opacity: pressed ? 0.7 : 1 }
         ]}
       >
-        <Ionicons name="refresh" size={24} color="white" style={styles.buttonIcon} />
-        <ThemedText style={styles.buttonText}>Erneut versuchen</ThemedText>
+        <Ionicons 
+          name="refresh" 
+          size={24} 
+          color={Colors[colorScheme === 'dark' ? 'dark' : 'light'].background} 
+          style={styles.buttonIcon} 
+        />
+        <ThemedText style={[
+          styles.buttonText,
+          { color: Colors[colorScheme === 'dark' ? 'dark' : 'light'].background }
+        ]}>Erneut versuchen</ThemedText>
       </Pressable>
     </ThemedView>
   );
@@ -68,7 +79,6 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   buttonText: {
-    color: 'white',
     fontSize: 16,
     fontWeight: '600',
   },
