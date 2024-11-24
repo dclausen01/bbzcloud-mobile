@@ -16,7 +16,12 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSDownloadsUsageDescription": "This app needs access to downloads to save files from SchulCloud.",
+        "LSSupportsOpeningDocumentsInPlace": true,
+        "UIFileSharingEnabled": true
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -26,7 +31,8 @@
       "permissions": [
         "WRITE_EXTERNAL_STORAGE",
         "READ_EXTERNAL_STORAGE",
-        "DOWNLOAD_WITHOUT_NOTIFICATION"
+        "DOWNLOAD_WITHOUT_NOTIFICATION",
+        "REQUEST_INSTALL_PACKAGES"
       ],
       "package": "de.bbzrdeck.cloud"
     },
@@ -36,7 +42,13 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-file-system",
+        {
+          "downloadDirectory": "BBZCloud"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

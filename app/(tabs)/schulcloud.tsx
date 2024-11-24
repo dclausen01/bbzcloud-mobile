@@ -295,6 +295,9 @@ export default function SchulCloudScreen() {
         mixedContentMode="compatibility"
         webviewDebuggingEnabled={true}
         setSupportMultipleWindows={true}
+        allowFileAccess={true}
+        allowUniversalAccessFromFileURLs={true}
+        allowFileAccessFromFileURLs={true}
         onMessage={(event) => {
           try {
             const data = JSON.parse(event.nativeEvent.data);
