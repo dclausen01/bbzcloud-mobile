@@ -1,12 +1,20 @@
 import { WebView, WebViewNavigation } from 'react-native-webview';
-import { StyleSheet, Platform, StatusBar, useColorScheme, View, BackHandler, Dimensions } from 'react-native';
+import { StyleSheet, Platform, StatusBar, useColorScheme, View, BackHandler, Dimensions, Alert } from 'react-native';
 import React, { useRef, useEffect, useState } from 'react';
 import { WebViewNavBar } from '../../components/navigation/WebViewNavBar';
 import { useOrientation } from '../../hooks/useOrientation';
+import * as Linking from 'expo-linking';
 
 const SCHULCLOUD_URL = 'https://app.schul.cloud';
 const CHROME_USER_AGENT = 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36';
 const WINDOWS_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
+
+// URL schemes for native apps
+const SCHULCLOUD_SCHEMES = {
+  ios: 'schulcloud://',
+  android: 'de.schulcloud.mobile://',
+  fallback: SCHULCLOUD_URL
+};
 
 // Function to detect if device is a tablet based on screen size
 const isTablet = () => {
@@ -22,6 +30,7 @@ export default function SchulCloudScreen() {
   const backgroundColor = isDarkMode ? '#1C1C1E' : '#FFFFFF';
   const [canGoBack, setCanGoBack] = React.useState(false);
   const [currentUserAgent, setCurrentUserAgent] = useState('');
+  const [useWebView, setUseWebView] = useState(false);
 
   // Determine which user agent to use
   const getUserAgent = () => {
@@ -30,6 +39,43 @@ export default function SchulCloudScreen() {
     }
     return CHROME_USER_AGENT;
   };
+
+  // Try to open native app
+  const openNativeApp = async () => {
+    try {
+      const scheme = Platform.select({
+        ios: SCHULCLOUD_SCHEMES.ios,
+        android: SCHULCLOUD_SCHEMES.android,
+        default: SCHULCLOUD_SCHEMES.fallback
+      });
+
+      // First, try to open the app with the URL scheme
+      const canOpen = await Linking.canOpenURL(scheme);
+      
+      if (canOpen) {
+        await Linking.openURL(scheme);
+      } else {
+        // If can't open with URL scheme, try the universal link
+        const universalLink = 'https://app.schul.cloud';
+        const canOpenUniversal = await Linking.canOpenURL(universalLink);
+        
+        if (canOpenUniversal) {
+          await Linking.openURL(universalLink);
+        } else {
+          // If neither works, fall back to WebView
+          setUseWebView(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error opening native app:', error);
+      setUseWebView(true);
+    }
+  };
+
+  // Try to open native app on component mount
+  useEffect(() => {
+    openNativeApp();
+  }, []);
 
   // Update user agent when orientation changes
   useEffect(() => {
@@ -93,13 +139,11 @@ export default function SchulCloudScreen() {
         }
       };
 
-      // Override navigator properties
       Object.defineProperties(navigator, {
         ...Object.getOwnPropertyDescriptors(navigatorProps),
         webdriver: { get: () => undefined },
       });
 
-      // Add comprehensive WebRTC support
       if (!window.RTCPeerConnection) {
         window.RTCPeerConnection = class RTCPeerConnection {
           constructor() {
@@ -119,7 +163,6 @@ export default function SchulCloudScreen() {
         };
       }
 
-      // Add comprehensive media devices support
       if (!navigator.mediaDevices) {
         navigator.mediaDevices = {
           enumerateDevices: () => Promise.resolve([
@@ -151,14 +194,12 @@ export default function SchulCloudScreen() {
         };
       }
 
-      // Add permissions API
       if (!navigator.permissions) {
         navigator.permissions = {
           query: () => Promise.resolve({ state: 'granted' })
         };
       }
 
-      // Add viewport meta tag for better tablet support
       const meta = document.createElement('meta');
       meta.name = 'viewport';
       meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
@@ -185,7 +226,6 @@ export default function SchulCloudScreen() {
           overscroll-behavior-x: contain !important;
         }
 
-        /* Add transitions for smooth sidebar collapse/expand */
         .sc-channel-list,
         .sc-conversation-list,
         .sc-sidebar,
@@ -195,7 +235,6 @@ export default function SchulCloudScreen() {
           transition: width 0.3s ease-in-out !important;
         }
 
-        /* Collapsed state styles */
         .collapsed {
           width: 60px !important;
           min-width: 60px !important;
@@ -206,19 +245,16 @@ export default function SchulCloudScreen() {
           white-space: nowrap !important;
         }
 
-        /* Ensure video elements are properly sized and positioned */
         video {
           max-width: 100% !important;
           height: auto !important;
         }
 
-        /* Ensure audio elements are properly styled */
         audio {
           width: 100% !important;
           max-width: 600px !important;
         }
 
-        /* Tablet-specific styles when in landscape mode */
         @media (min-width: 768px) and (orientation: landscape) {
           .main-content {
             max-width: none !important;
@@ -232,7 +268,6 @@ export default function SchulCloudScreen() {
       \`;
       document.head.appendChild(style);
 
-      // Navigation state handling
       history.pushState = new Proxy(history.pushState, {
         apply: (target, thisArg, argumentsList) => {
           const result = target.apply(thisArg, argumentsList);
@@ -258,6 +293,11 @@ export default function SchulCloudScreen() {
   const handleNavigationStateChange = (navState: WebViewNavigation) => {
     setCanGoBack(navState.canGoBack);
   };
+
+  // If native app opening failed or is not available, show WebView
+  if (!useWebView) {
+    return null; // Return null while attempting to open native app
+  }
 
   return (
     <View style={[styles.container, { backgroundColor }]}>

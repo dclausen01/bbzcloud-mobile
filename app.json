@@ -20,8 +20,14 @@
       "infoPlist": {
         "NSDownloadsUsageDescription": "This app needs access to downloads to save files from SchulCloud.",
         "LSSupportsOpeningDocumentsInPlace": true,
-        "UIFileSharingEnabled": true
-      }
+        "UIFileSharingEnabled": true,
+        "LSApplicationQueriesSchemes": [
+          "schulcloud"
+        ]
+      },
+      "associatedDomains": [
+        "applinks:app.schul.cloud"
+      ]
     },
     "android": {
       "adaptiveIcon": {
@@ -34,7 +40,29 @@
         "DOWNLOAD_WITHOUT_NOTIFICATION",
         "REQUEST_INSTALL_PACKAGES"
       ],
-      "package": "de.bbzrdeck.cloud"
+      "package": "de.bbzrdeck.cloud",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "schulcloud"
+            },
+            {
+              "scheme": "de.schulcloud.mobile"
+            },
+            {
+              "scheme": "https",
+              "host": "app.schul.cloud",
+              "pathPrefix": "/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     },
     "web": {
       "bundler": "metro",
