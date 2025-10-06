@@ -1,4 +1,4 @@
- a/**
+/**
  * BBZCloud Mobile - Browser Service
  * 
  * Handles opening web apps in InAppBrowser using Capacitor Browser plugin

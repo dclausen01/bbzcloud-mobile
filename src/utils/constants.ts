@@ -81,14 +81,7 @@ export const NAVIGATION_APPS: Record<string, AppConfig> = {
     color: '#FFA500',
     description: 'Kommunikation & Dateiablage',
     requiresAuth: true,
-    nativeApp: {
-      hasNativeApp: true,
-      preferNativeOnSmartphone: true,
-      iosScheme: 'schulcloud://',
-      androidScheme: 'schulcloud://',
-      androidPackage: 'com.heinekingmedia.schul_cloud',
-      iosAppStoreId: '1082984793',
-    },
+    // Always open in browser - no native app support
   },
   moodle: {
     id: 'moodle',
