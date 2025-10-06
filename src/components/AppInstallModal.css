@@ -1,0 +1,112 @@
+/**
+ * BBZCloud Mobile - App Install Modal Styles
+ */
+
+.app-install-modal {
+  --width: 90%;
+  --max-width: 500px;
+  --height: auto;
+  --max-height: 80vh;
+}
+
+.app-install-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 20px 0;
+}
+
+.app-install-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.app-install-icon ion-icon {
+  font-size: 48px;
+  color: white;
+}
+
+.app-install-title {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  color: var(--ion-color-dark);
+}
+
+.app-install-description {
+  font-size: 16px;
+  color: var(--ion-color-medium);
+  margin: 0 0 24px 0;
+  line-height: 1.5;
+}
+
+.app-install-benefits {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: var(--ion-color-dark);
+  align-self: flex-start;
+}
+
+.app-install-benefits-list {
+  list-style-position: inside;
+  padding: 0;
+  margin: 0 0 24px 0;
+  text-align: left;
+  align-self: flex-start;
+  width: 100%;
+}
+
+.app-install-benefits-list li {
+  font-size: 14px;
+  color: var(--ion-color-medium);
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+.app-install-actions {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.app-install-button {
+  margin-bottom: 12px;
+}
+
+.app-install-button:last-child {
+  margin-bottom: 0;
+}
+
+.app-install-checkbox {
+  --padding-start: 0;
+  --inner-padding-end: 0;
+  margin-top: 8px;
+}
+
+.app-install-checkbox ion-label {
+  font-size: 14px;
+  color: var(--ion-color-medium);
+  margin-left: 12px;
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .app-install-title {
+    color: var(--ion-color-light);
+  }
+
+  .app-install-benefits {
+    color: var(--ion-color-light);
+  }
+
+  .app-install-icon {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+}

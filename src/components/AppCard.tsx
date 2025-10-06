@@ -7,12 +7,12 @@
  */
 
 import React from 'react';
-import { IonCard, IonCardContent, IonIcon, IonRippleEffect } from '@ionic/react';
+import { IonCard, IonCardContent, IonIcon, IonRippleEffect, IonSpinner } from '@ionic/react';
 import * as icons from 'ionicons/icons';
 import type { AppCardProps } from '../types';
 import './AppCard.css';
 
-const AppCard: React.FC<AppCardProps> = ({ app, onPress, onLongPress }) => {
+const AppCard: React.FC<AppCardProps> = ({ app, onPress, onLongPress, isLoading }) => {
   const iconName = app.icon as keyof typeof icons;
   const icon = icons[iconName] || icons.apps;
 
@@ -39,6 +39,11 @@ const AppCard: React.FC<AppCardProps> = ({ app, onPress, onLongPress }) => {
       } as React.CSSProperties}
     >
       <IonRippleEffect />
+      {isLoading && (
+        <div className="app-card-loading-overlay">
+          <IonSpinner name="crescent" />
+        </div>
+      )}
       <IonCardContent className="app-card-content">
         <div className="app-card-icon-container">
           <IonIcon icon={icon} className="app-card-icon" />

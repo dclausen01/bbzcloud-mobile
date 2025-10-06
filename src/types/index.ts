@@ -43,6 +43,7 @@ export interface App {
   teacherOnly?: boolean;
   isVisible?: boolean;
   isFavorite?: boolean;
+  isLoading?: boolean;
   order?: number;
 }
 
@@ -156,6 +157,7 @@ export interface AppCardProps {
   app: App;
   onPress: (app: App) => void;
   onLongPress?: (app: App) => void;
+  isLoading?: boolean;
 }
 
 export interface AppGridProps {
@@ -172,6 +174,31 @@ export interface WelcomeModalProps {
 
 export interface SettingsPanelProps {
   onClose: () => void;
+}
+
+export interface AppInstallModalProps {
+  isOpen: boolean;
+  app: App;
+  onInstall: () => void;
+  onOpenInBrowser: () => void;
+  onDismiss: () => void;
+  onDontShowAgain: () => void;
+}
+
+// ============================================================================
+// NATIVE APP TYPES
+// ============================================================================
+
+export interface AppLaunchPreference {
+  appId: string;
+  preferNative: boolean;
+  dontShowInstallPrompt?: boolean;
+}
+
+export interface NativeAppResult {
+  success: boolean;
+  opened: 'native' | 'browser' | 'none';
+  error?: string;
 }
 
 // ============================================================================

@@ -8,8 +8,10 @@
 
 import { Browser } from '@capacitor/browser';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
-import { BROWSER_CONFIG, UI_CONFIG } from '../utils/constants';
-import type { BrowserOptions, ApiResponse } from '../types';
+import { BROWSER_CONFIG, UI_CONFIG, NAVIGATION_APPS } from '../utils/constants';
+import type { AppConfig } from '../utils/constants';
+import { isSmartphone, isIOS, isAndroid, canOpenNativeApps } from '../utils/deviceUtils';
+import type { BrowserOptions, ApiResponse, NativeAppResult } from '../types';
 import DatabaseService from './DatabaseService';
 
 class BrowserService {
@@ -65,6 +67,132 @@ class BrowserService {
       enableShare: BROWSER_CONFIG.ENABLE_SHARE,
       enableReaderMode: BROWSER_CONFIG.ENABLE_READER_MODE
     });
+  }
+
+  /**
+   * Try to open native app, fallback to browser
+   */
+  async openAppWithNativeSupport(
+    appConfig: AppConfig,
+    preferNative: boolean
+  ): Promise<NativeAppResult> {
+    try {
+      // Check if device supports native apps
+      if (!canOpenNativeApps()) {
+        return { success: true, opened: 'browser' };
+      }
+
+      // Check if app has native support
+      if (!appConfig.nativeApp?.hasNativeApp) {
+        return { success: true, opened: 'browser' };
+      }
+
+      // On tablets, always use browser
+      if (!isSmartphone()) {
+        return { success: true, opened: 'browser' };
+      }
+
+      // If user doesn't prefer native, use browser
+      if (!preferNative) {
+        return { success: true, opened: 'browser' };
+      }
+
+      // Try to open native app
+      const nativeResult = await this.tryOpenNativeApp(appConfig);
+      
+      if (nativeResult.success) {
+        return { success: true, opened: 'native' };
+      }
+
+      // Native app failed or not installed - will show install prompt
+      return { success: false, opened: 'none', error: 'not_installed' };
+
+    } catch (error) {
+      console.error('Error in openAppWithNativeSupport:', error);
+      return { 
+        success: false, 
+        opened: 'none',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Try to open a native app using custom URL scheme
+   */
+  private async tryOpenNativeApp(appConfig: AppConfig): Promise<ApiResponse> {
+    try {
+      if (!appConfig.nativeApp) {
+        return { success: false, error: 'No native app config' };
+      }
+
+      let scheme: string | undefined;
+
+      // Get the appropriate URL scheme for the platform
+      if (isIOS()) {
+        scheme = appConfig.nativeApp.iosScheme;
+      } else if (isAndroid()) {
+        scheme = appConfig.nativeApp.androidScheme;
+      }
+
+      if (!scheme) {
+        return { success: false, error: 'No scheme for platform' };
+      }
+
+      // Try to open the app with a timeout
+      // Use Browser.open for custom schemes
+      const openPromise = Browser.open({ url: scheme });
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout')), 500)
+      );
+
+      await Promise.race([openPromise, timeoutPromise]);
+
+      // Add to history
+      await DatabaseService.addToHistory(appConfig.id, scheme);
+
+      return { success: true };
+
+    } catch (error) {
+      // App likely not installed or can't be opened
+      console.log('Native app not available:', error);
+      return { success: false, error: 'App not installed' };
+    }
+  }
+
+  /**
+   * Get App Store URL for installing native app
+   */
+  getAppStoreUrl(appConfig: AppConfig): string | null {
+    if (!appConfig.nativeApp) {
+      return null;
+    }
+
+    if (isIOS() && appConfig.nativeApp.iosAppStoreId) {
+      return `https://apps.apple.com/app/id${appConfig.nativeApp.iosAppStoreId}`;
+    }
+
+    if (isAndroid() && appConfig.nativeApp.androidPackage) {
+      return `https://play.google.com/store/apps/details?id=${appConfig.nativeApp.androidPackage}`;
+    }
+
+    return null;
+  }
+
+  /**
+   * Check if an app has native support
+   */
+  hasNativeSupport(appId: string): boolean {
+    const appConfig = NAVIGATION_APPS[appId];
+    return !!appConfig?.nativeApp?.hasNativeApp;
+  }
+
+  /**
+   * Get default native preference for an app
+   */
+  getDefaultNativePreference(appId: string): boolean {
+    const appConfig = NAVIGATION_APPS[appId];
+    return appConfig?.nativeApp?.preferNativeOnSmartphone ?? false;
   }
 
   /**

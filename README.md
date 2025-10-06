@@ -15,6 +15,7 @@ BBZCloud Mobile ist die mobile Adaption der Desktop-Electron-App für iOS und An
 - 🎨 **11 farbige App-Kacheln** für alle Schulplattformen
 - 👥 **Rollenbasierte Filterung** (Lehrkraft/Schüler:in)
 - 🔐 **Native Password-Manager Integration** (iOS Keychain, Android Autofill)
+- 📱 **Native App Support** für schul.cloud, Moodle & Office
 - 🌐 **InAppBrowser** mit Autofill-Support
 - 🔍 **Suche** über alle Apps
 - ⭐ **Favoriten-System** mit visuellen Indikatoren
@@ -22,6 +23,7 @@ BBZCloud Mobile ist die mobile Adaption der Desktop-Electron-App für iOS und An
 - 📱 **Responsive Design** für alle Bildschirmgrößen
 - ♻️ **Pull-to-Refresh** für Updates
 - 🔒 **Sichere Datenspeicherung** mit Capacitor
+- ⚡ **Smart Device Detection** (Smartphone vs. Tablet)
 
 ## 🚀 Verfügbare Apps
 
@@ -84,6 +86,69 @@ Die App speichert nur Ihre E-Mail-Adresse lokal für die Rollenerkennung:
 - **App-Einstellungen:** Theme, Favoriten, etc.
 
 **Wichtig:** Alle Passwörter werden ausschließlich vom nativen Password-Manager Ihres Geräts verwaltet - nicht in der App!
+
+## 📱 Native App Integration
+
+### Unterstützte Apps
+
+Die BBZCloud Mobile App kann automatisch native Apps öffnen, wenn diese auf Ihrem Gerät installiert sind:
+
+| App             | Native App verfügbar | Standard auf Smartphones |
+| --------------- | -------------------- | ------------------------ |
+| **schul.cloud** | ✅ Ja                | Native bevorzugt         |
+| **Moodle**      | ✅ Ja                | Website bevorzugt        |
+| **Office**      | ✅ Ja                | Website bevorzugt        |
+| Andere Apps     | ❌ Nein              | Immer Website            |
+
+### Wie es funktioniert
+
+**Auf Smartphones:**
+
+1. Sie tippen auf eine App-Kachel (z.B. schul.cloud)
+2. Die App prüft, ob die native App installiert ist
+3. **Falls installiert:** Native App öffnet sich direkt
+4. **Falls nicht installiert:** Modal mit zwei Optionen:
+   - "Im App Store öffnen" → Leitet Sie zum Download
+   - "Im Browser öffnen" → Öffnet die Website
+
+**Auf Tablets:**
+
+- Immer Website im InAppBrowser (besseres Layout)
+- Native Apps werden nicht verwendet
+
+### Installation Modal
+
+Wenn Sie eine App zum ersten Mal öffnen und die native Version nicht installiert ist, erscheint ein hilfreiches Modal:
+
+```
+┌─────────────────────────────────────┐
+│  schul.cloud App nicht installiert  │
+├─────────────────────────────────────┤
+│  [Icon der App]                     │
+│                                      │
+│  Die native schul.cloud App ist     │
+│  nicht installiert.                 │
+│                                      │
+│  Vorteile der nativen App:          │
+│  • Schnellere Performance           │
+│  • Bessere Geräte-Integration       │
+│  • Push-Benachrichtigungen          │
+│  • Offline-Funktionen               │
+│                                      │
+│  [Im App Store öffnen]              │
+│  [Im Browser öffnen]                │
+│                                      │
+│  ☐ Diese Meldung nicht mehr zeigen  │
+└─────────────────────────────────────┘
+```
+
+### Vorteile nativer Apps
+
+✅ **Performance:** Native Apps starten schneller und laufen flüssiger
+✅ **Push-Benachrichtigungen:** Echtzeitbenachrichtigungen vom System
+✅ **Offline-Modus:** Viele Funktionen auch ohne Internet
+✅ **Geräte-Integration:** Tiefere Integration mit iOS/Android
+✅ **Batterieschonend:** Optimiert für mobile Geräte
 
 ## 🛠️ Technologie-Stack
 

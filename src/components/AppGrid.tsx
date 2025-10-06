@@ -80,7 +80,11 @@ const AppGrid: React.FC<AppGridProps> = ({
             sizeLg="3"
             sizeXl="2"
           >
-            <AppCard app={app} onPress={onAppPress} />
+            <AppCard 
+              app={app} 
+              onPress={onAppPress} 
+              isLoading={app.isLoading}
+            />
           </IonCol>
         ))}
       </IonRow>

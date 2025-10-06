@@ -29,10 +29,11 @@ import { settingsOutline, star, apps } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import AppGrid from '../components/AppGrid';
 import WelcomeModal from '../components/WelcomeModal';
+import AppInstallModal from '../components/AppInstallModal';
 import { useSettings } from '../contexts/SettingsContext';
 import { useAuth } from '../contexts/AuthContext';
 import BrowserService from '../services/BrowserService';
-import { ERROR_MESSAGES } from '../utils/constants';
+import { ERROR_MESSAGES, NAVIGATION_APPS } from '../utils/constants';
 import type { App } from '../types';
 import './Home.css';
 
@@ -45,6 +46,8 @@ const Home: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMode, setFilterMode] = useState<'all' | 'favorites'>('all');
   const [showWelcome, setShowWelcome] = useState(!isAuthenticated && !authLoading);
+  const [loadingAppId, setLoadingAppId] = useState<string | null>(null);
+  const [installModalApp, setInstallModalApp] = useState<App | null>(null);
 
   /**
    * Handle pull-to-refresh
@@ -59,31 +62,62 @@ const Home: React.FC = () => {
   };
 
   /**
-   * Handle app card press - open in browser
+   * Handle app card press - open with native support
    */
   const handleAppPress = async (app: App) => {
     try {
-      // Check if user needs authentication for this app
-      if (app.requiresAuth && !isAuthenticated) {
-        presentToast({
-          message: ERROR_MESSAGES.CREDENTIALS_NOT_FOUND,
-          duration: 3000,
-          color: 'warning',
-          position: 'bottom'
-        });
+      setLoadingAppId(app.id);
+
+      const appConfig = NAVIGATION_APPS[app.id];
+      if (!appConfig) {
+        console.error('App config not found:', app.id);
         return;
       }
 
-      // Open app in InAppBrowser
-      const result = await BrowserService.openApp(app.id, app.url, app.color);
+      // Check if app has native support
+      const hasNativeSupport = BrowserService.hasNativeSupport(app.id);
       
-      if (!result.success) {
-        presentToast({
-          message: result.error || ERROR_MESSAGES.BROWSER_OPEN_FAILED,
-          duration: 3000,
-          color: 'danger',
-          position: 'bottom'
-        });
+      if (!hasNativeSupport) {
+        // No native support - open directly in browser
+        const result = await BrowserService.openApp(app.id, app.url, app.color);
+        
+        if (!result.success) {
+          presentToast({
+            message: result.error || ERROR_MESSAGES.BROWSER_OPEN_FAILED,
+            duration: 3000,
+            color: 'danger',
+            position: 'bottom'
+          });
+        }
+      } else {
+        // Has native support - check user preference
+        const preferNative = BrowserService.getDefaultNativePreference(app.id);
+        
+        // Try to open with native support
+        const nativeResult = await BrowserService.openAppWithNativeSupport(
+          appConfig,
+          preferNative
+        );
+
+        if (nativeResult.opened === 'native') {
+          // Successfully opened native app
+          console.log('Opened native app:', app.id);
+        } else if (nativeResult.opened === 'browser') {
+          // Opened in browser (tablet or user preference)
+          const result = await BrowserService.openApp(app.id, app.url, app.color);
+          
+          if (!result.success) {
+            presentToast({
+              message: result.error || ERROR_MESSAGES.BROWSER_OPEN_FAILED,
+              duration: 3000,
+              color: 'danger',
+              position: 'bottom'
+            });
+          }
+        } else {
+          // Native app not installed - show install modal
+          setInstallModalApp(app);
+        }
       }
     } catch (error) {
       console.error('Error opening app:', error);
@@ -93,7 +127,65 @@ const Home: React.FC = () => {
         color: 'danger',
         position: 'bottom'
       });
+    } finally {
+      setLoadingAppId(null);
     }
+  };
+
+  /**
+   * Handle install button in modal
+   */
+  const handleInstallApp = async () => {
+    if (!installModalApp) return;
+
+    const appConfig = NAVIGATION_APPS[installModalApp.id];
+    if (!appConfig) return;
+
+    const storeUrl = BrowserService.getAppStoreUrl(appConfig);
+    if (storeUrl) {
+      await BrowserService.openExternal(storeUrl);
+    }
+
+    setInstallModalApp(null);
+  };
+
+  /**
+   * Handle open in browser button in modal
+   */
+  const handleOpenInBrowser = async () => {
+    if (!installModalApp) return;
+
+    const result = await BrowserService.openApp(
+      installModalApp.id,
+      installModalApp.url,
+      installModalApp.color
+    );
+
+    if (!result.success) {
+      presentToast({
+        message: result.error || ERROR_MESSAGES.BROWSER_OPEN_FAILED,
+        duration: 3000,
+        color: 'danger',
+        position: 'bottom'
+      });
+    }
+
+    setInstallModalApp(null);
+  };
+
+  /**
+   * Handle don't show again in modal
+   */
+  const handleDontShowAgain = () => {
+    // TODO: Save preference to not show install prompt again
+    console.log('User chose not to show install prompt again');
+  };
+
+  /**
+   * Dismiss install modal
+   */
+  const handleDismissInstallModal = () => {
+    setInstallModalApp(null);
   };
 
   /**
@@ -178,7 +270,10 @@ const Home: React.FC = () => {
             )}
 
             <AppGrid
-              apps={settings.availableApps}
+              apps={settings.availableApps.map(app => ({
+                ...app,
+                isLoading: app.id === loadingAppId
+              }))}
               onAppPress={handleAppPress}
               searchQuery={searchQuery}
               showFavoritesOnly={filterMode === 'favorites'}
@@ -189,6 +284,18 @@ const Home: React.FC = () => {
 
       {/* Welcome Modal for first-time users */}
       <WelcomeModal isOpen={showWelcome} onComplete={handleWelcomeComplete} />
+
+      {/* App Install Modal */}
+      {installModalApp && (
+        <AppInstallModal
+          isOpen={!!installModalApp}
+          app={installModalApp}
+          onInstall={handleInstallApp}
+          onOpenInBrowser={handleOpenInBrowser}
+          onDismiss={handleDismissInstallModal}
+          onDontShowAgain={handleDontShowAgain}
+        />
+      )}
     </IonPage>
   );
 };

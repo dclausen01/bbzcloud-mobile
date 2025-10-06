@@ -51,6 +51,15 @@ export const URLS = {
 // NAVIGATION APPS CONFIGURATION
 // ============================================================================
 
+export interface NativeAppConfig {
+  hasNativeApp: boolean;
+  preferNativeOnSmartphone: boolean;
+  iosScheme?: string;
+  androidScheme?: string;
+  androidPackage?: string;
+  iosAppStoreId?: string;
+}
+
 export interface AppConfig {
   id: string;
   title: string;
@@ -60,6 +69,7 @@ export interface AppConfig {
   description?: string;
   requiresAuth?: boolean;
   teacherOnly?: boolean;
+  nativeApp?: NativeAppConfig;
 }
 
 export const NAVIGATION_APPS: Record<string, AppConfig> = {
@@ -71,6 +81,14 @@ export const NAVIGATION_APPS: Record<string, AppConfig> = {
     color: '#00A3E0',
     description: 'Cloud-basierte Lernplattform',
     requiresAuth: true,
+    nativeApp: {
+      hasNativeApp: true,
+      preferNativeOnSmartphone: true,
+      iosScheme: 'schulcloud://',
+      androidScheme: 'schulcloud://',
+      androidPackage: 'com.heinekingmedia.schul_cloud',
+      iosAppStoreId: '1082984793',
+    },
   },
   moodle: {
     id: 'moodle',
@@ -80,6 +98,14 @@ export const NAVIGATION_APPS: Record<string, AppConfig> = {
     color: '#F98012',
     description: 'Lernmanagementsystem',
     requiresAuth: true,
+    nativeApp: {
+      hasNativeApp: true,
+      preferNativeOnSmartphone: false,
+      iosScheme: 'moodlemobile://',
+      androidScheme: 'moodlemobile://',
+      androidPackage: 'com.moodle.moodlemobile',
+      iosAppStoreId: '633359593',
+    },
   },
   bbb: {
     id: 'bbb',
@@ -108,6 +134,14 @@ export const NAVIGATION_APPS: Record<string, AppConfig> = {
     color: '#D83B01',
     description: 'Microsoft Office 365',
     requiresAuth: true,
+    nativeApp: {
+      hasNativeApp: true,
+      preferNativeOnSmartphone: false,
+      iosScheme: 'ms-word://',
+      androidScheme: 'ms-word://',
+      androidPackage: 'com.microsoft.office.word',
+      iosAppStoreId: '586447913',
+    },
   },
   cryptpad: {
     id: 'cryptpad',
