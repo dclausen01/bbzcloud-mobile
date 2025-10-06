@@ -240,12 +240,19 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
    */
   const setTheme = async (theme: 'light' | 'dark' | 'system'): Promise<void> => {
     try {
+      console.log('setTheme called with:', theme);
+      
       await Preferences.set({
         key: STORAGE_KEYS.THEME,
         value: theme
       });
 
-      setSettings(prev => ({ ...prev, theme }));
+      setSettings(prev => {
+        console.log('Updating settings from', prev.theme, 'to', theme);
+        return { ...prev, theme };
+      });
+      
+      console.log('Theme set successfully');
     } catch (error) {
       console.error('Error setting theme:', error);
       throw error;

@@ -33,7 +33,7 @@ import './Settings.css';
 
 const Settings: React.FC = () => {
   const { user, logout } = useAuth();
-  const { settings, setTheme, updateSettings } = useSettings();
+  const { settings, setTheme } = useSettings();
   const [presentToast] = useIonToast();
 
   /**
@@ -58,13 +58,6 @@ const Settings: React.FC = () => {
    */
   const handleThemeToggle = async (checked: boolean) => {
     await setTheme(checked ? 'dark' : 'light');
-  };
-
-  /**
-   * Handle haptic feedback toggle
-   */
-  const handleHapticToggle = async (checked: boolean) => {
-    await updateSettings({ hapticFeedback: checked });
   };
 
   return (
@@ -128,16 +121,6 @@ const Settings: React.FC = () => {
           <IonListHeader>
             <IonLabel>App-Einstellungen</IonLabel>
           </IonListHeader>
-          <IonItem>
-            <IonLabel>
-              <h2>Haptisches Feedback</h2>
-              <p>Vibrationen bei Interaktionen</p>
-            </IonLabel>
-            <IonToggle
-              checked={settings.hapticFeedback}
-              onIonChange={(e) => handleHapticToggle(e.detail.checked)}
-            />
-          </IonItem>
           <IonItem>
             <IonLabel>
               <h2>Verfügbare Apps</h2>
