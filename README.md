@@ -1,6 +1,6 @@
 # BBZCloud Mobile
 
-Die mobile App für die BBZ Cloud - eine All-in-One-Plattform für Unterricht und Zusammenarbeit am Berufsbildungszentrum Radolfzell-Stockach.
+Die mobile App für die BBZ Cloud - eine All-in-One-Plattform für Unterricht und Zusammenarbeit am BBZ Rendsburg-Eckernförde.
 
 <div align="center">
   <img src="public/icon.png" alt="BBZCloud Logo" width="120" height="120">
