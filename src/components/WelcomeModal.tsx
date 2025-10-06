@@ -22,21 +22,17 @@ import {
   IonIcon,
   useIonToast
 } from '@ionic/react';
-import { mailOutline, keyOutline } from 'ionicons/icons';
+import { mailOutline } from 'ionicons/icons';
 import { useAuth } from '../contexts/AuthContext';
-import { INFO_MESSAGES, ERROR_MESSAGES, SUCCESS_MESSAGES } from '../utils/constants';
+import { INFO_MESSAGES, ERROR_MESSAGES } from '../utils/constants';
 import type { WelcomeModalProps } from '../types';
 import './WelcomeModal.css';
 
 const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onComplete }) => {
-  const { login, saveCredentials } = useAuth();
+  const { login } = useAuth();
   const [presentToast] = useIonToast();
 
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [bbbPassword, setBbbPassword] = useState('');
-  const [webuntisEmail, setWebuntisEmail] = useState('');
-  const [webuntisPassword, setWebuntisPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   /**
@@ -74,21 +70,12 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onComplete }) => {
     try {
       setIsLoading(true);
 
-      // Login with provided credentials
-      await login(email, password);
-
-      // Save additional credentials if provided
-      if (bbbPassword || webuntisEmail || webuntisPassword) {
-        await saveCredentials({
-          bbbPassword: bbbPassword || undefined,
-          webuntisEmail: webuntisEmail || undefined,
-          webuntisPassword: webuntisPassword || undefined
-        });
-      }
+      // Login with email only (for role detection)
+      await login(email, '');
 
       presentToast({
-        message: SUCCESS_MESSAGES.CREDENTIALS_SAVED,
-        duration: 3000,
+        message: 'Einrichtung abgeschlossen! Bitte nutzen Sie den nativen Password-Manager Ihres Geräts für Ihre App-Logins.',
+        duration: 4000,
         color: 'success',
         position: 'bottom'
       });
@@ -119,7 +106,7 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onComplete }) => {
         <div className="welcome-modal-body">
           <div className="welcome-header">
             <h2>{INFO_MESSAGES.WELCOME}</h2>
-            <p>{INFO_MESSAGES.FIRST_TIME_SETUP}</p>
+            <p>Bitte geben Sie Ihre E-Mail-Adresse ein, um zu starten.</p>
           </div>
 
           <IonList>
@@ -134,63 +121,15 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onComplete }) => {
                 required
               />
             </IonItem>
-
-            <IonItem>
-              <IonIcon icon={keyOutline} slot="start" />
-              <IonLabel position="stacked">Passwort (optional)</IonLabel>
-              <IonInput
-                type="password"
-                value={password}
-                onIonInput={(e) => setPassword(e.detail.value || '')}
-                placeholder="Ihr Passwort"
-              />
-            </IonItem>
-
-            <div className="welcome-section-divider">
-              <IonText color="medium">
-                <h3>Zusätzliche Anmeldedaten (optional)</h3>
-              </IonText>
-            </div>
-
-            <IonItem>
-              <IonIcon icon={keyOutline} slot="start" />
-              <IonLabel position="stacked">BigBlueButton Passwort</IonLabel>
-              <IonInput
-                type="password"
-                value={bbbPassword}
-                onIonInput={(e) => setBbbPassword(e.detail.value || '')}
-                placeholder="BBB Passwort"
-              />
-            </IonItem>
-
-            <IonItem>
-              <IonIcon icon={mailOutline} slot="start" />
-              <IonLabel position="stacked">WebUntis Benutzername</IonLabel>
-              <IonInput
-                type="text"
-                value={webuntisEmail}
-                onIonInput={(e) => setWebuntisEmail(e.detail.value || '')}
-                placeholder="WebUntis Benutzername"
-              />
-            </IonItem>
-
-            <IonItem>
-              <IonIcon icon={keyOutline} slot="start" />
-              <IonLabel position="stacked">WebUntis Passwort</IonLabel>
-              <IonInput
-                type="password"
-                value={webuntisPassword}
-                onIonInput={(e) => setWebuntisPassword(e.detail.value || '')}
-                placeholder="WebUntis Passwort"
-              />
-            </IonItem>
           </IonList>
 
           <div className="welcome-footer">
             <IonText color="medium">
               <p className="welcome-info-text">
-                * Pflichtfeld<br />
-                Ihre Anmeldedaten werden sicher auf Ihrem Gerät gespeichert.
+                * Pflichtfeld<br /><br />
+                <strong>Passwortverwaltung:</strong><br />
+                Ihre App-Passwörter werden automatisch vom nativen Password-Manager Ihres Geräts verwaltet (iCloud Keychain auf iOS, Google Password Manager auf Android).<br /><br />
+                Beim ersten Login in einer App wird Ihr Gerät anbieten, das Passwort zu speichern.
               </p>
             </IonText>
           </div>

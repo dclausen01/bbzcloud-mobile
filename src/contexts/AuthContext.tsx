@@ -141,11 +141,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   /**
-   * Save user credentials
+   * Save user email only (simplified - passwords managed by native password managers)
    */
   const saveCredentials = async (newCredentials: UserCredentials): Promise<void> => {
     try {
-      await CredentialService.saveCredentials(newCredentials);
+      // Only save email for role detection
+      if (newCredentials.email) {
+        await CredentialService.saveCredential('email', newCredentials.email);
+      }
       
       // Reload credentials to update state
       await loadCredentials();

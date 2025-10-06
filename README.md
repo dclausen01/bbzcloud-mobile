@@ -76,15 +76,14 @@ Die App nutzt die **nativen Password-Manager** Ihres Geräts für maximale Siche
    - Ihr Gerät bietet gespeicherte Credentials an
    - Ein Tap → Automatisch eingeloggt!
 
-### In-App Credential-Speicherung
+### In-App Daten-Speicherung
 
-Zusätzlich können Sie in der App Ihre Haupt-E-Mail und optionale Zusatz-Credentials speichern:
+Die App speichert nur Ihre E-Mail-Adresse lokal für die Rollenerkennung:
 
-- **E-Mail-Adresse:** Für Rollenerkennung (Lehrkraft vs. Schüler:in)
-- **BigBlueButton Passwort:** Falls abweichend vom Hauptpasswort
-- **WebUntis Credentials:** Falls separate Anmeldung benötigt
+- **E-Mail-Adresse:** Zur Unterscheidung zwischen Lehrkraft und Schüler:in
+- **App-Einstellungen:** Theme, Favoriten, etc.
 
-Diese werden verschlüsselt auf Ihrem Gerät gespeichert (Capacitor Secure Storage).
+**Wichtig:** Alle Passwörter werden ausschließlich vom nativen Password-Manager Ihres Geräts verwaltet - nicht in der App!
 
 ## 🛠️ Technologie-Stack
 
