@@ -1,4 +1,4 @@
-/**
+ a/**
  * BBZCloud Mobile - Browser Service
  * 
  * Handles opening web apps in InAppBrowser using Capacitor Browser plugin
@@ -139,23 +139,24 @@ class BrowserService {
         return { success: false, error: 'No scheme for platform' };
       }
 
-      // Try to open the app with a timeout
-      // Use Browser.open for custom schemes
-      const openPromise = Browser.open({ url: scheme });
-      const timeoutPromise = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('Timeout')), 500)
-      );
-
-      await Promise.race([openPromise, timeoutPromise]);
-
-      // Add to history
-      await DatabaseService.addToHistory(appConfig.id, scheme);
-
-      return { success: true };
+      try {
+        // Try to open the native app
+        await Browser.open({ url: scheme });
+        
+        // Add to history
+        await DatabaseService.addToHistory(appConfig.id, scheme);
+        
+        // If we get here, the app opened successfully
+        return { success: true };
+      } catch (error) {
+        // If Browser.open throws an error, the app is not installed
+        console.log('Native app failed to open:', error);
+        return { success: false, error: 'App not installed' };
+      }
 
     } catch (error) {
-      // App likely not installed or can't be opened
-      console.log('Native app not available:', error);
+      // General error
+      console.log('Native app error:', error);
       return { success: false, error: 'App not installed' };
     }
   }

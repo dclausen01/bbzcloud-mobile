@@ -78,8 +78,8 @@ export const NAVIGATION_APPS: Record<string, AppConfig> = {
     title: 'schul.cloud',
     url: URLS.SCHULCLOUD,
     icon: 'cloud',
-    color: '#00A3E0',
-    description: 'Cloud-basierte Lernplattform',
+    color: '#FFA500',
+    description: 'Kommunikation & Dateiablage',
     requiresAuth: true,
     nativeApp: {
       hasNativeApp: true,
@@ -168,6 +168,14 @@ export const NAVIGATION_APPS: Record<string, AppConfig> = {
     color: '#FF8800',
     description: 'Stundenplan',
     requiresAuth: true,
+    nativeApp: {
+      hasNativeApp: true,
+      preferNativeOnSmartphone: true,
+      iosScheme: 'untis://',
+      androidScheme: 'untis://',
+      androidPackage: 'com.untis.mobile.student',
+      iosAppStoreId: '926186904',
+    },
   },
   fobizz: {
     id: 'fobizz',

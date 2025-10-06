@@ -112,11 +112,11 @@ const Home: React.FC = () => {
           }
         } else {
           // Native app not installed
-          // For schul.cloud, auto-fallback to browser with info toast
-          if (app.id === 'schulcloud') {
+          // For schul.cloud and webuntis, auto-fallback to browser with info toast
+          if (app.id === 'schulcloud' || app.id === 'webuntis') {
             // Show toast notification
             await presentToast({
-              message: 'Die schul.cloud App ist nicht installiert. Öffne im Browser...',
+              message: `Die ${app.title} App ist nicht installiert. Öffne im Browser...`,
               duration: 3000,
               color: 'warning',
               position: 'bottom'
