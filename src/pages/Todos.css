@@ -1,0 +1,12 @@
+/**
+ * BBZCloud Mobile - Todos Page Styles
+ */
+
+.todo-completed {
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+
+.todo-completed h2 {
+  text-decoration: line-through;
+}

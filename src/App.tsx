@@ -11,6 +11,7 @@ import { IonApp, IonRouterOutlet, setupIonicReact } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
 import Home from './pages/Home';
 import Settings from './pages/Settings';
+import Todos from './pages/Todos';
 import { AuthProvider } from './contexts/AuthContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 
@@ -57,6 +58,9 @@ const App: React.FC = () => (
             </Route>
             <Route exact path="/settings">
               <Settings />
+            </Route>
+            <Route exact path="/todos">
+              <Todos />
             </Route>
             <Route exact path="/">
               <Redirect to="/home" />

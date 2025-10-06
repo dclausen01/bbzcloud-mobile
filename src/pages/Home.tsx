@@ -22,7 +22,7 @@ import {
   RefresherEventDetail,
   useIonToast
 } from '@ionic/react';
-import { settingsOutline } from 'ionicons/icons';
+import { settingsOutline, listOutline } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import AppGrid from '../components/AppGrid';
 import WelcomeModal from '../components/WelcomeModal';
@@ -114,16 +114,22 @@ const Home: React.FC = () => {
           // Native app not installed
           // For schul.cloud, auto-fallback to browser with info toast
           if (app.id === 'schulcloud') {
-            presentToast({
+            // Show toast notification
+            await presentToast({
               message: 'Die schul.cloud App ist nicht installiert. Öffne im Browser...',
               duration: 3000,
               color: 'warning',
               position: 'bottom'
             });
 
+            // Small delay to ensure toast is visible
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            // Open in browser
             const result = await BrowserService.openApp(app.id, app.url, app.color);
             
             if (!result.success) {
+              console.error('Failed to open in browser:', result.error);
               presentToast({
                 message: result.error || ERROR_MESSAGES.BROWSER_OPEN_FAILED,
                 duration: 3000,
@@ -228,6 +234,9 @@ const Home: React.FC = () => {
         <IonToolbar>
           <IonTitle>BBZCloud Mobile</IonTitle>
           <IonButtons slot="end">
+            <IonButton onClick={() => history.push('/todos')}>
+              <IonIcon slot="icon-only" icon={listOutline} />
+            </IonButton>
             <IonButton onClick={goToSettings}>
               <IonIcon slot="icon-only" icon={settingsOutline} />
             </IonButton>

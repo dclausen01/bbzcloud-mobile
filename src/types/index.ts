@@ -243,6 +243,24 @@ export interface AppEvent {
 }
 
 // ============================================================================
+// TODO TYPES
+// ============================================================================
+
+export interface Todo {
+  id: number;
+  text: string;
+  completed: boolean;
+  createdAt: string;
+  folder: string;
+}
+
+export interface TodoState {
+  todos: Todo[];
+  folders: string[];
+  selectedFolder: string;
+}
+
+// ============================================================================
 // UTILITY TYPES
 // ============================================================================
 
