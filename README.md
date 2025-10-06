@@ -15,11 +15,11 @@ BBZCloud Mobile ist die mobile Adaption der Desktop-Electron-App für iOS und An
 - 🎨 **11 farbige App-Kacheln** für alle Schulplattformen
 - 👥 **Rollenbasierte Filterung** (Lehrkraft/Schüler:in)
 - 🔐 **Native Password-Manager Integration** (iOS Keychain, Android Autofill)
-- 📱 **Native App Support** für schul.cloud, Moodle & Office
+- 📱 **Native App Support** für Moodle & Office
 - 🌐 **InAppBrowser** mit Autofill-Support
 - 🔍 **Suche** über alle Apps
-- ⭐ **Favoriten-System** mit visuellen Indikatoren
-- 🌓 **Dark Mode** mit System-Sync
+- ✅ **Todo-Liste** mit Ordnern und Filterung
+- 🌓 **Dark Mode** (Hell/Dunkel/System)
 - 📱 **Responsive Design** für alle Bildschirmgrößen
 - ♻️ **Pull-to-Refresh** für Updates
 - 🔒 **Sichere Datenspeicherung** mit Capacitor
@@ -31,7 +31,7 @@ Die App bietet direkten Zugriff auf folgende Plattformen:
 
 | App                  | Beschreibung                  | Verfügbar für |
 | -------------------- | ----------------------------- | ------------- |
-| 🌩️ **schul.cloud**   | Messenger & Dateiablage       | Alle          |
+| 🌩️ **schul.cloud**   | Kommunikation & Dateiablage   | Alle          |
 | 📚 **Moodle**        | Lernplattform                 | Alle          |
 | 🎥 **BigBlueButton** | Videokonferenzen              | Alle          |
 | 📧 **Outlook**       | E-Mail & Kalender             | Alle          |
@@ -42,6 +42,52 @@ Die App bietet direkten Zugriff auf folgende Plattformen:
 | 🎓 **Fobizz**        | Fortbildungen                 | Lehrkräfte    |
 | 🏫 **Intranet**      | Schulinformationen            | Alle          |
 | 📋 **Anträge**       | Formulare & Anträge           | Lehrkräfte    |
+
+## ✅ Todo-Liste
+
+Die App enthält eine integrierte Todo-Liste mit erweiterten Funktionen:
+
+### Features
+
+- 📝 **Todos erstellen und bearbeiten**
+- 📁 **Ordner-Verwaltung** für bessere Organisation
+- 🔍 **Filter** nach Status (Alle/Aktiv/Erledigt)
+- ✅ **Fortschrittsanzeige** im Header
+- 💾 **Persistente Speicherung** mit Capacitor Preferences
+- 🎨 **Mobile-optimiertes UI** mit Swipe-Gesten
+- 📱 **Schnellzugriff** über Header-Button (Listen-Icon)
+
+### Verwendung
+
+1. **Todo erstellen:**
+
+   - Tippen Sie auf das Listen-Icon im Header
+   - Klicken Sie auf "+" (Hinzufügen)
+   - Geben Sie Titel und optional Beschreibung ein
+   - Wählen Sie einen Ordner aus
+   - Tippen Sie auf "Speichern"
+
+2. **Ordner erstellen:**
+
+   - In der Todo-Ansicht auf "Ordner" tippen
+   - Auf "+" tippen
+   - Ordnernamen eingeben
+   - Farbe wählen (optional)
+
+3. **Todo bearbeiten:**
+
+   - Swipe nach rechts auf einem Todo
+   - Oder tippen Sie auf das Bearbeiten-Icon
+   - Änderungen vornehmen und speichern
+
+4. **Todo löschen:**
+
+   - Swipe nach links auf einem Todo
+   - Bestätigen Sie das Löschen
+
+5. **Filtern:**
+   - Nutzen Sie die Segment-Buttons (Alle/Aktiv/Erledigt)
+   - Wählen Sie einen Ordner zur Filterung
 
 ## 🔐 Passwortverwaltung
 
@@ -93,12 +139,13 @@ Die App speichert nur Ihre E-Mail-Adresse lokal für die Rollenerkennung:
 
 Die BBZCloud Mobile App kann automatisch native Apps öffnen, wenn diese auf Ihrem Gerät installiert sind:
 
-| App             | Native App verfügbar | Standard auf Smartphones |
-| --------------- | -------------------- | ------------------------ |
-| **schul.cloud** | ✅ Ja                | Native bevorzugt         |
-| **Moodle**      | ✅ Ja                | Website bevorzugt        |
-| **Office**      | ✅ Ja                | Website bevorzugt        |
-| Andere Apps     | ❌ Nein              | Immer Website            |
+| App             | Native App verfügbar | Standard                     |
+| --------------- | -------------------- | ---------------------------- |
+| **schul.cloud** | ❌ Nein              | Immer Website (InAppBrowser) |
+| **WebUntis**    | ❌ Nein              | Immer Website (InAppBrowser) |
+| **Moodle**      | ✅ Ja                | Website bevorzugt            |
+| **Office**      | ✅ Ja                | Website bevorzugt            |
+| Andere Apps     | ❌ Nein              | Immer Website                |
 
 ### Wie es funktioniert
 

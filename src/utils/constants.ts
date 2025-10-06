@@ -161,14 +161,7 @@ export const NAVIGATION_APPS: Record<string, AppConfig> = {
     color: '#FF8800',
     description: 'Stundenplan',
     requiresAuth: true,
-    nativeApp: {
-      hasNativeApp: true,
-      preferNativeOnSmartphone: true,
-      iosScheme: 'untis://',
-      androidScheme: 'untis://',
-      androidPackage: 'com.untis.mobile.student',
-      iosAppStoreId: '926186904',
-    },
+    // Always open in browser - no native app support
   },
   fobizz: {
     id: 'fobizz',

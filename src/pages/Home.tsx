@@ -111,36 +111,8 @@ const Home: React.FC = () => {
             });
           }
         } else {
-          // Native app not installed
-          // For schul.cloud and webuntis, auto-fallback to browser with info toast
-          if (app.id === 'schulcloud' || app.id === 'webuntis') {
-            // Show toast notification
-            await presentToast({
-              message: `Die ${app.title} App ist nicht installiert. Öffne im Browser...`,
-              duration: 3000,
-              color: 'warning',
-              position: 'bottom'
-            });
-
-            // Small delay to ensure toast is visible
-            await new Promise(resolve => setTimeout(resolve, 300));
-
-            // Open in browser
-            const result = await BrowserService.openApp(app.id, app.url, app.color);
-            
-            if (!result.success) {
-              console.error('Failed to open in browser:', result.error);
-              presentToast({
-                message: result.error || ERROR_MESSAGES.BROWSER_OPEN_FAILED,
-                duration: 3000,
-                color: 'danger',
-                position: 'bottom'
-              });
-            }
-          } else {
-            // For other apps, show install modal
-            setInstallModalApp(app);
-          }
+          // Native app not installed - show install modal
+          setInstallModalApp(app);
         }
       }
     } catch (error) {
