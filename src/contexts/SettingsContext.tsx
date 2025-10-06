@@ -25,7 +25,6 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
   const [settings, setSettings] = useState<SettingsState>({
     theme: 'system',
     appVisibility: {},
-    favoriteApps: [],
     hapticFeedback: true,
     isLoading: true,
     user: null,
@@ -50,6 +49,40 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
       loadUserSpecificSettings();
     }
   }, [user]);
+
+  /**
+   * Apply theme to document when it changes
+   */
+  useEffect(() => {
+    const applyTheme = () => {
+      const { theme } = settings;
+      
+      if (theme === 'dark') {
+        document.body.classList.add('dark');
+      } else if (theme === 'light') {
+        document.body.classList.remove('dark');
+      } else {
+        // System theme - check system preference
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (prefersDark) {
+          document.body.classList.add('dark');
+        } else {
+          document.body.classList.remove('dark');
+        }
+      }
+    };
+
+    applyTheme();
+
+    // Listen for system theme changes if using system theme
+    if (settings.theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleChange = () => applyTheme();
+      
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
+    }
+  }, [settings.theme]);
 
   /**
    * Load all settings from storage
@@ -84,7 +117,7 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
   }, []);
 
   /**
-   * Load user-specific settings (app visibility, favorites)
+   * Load user-specific settings (app visibility)
    */
   const loadUserSpecificSettings = async () => {
     if (!user?.id) return;
@@ -93,16 +126,9 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
       // Load app visibility
       const visibility = await DatabaseService.getAppVisibility(user.id);
 
-      // Load favorites
-      const favoritesResult = await DatabaseService.getFavorites();
-      const favoriteApps = favoritesResult.success && favoritesResult.data
-        ? favoritesResult.data.map(f => f.appId)
-        : [];
-
       setSettings(prev => ({
         ...prev,
-        appVisibility: visibility,
-        favoriteApps
+        appVisibility: visibility
       }));
     } catch (error) {
       console.error('Error loading user-specific settings:', error);
@@ -135,19 +161,15 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
       return true;
     });
 
-    // Load favorites status and visibility for each app
-    const appsWithStatus = await Promise.all(
-      filteredApps.map(async app => {
-        const isFavorite = await DatabaseService.isFavorite(app.id);
-        const visibility = settings.appVisibility[app.id] ?? true;
+    // Load visibility for each app
+    const appsWithStatus = filteredApps.map(app => {
+      const visibility = settings.appVisibility[app.id] ?? true;
 
-        return {
-          ...app,
-          isFavorite,
-          isVisible: visibility
-        };
-      })
-    );
+      return {
+        ...app,
+        isVisible: visibility
+      };
+    });
 
     return appsWithStatus;
   };
@@ -214,36 +236,6 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
   };
 
   /**
-   * Toggle favorite status for an app
-   */
-  const toggleFavorite = async (appId: string): Promise<void> => {
-    try {
-      const isFavorite = settings.favoriteApps.includes(appId);
-
-      if (isFavorite) {
-        await DatabaseService.removeFavorite(appId);
-        setSettings(prev => ({
-          ...prev,
-          favoriteApps: prev.favoriteApps.filter(id => id !== appId)
-        }));
-      } else {
-        await DatabaseService.addFavorite(appId);
-        setSettings(prev => ({
-          ...prev,
-          favoriteApps: [...prev.favoriteApps, appId]
-        }));
-      }
-
-      // Reload available apps to reflect changes
-      const availableApps = await getAvailableApps();
-      setSettings(prev => ({ ...prev, availableApps }));
-    } catch (error) {
-      console.error('Error toggling favorite:', error);
-      throw error;
-    }
-  };
-
-  /**
    * Set theme
    */
   const setTheme = async (theme: 'light' | 'dark' | 'system'): Promise<void> => {
@@ -264,7 +256,6 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
     settings,
     updateSettings,
     toggleAppVisibility,
-    toggleFavorite,
     setTheme,
     loadSettings,
     isLoading

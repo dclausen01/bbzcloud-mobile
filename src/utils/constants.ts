@@ -354,12 +354,4 @@ export const DATABASE_SCHEMA = {
       visited_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `,
-  FAVORITES: `
-    CREATE TABLE IF NOT EXISTS favorites (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      app_id TEXT UNIQUE NOT NULL,
-      order_index INTEGER NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `,
 };

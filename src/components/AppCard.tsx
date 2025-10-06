@@ -52,12 +52,6 @@ const AppCard: React.FC<AppCardProps> = ({ app, onPress, onLongPress, isLoading 
         {app.description && (
           <div className="app-card-description">{app.description}</div>
         )}
-        {app.isFavorite && (
-          <IonIcon
-            icon={icons.star}
-            className="app-card-favorite-badge"
-          />
-        )}
       </IonCardContent>
     </IonCard>
   );

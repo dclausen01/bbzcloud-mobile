@@ -15,11 +15,10 @@ import './AppGrid.css';
 const AppGrid: React.FC<AppGridProps> = ({ 
   apps, 
   onAppPress, 
-  searchQuery = '', 
-  showFavoritesOnly = false 
+  searchQuery = ''
 }) => {
   /**
-   * Filter apps based on search query and favorites filter
+   * Filter apps based on search query
    */
   const filteredApps = useMemo(() => {
     let filtered = apps.filter(app => app.isVisible !== false);
@@ -33,36 +32,15 @@ const AppGrid: React.FC<AppGridProps> = ({
       );
     }
 
-    // Filter by favorites
-    if (showFavoritesOnly) {
-      filtered = filtered.filter(app => app.isFavorite);
-    }
-
     return filtered;
-  }, [apps, searchQuery, showFavoritesOnly]);
+  }, [apps, searchQuery]);
 
-  /**
-   * Separate favorites and non-favorites for sorting
-   */
-  const sortedApps = useMemo(() => {
-    if (showFavoritesOnly) {
-      return filteredApps;
-    }
-
-    const favorites = filteredApps.filter(app => app.isFavorite);
-    const nonFavorites = filteredApps.filter(app => !app.isFavorite);
-
-    return [...favorites, ...nonFavorites];
-  }, [filteredApps, showFavoritesOnly]);
-
-  if (sortedApps.length === 0) {
+  if (filteredApps.length === 0) {
     return (
       <div className="app-grid-empty">
         <p>
           {searchQuery
             ? 'Keine Apps gefunden'
-            : showFavoritesOnly
-            ? 'Keine Favoriten vorhanden'
             : 'Keine Apps verfügbar'}
         </p>
       </div>
@@ -72,7 +50,7 @@ const AppGrid: React.FC<AppGridProps> = ({
   return (
     <IonGrid className="app-grid">
       <IonRow>
-        {sortedApps.map(app => (
+        {filteredApps.map(app => (
           <IonCol
             key={app.id}
             size="6"

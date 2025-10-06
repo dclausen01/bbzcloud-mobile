@@ -8,7 +8,7 @@
 
 import { CapacitorSQLite, SQLiteConnection, SQLiteDBConnection } from '@capacitor-community/sqlite';
 import { APP_CONFIG, DATABASE_SCHEMA } from '../utils/constants';
-import type { DatabaseResult, User, Favorite, BrowserHistory, DBSettings } from '../types';
+import type { DatabaseResult, User, BrowserHistory, DBSettings } from '../types';
 
 class DatabaseService {
   private sqlite: SQLiteConnection;
@@ -67,7 +67,6 @@ class DatabaseService {
       await this.db.execute(DATABASE_SCHEMA.USER_PROFILE);
       await this.db.execute(DATABASE_SCHEMA.APP_VISIBILITY);
       await this.db.execute(DATABASE_SCHEMA.BROWSER_HISTORY);
-      await this.db.execute(DATABASE_SCHEMA.FAVORITES);
 
       console.log('All tables created successfully');
     } catch (error) {
@@ -279,114 +278,6 @@ class DatabaseService {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
       };
-    }
-  }
-
-  // ============================================================================
-  // FAVORITES OPERATIONS
-  // ============================================================================
-
-  /**
-   * Get all favorite apps
-   */
-  async getFavorites(): Promise<DatabaseResult<Favorite[]>> {
-    try {
-      if (!this.db) await this.initialize();
-
-      const result = await this.db!.query(
-        'SELECT * FROM favorites ORDER BY order_index ASC'
-      );
-
-      const favorites: Favorite[] = [];
-      
-      if (result.values) {
-        for (const row of result.values) {
-          favorites.push({
-            id: row.id,
-            appId: row.app_id,
-            orderIndex: row.order_index,
-            createdAt: new Date(row.created_at)
-          });
-        }
-      }
-
-      return { success: true, data: favorites };
-    } catch (error) {
-      console.error('Error getting favorites:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-    }
-  }
-
-  /**
-   * Add an app to favorites
-   */
-  async addFavorite(appId: string): Promise<DatabaseResult> {
-    try {
-      if (!this.db) await this.initialize();
-
-      // Get the current max order index
-      const maxResult = await this.db!.query(
-        'SELECT MAX(order_index) as max_order FROM favorites'
-      );
-      
-      const maxOrder = maxResult.values?.[0]?.max_order || 0;
-
-      await this.db!.run(
-        'INSERT INTO favorites (app_id, order_index) VALUES (?, ?)',
-        [appId, maxOrder + 1]
-      );
-
-      return { success: true };
-    } catch (error) {
-      console.error('Error adding favorite:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-    }
-  }
-
-  /**
-   * Remove an app from favorites
-   */
-  async removeFavorite(appId: string): Promise<DatabaseResult> {
-    try {
-      if (!this.db) await this.initialize();
-
-      await this.db!.run(
-        'DELETE FROM favorites WHERE app_id = ?',
-        [appId]
-      );
-
-      return { success: true };
-    } catch (error) {
-      console.error('Error removing favorite:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
-    }
-  }
-
-  /**
-   * Check if an app is a favorite
-   */
-  async isFavorite(appId: string): Promise<boolean> {
-    try {
-      if (!this.db) await this.initialize();
-
-      const result = await this.db!.query(
-        'SELECT COUNT(*) as count FROM favorites WHERE app_id = ?',
-        [appId]
-      );
-
-      return result.values?.[0]?.count > 0;
-    } catch (error) {
-      console.error('Error checking favorite:', error);
-      return false;
     }
   }
 

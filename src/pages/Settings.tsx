@@ -144,12 +144,6 @@ const Settings: React.FC = () => {
               <p>{settings.availableApps.length} Apps sichtbar</p>
             </IonLabel>
           </IonItem>
-          <IonItem>
-            <IonLabel>
-              <h2>Favoriten</h2>
-              <p>{settings.favoriteApps.length} Apps als Favoriten markiert</p>
-            </IonLabel>
-          </IonItem>
         </IonList>
 
         {/* About Section */}

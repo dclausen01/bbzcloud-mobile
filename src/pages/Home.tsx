@@ -17,15 +17,12 @@ import {
   IonButtons,
   IonButton,
   IonIcon,
-  IonSegment,
-  IonSegmentButton,
-  IonLabel,
   IonRefresher,
   IonRefresherContent,
   RefresherEventDetail,
   useIonToast
 } from '@ionic/react';
-import { settingsOutline, star, apps } from 'ionicons/icons';
+import { settingsOutline } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import AppGrid from '../components/AppGrid';
 import WelcomeModal from '../components/WelcomeModal';
@@ -44,7 +41,6 @@ const Home: React.FC = () => {
   const [presentToast] = useIonToast();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterMode, setFilterMode] = useState<'all' | 'favorites'>('all');
   const [showWelcome, setShowWelcome] = useState(!isAuthenticated && !authLoading);
   const [loadingAppId, setLoadingAppId] = useState<string | null>(null);
   const [installModalApp, setInstallModalApp] = useState<App | null>(null);
@@ -115,8 +111,30 @@ const Home: React.FC = () => {
             });
           }
         } else {
-          // Native app not installed - show install modal
-          setInstallModalApp(app);
+          // Native app not installed
+          // For schul.cloud, auto-fallback to browser with info toast
+          if (app.id === 'schulcloud') {
+            presentToast({
+              message: 'Die schul.cloud App ist nicht installiert. Öffne im Browser...',
+              duration: 3000,
+              color: 'warning',
+              position: 'bottom'
+            });
+
+            const result = await BrowserService.openApp(app.id, app.url, app.color);
+            
+            if (!result.success) {
+              presentToast({
+                message: result.error || ERROR_MESSAGES.BROWSER_OPEN_FAILED,
+                duration: 3000,
+                color: 'danger',
+                position: 'bottom'
+              });
+            }
+          } else {
+            // For other apps, show install modal
+            setInstallModalApp(app);
+          }
         }
       }
     } catch (error) {
@@ -223,23 +241,6 @@ const Home: React.FC = () => {
             debounce={300}
           />
         </IonToolbar>
-        <IonToolbar>
-          <IonSegment
-            value={filterMode}
-            onIonChange={(e) => setFilterMode(e.detail.value as 'all' | 'favorites')}
-          >
-            <IonSegmentButton value="all">
-              <IonLabel>
-                <IonIcon icon={apps} /> Alle
-              </IonLabel>
-            </IonSegmentButton>
-            <IonSegmentButton value="favorites">
-              <IonLabel>
-                <IonIcon icon={star} /> Favoriten
-              </IonLabel>
-            </IonSegmentButton>
-          </IonSegment>
-        </IonToolbar>
       </IonHeader>
 
       <IonContent fullscreen>
@@ -276,7 +277,6 @@ const Home: React.FC = () => {
               }))}
               onAppPress={handleAppPress}
               searchQuery={searchQuery}
-              showFavoritesOnly={filterMode === 'favorites'}
             />
           </>
         )}

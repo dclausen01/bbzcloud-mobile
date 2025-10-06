@@ -42,7 +42,6 @@ export interface App {
   requiresAuth?: boolean;
   teacherOnly?: boolean;
   isVisible?: boolean;
-  isFavorite?: boolean;
   isLoading?: boolean;
   order?: number;
 }
@@ -52,13 +51,6 @@ export interface AppVisibility {
   appId: string;
   userId: number;
   isVisible: boolean;
-}
-
-export interface Favorite {
-  id?: number;
-  appId: string;
-  orderIndex: number;
-  createdAt?: Date;
 }
 
 // ============================================================================
@@ -96,7 +88,6 @@ export interface BrowserOptions {
 export interface AppSettings {
   theme: 'light' | 'dark' | 'system';
   appVisibility: Record<string, boolean>;
-  favoriteApps: string[];
   hapticFeedback: boolean;
 }
 
@@ -131,7 +122,6 @@ export interface SettingsContextType {
   settings: SettingsState;
   updateSettings: (settings: Partial<AppSettings>) => Promise<void>;
   toggleAppVisibility: (appId: string) => Promise<void>;
-  toggleFavorite: (appId: string) => Promise<void>;
   setTheme: (theme: 'light' | 'dark' | 'system') => Promise<void>;
   loadSettings: () => Promise<void>;
   isLoading: boolean;
