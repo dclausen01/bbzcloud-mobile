@@ -1,0 +1,52 @@
+/**
+ * BBZCloud Mobile - Home Page Styles
+ */
+
+.home-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.home-loading p {
+  font-size: 16px;
+  color: var(--ion-color-medium);
+  margin: 0;
+}
+
+.home-user-info {
+  padding: 16px 20px;
+  background: var(--ion-color-light);
+  border-bottom: 1px solid var(--ion-color-light-shade);
+}
+
+.home-user-info p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ion-color-medium);
+  text-align: center;
+}
+
+.home-user-info strong {
+  color: var(--ion-color-dark);
+  font-weight: 600;
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .home-user-info {
+    background: var(--ion-color-step-50);
+    border-bottom-color: var(--ion-color-step-100);
+  }
+  
+  .home-user-info p {
+    color: var(--ion-color-light);
+  }
+  
+  .home-user-info strong {
+    color: var(--ion-color-light);
+  }
+}

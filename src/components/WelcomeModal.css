@@ -1,0 +1,68 @@
+/**
+ * BBZCloud Mobile - Welcome Modal Styles
+ */
+
+.welcome-modal-content {
+  --padding-top: 0;
+  --padding-bottom: 0;
+}
+
+.welcome-modal-body {
+  padding: 20px;
+}
+
+.welcome-header {
+  text-align: center;
+  margin-bottom: 30px;
+  padding: 20px 0;
+}
+
+.welcome-header h2 {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--ion-color-primary);
+  margin: 0 0 10px 0;
+}
+
+.welcome-header p {
+  font-size: 16px;
+  color: var(--ion-color-medium);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.welcome-section-divider {
+  padding: 20px 16px 10px 16px;
+}
+
+.welcome-section-divider h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.welcome-footer {
+  padding: 20px 16px;
+  text-align: center;
+}
+
+.welcome-info-text {
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.welcome-modal-actions {
+  padding: 16px;
+  border-top: 1px solid var(--ion-color-light-shade);
+  background: var(--ion-background-color);
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .welcome-modal-actions {
+    border-top-color: var(--ion-color-step-100);
+  }
+}

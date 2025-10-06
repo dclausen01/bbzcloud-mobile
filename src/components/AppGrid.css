@@ -1,0 +1,31 @@
+/**
+ * BBZCloud Mobile - App Grid Styles
+ */
+
+.app-grid {
+  padding: 16px 8px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.app-grid-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.app-grid-empty p {
+  font-size: 16px;
+  color: var(--ion-color-medium);
+  margin: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+  .app-grid {
+    padding: 12px 4px;
+  }
+}

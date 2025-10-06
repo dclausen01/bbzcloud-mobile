@@ -1,0 +1,12 @@
+/**
+ * BBZCloud Mobile - Settings Page Styles
+ */
+
+.settings-logout {
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.settings-logout ion-button {
+  margin: 0;
+}
