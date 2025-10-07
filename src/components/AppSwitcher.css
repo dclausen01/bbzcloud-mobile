@@ -1,0 +1,277 @@
+/**
+ * BBZCloud Mobile - App Switcher Styles
+ * 
+ * Styling for the app switcher drawer/sidebar
+ * 
+ * @version 1.0.0
+ */
+
+/* Menu Container */
+.app-switcher-menu {
+  --width: 320px;
+  --max-width: 90vw;
+}
+
+/* Content */
+.app-switcher-content {
+  --background: var(--ion-background-color);
+}
+
+/* Empty State */
+.app-switcher-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 2rem;
+  text-align: center;
+  color: var(--ion-color-medium);
+}
+
+.app-switcher-empty .empty-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.app-switcher-empty p {
+  margin: 0.5rem 0;
+  font-size: 1rem;
+}
+
+.app-switcher-empty .empty-subtitle {
+  font-size: 0.875rem;
+  opacity: 0.7;
+}
+
+/* App List */
+.app-switcher-list {
+  padding: 0;
+}
+
+/* App Item */
+.app-switcher-item {
+  --padding-start: 16px;
+  --padding-end: 8px;
+  --inner-padding-end: 0;
+  --min-height: 72px;
+  position: relative;
+  border-left: 4px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.app-switcher-item:hover {
+  --background: var(--ion-color-light);
+}
+
+.app-switcher-item.active {
+  --background: var(--ion-color-light);
+  border-left-color: var(--app-color, var(--ion-color-primary));
+  font-weight: 500;
+}
+
+.app-switcher-item.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(
+    to bottom,
+    var(--app-color, var(--ion-color-primary)),
+    transparent
+  );
+  opacity: 0.3;
+}
+
+/* App Icon */
+.app-switcher-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--ion-color-light);
+  margin-right: 12px;
+  transition: all 0.2s ease;
+}
+
+.app-switcher-item.active .app-switcher-icon {
+  background: color-mix(in srgb, var(--app-color, var(--ion-color-primary)) 15%, transparent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.app-switcher-icon ion-icon {
+  font-size: 28px;
+  transition: transform 0.2s ease;
+}
+
+.app-switcher-item:hover .app-switcher-icon ion-icon {
+  transform: scale(1.1);
+}
+
+/* App Label */
+.app-switcher-item ion-label h2 {
+  font-size: 1rem;
+  font-weight: 500;
+  margin-bottom: 4px;
+  color: var(--ion-text-color);
+}
+
+.app-switcher-item.active ion-label h2 {
+  color: var(--app-color, var(--ion-color-primary));
+  font-weight: 600;
+}
+
+.app-switcher-url {
+  font-size: 0.75rem;
+  color: var(--ion-color-medium);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Active Badge */
+.active-badge {
+  --padding-start: 6px;
+  --padding-end: 6px;
+  font-size: 0.75rem;
+  height: 24px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 8px;
+}
+
+.active-badge ion-icon {
+  font-size: 14px;
+}
+
+/* Close Button */
+.close-button {
+  --padding-start: 8px;
+  --padding-end: 8px;
+  opacity: 0.6;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.close-button:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.app-switcher-item:not(:hover) .close-button {
+  opacity: 0.4;
+}
+
+/* Footer */
+.app-switcher-footer {
+  padding: 1rem;
+  border-top: 1px solid var(--ion-border-color);
+  background: var(--ion-color-light);
+  margin-top: auto;
+}
+
+.memory-info,
+.memory-usage {
+  margin: 0.25rem 0;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.memory-info {
+  font-weight: 500;
+}
+
+.memory-usage {
+  opacity: 0.7;
+}
+
+/* Tablet Optimizations */
+@media (min-width: 768px) {
+  .app-switcher-menu {
+    --width: 380px;
+  }
+
+  .app-switcher-item {
+    --min-height: 80px;
+  }
+
+  .app-switcher-icon {
+    width: 56px;
+    height: 56px;
+  }
+
+  .app-switcher-icon ion-icon {
+    font-size: 32px;
+  }
+
+  .app-switcher-item ion-label h2 {
+    font-size: 1.1rem;
+  }
+
+  .app-switcher-url {
+    font-size: 0.875rem;
+  }
+}
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+  .app-switcher-item:hover {
+    --background: rgba(255, 255, 255, 0.05);
+  }
+
+  .app-switcher-item.active {
+    --background: rgba(255, 255, 255, 0.08);
+  }
+
+  .app-switcher-icon {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .app-switcher-item.active .app-switcher-icon {
+    background: color-mix(in srgb, var(--app-color, var(--ion-color-primary)) 20%, transparent);
+  }
+
+  .app-switcher-footer {
+    background: rgba(255, 255, 255, 0.02);
+  }
+}
+
+/* Animations */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.app-switcher-item {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* Scrollbar */
+.app-switcher-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.app-switcher-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.app-switcher-content::-webkit-scrollbar-thumb {
+  background: var(--ion-color-medium);
+  border-radius: 3px;
+}
+
+.app-switcher-content::-webkit-scrollbar-thumb:hover {
+  background: var(--ion-color-medium-shade);
+}

@@ -7,13 +7,15 @@
  */
 
 import { Redirect, Route } from 'react-router-dom';
-import { IonApp, IonRouterOutlet, setupIonicReact } from '@ionic/react';
+import { IonApp, IonRouterOutlet, IonSplitPane, setupIonicReact } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
 import Home from './pages/Home';
 import Settings from './pages/Settings';
 import Todos from './pages/Todos';
+import AppSwitcher from './components/AppSwitcher';
 import { AuthProvider } from './contexts/AuthContext';
 import { SettingsProvider } from './contexts/SettingsContext';
+import { AppSwitcherProvider } from './contexts/AppSwitcherContext';
 
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/react/css/core.css';
@@ -51,22 +53,27 @@ const App: React.FC = () => (
   <IonApp>
     <AuthProvider>
       <SettingsProvider>
-        <IonReactRouter>
-          <IonRouterOutlet>
-            <Route exact path="/home">
-              <Home />
-            </Route>
-            <Route exact path="/settings">
-              <Settings />
-            </Route>
-            <Route exact path="/todos">
-              <Todos />
-            </Route>
-            <Route exact path="/">
-              <Redirect to="/home" />
-            </Route>
-          </IonRouterOutlet>
-        </IonReactRouter>
+        <AppSwitcherProvider>
+          <IonReactRouter>
+            <IonSplitPane contentId="main-content">
+              <AppSwitcher />
+              <IonRouterOutlet id="main-content">
+                <Route exact path="/home">
+                  <Home />
+                </Route>
+                <Route exact path="/settings">
+                  <Settings />
+                </Route>
+                <Route exact path="/todos">
+                  <Todos />
+                </Route>
+                <Route exact path="/">
+                  <Redirect to="/home" />
+                </Route>
+              </IonRouterOutlet>
+            </IonSplitPane>
+          </IonReactRouter>
+        </AppSwitcherProvider>
       </SettingsProvider>
     </AuthProvider>
   </IonApp>

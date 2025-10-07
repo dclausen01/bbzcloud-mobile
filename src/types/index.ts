@@ -62,6 +62,20 @@ export interface BrowserSession {
   url: string;
   title?: string;
   isActive: boolean;
+  thumbnail?: string;
+  lastAccessed?: Date;
+}
+
+export interface LoadedApp {
+  appId: string;
+  url: string;
+  title: string;
+  color: string;
+  icon: string;
+  isActive: boolean;
+  webViewId: string;
+  lastAccessed: Date;
+  memoryUsage?: number;
 }
 
 export interface BrowserHistory {
@@ -124,6 +138,20 @@ export interface SettingsContextType {
   setTheme: (theme: 'light' | 'dark' | 'system') => Promise<void>;
   loadSettings: () => Promise<void>;
   isLoading: boolean;
+}
+
+export interface AppSwitcherContextType {
+  loadedApps: LoadedApp[];
+  activeAppId: string | null;
+  isDrawerOpen: boolean;
+  maxLoadedApps: number;
+  openApp: (app: App) => Promise<void>;
+  switchToApp: (appId: string) => void;
+  closeApp: (appId: string) => void;
+  closeAllApps: () => void;
+  toggleDrawer: () => void;
+  setDrawerOpen: (open: boolean) => void;
+  getMemoryUsage: () => number;
 }
 
 export interface AuthContextType {
