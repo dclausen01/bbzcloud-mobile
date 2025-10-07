@@ -36,7 +36,7 @@ class BrowserService {
       }
 
       // Check if this app needs JavaScript injection
-      const injectionScript = appId ? getInjectionScript(appId) : null;
+      const injectionScript = appId ? getInjectionScript(appId) ?? undefined : undefined;
       
       // Always use openWebView for consistent experience
       if (appId) {
