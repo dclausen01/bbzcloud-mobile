@@ -20,8 +20,7 @@ import {
   IonButton,
   IonBadge,
   IonText,
-  IonButtons,
-  isPlatform
+  IonButtons
 } from '@ionic/react';
 import {
   closeCircleOutline,
@@ -43,7 +42,6 @@ const AppSwitcher: React.FC = () => {
     getMemoryUsage
   } = useAppSwitcher();
 
-  const isTablet = isPlatform('tablet');
   const memoryUsage = getMemoryUsage();
 
   /**
@@ -76,11 +74,11 @@ const AppSwitcher: React.FC = () => {
     <IonMenu 
       contentId="main-content" 
       side="start" 
-      type={isTablet ? 'overlay' : 'push'}
+      type="overlay"
       className="app-switcher-menu"
     >
       <IonHeader>
-        <IonToolbar color="primary">
+        <IonToolbar className="app-switcher-toolbar">
           <IonTitle>Geöffnete Apps</IonTitle>
           <IonButtons slot="end">
             {loadedApps.length > 0 && (

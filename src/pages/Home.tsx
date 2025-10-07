@@ -19,12 +19,10 @@ import {
   IonIcon,
   IonRefresher,
   IonRefresherContent,
-  IonMenuButton,
-  IonBadge,
   RefresherEventDetail,
   useIonToast
 } from '@ionic/react';
-import { settingsOutline, listOutline, appsOutline } from 'ionicons/icons';
+import { settingsOutline, listOutline } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import AppGrid from '../components/AppGrid';
 import WelcomeModal from '../components/WelcomeModal';
@@ -41,7 +39,7 @@ const Home: React.FC = () => {
   const history = useHistory();
   const { settings, isLoading: settingsLoading } = useSettings();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
-  const { openApp, loadedApps } = useAppSwitcher();
+  const { openApp } = useAppSwitcher();
   const [presentToast] = useIonToast();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -186,16 +184,6 @@ const Home: React.FC = () => {
     <IonPage>
       <IonHeader>
         <IonToolbar>
-          <IonButtons slot="start">
-            <IonMenuButton>
-              <IonIcon icon={appsOutline} />
-            </IonMenuButton>
-            {loadedApps.length > 0 && (
-              <IonBadge color="primary" className="app-count-badge">
-                {loadedApps.length}
-              </IonBadge>
-            )}
-          </IonButtons>
           <IonTitle>BBZCloud Mobile</IonTitle>
           <IonButtons slot="end">
             <IonButton onClick={() => history.push('/todos')}>

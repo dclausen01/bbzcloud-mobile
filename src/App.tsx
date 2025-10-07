@@ -13,6 +13,7 @@ import Home from './pages/Home';
 import Settings from './pages/Settings';
 import Todos from './pages/Todos';
 import AppSwitcher from './components/AppSwitcher';
+import GlobalFAB from './components/GlobalFAB';
 import { AuthProvider } from './contexts/AuthContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { AppSwitcherProvider } from './contexts/AppSwitcherContext';
@@ -72,6 +73,7 @@ const App: React.FC = () => (
                 </Route>
               </IonRouterOutlet>
             </IonSplitPane>
+            <GlobalFAB />
           </IonReactRouter>
         </AppSwitcherProvider>
       </SettingsProvider>
