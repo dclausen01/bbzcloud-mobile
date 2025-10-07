@@ -88,7 +88,6 @@ export interface BrowserOptions {
 export interface AppSettings {
   theme: 'light' | 'dark' | 'system';
   appVisibility: Record<string, boolean>;
-  hapticFeedback: boolean;
 }
 
 export interface SettingsState extends AppSettings {

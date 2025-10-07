@@ -130,7 +130,20 @@
   height: 32px;
 }
 
-/* Dark mode adjustments */
+/* Dark mode adjustments - manual toggle */
+body.dark .app-card {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+body.dark .app-card:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+body.dark .app-card-loading-overlay {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* Dark mode adjustments - system preference */
 @media (prefers-color-scheme: dark) {
   .app-card {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);

@@ -35,7 +35,21 @@
   font-weight: 600;
 }
 
-/* Dark mode adjustments */
+/* Dark mode adjustments - manual toggle */
+body.dark .home-user-info {
+  background: var(--ion-color-step-50);
+  border-bottom-color: var(--ion-color-step-100);
+}
+
+body.dark .home-user-info p {
+  color: var(--ion-color-light);
+}
+
+body.dark .home-user-info strong {
+  color: var(--ion-color-light);
+}
+
+/* Dark mode adjustments - system preference */
 @media (prefers-color-scheme: dark) {
   .home-user-info {
     background: var(--ion-color-step-50);

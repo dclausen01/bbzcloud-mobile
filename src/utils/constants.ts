@@ -79,7 +79,7 @@ export const NAVIGATION_APPS: Record<string, AppConfig> = {
     url: URLS.SCHULCLOUD,
     icon: 'cloud',
     color: '#FFA500',
-    description: 'Kommunikation & Dateiablage',
+    description: 'Chat & Dateiablage',
     requiresAuth: true,
     // Always open in browser - no native app support
   },

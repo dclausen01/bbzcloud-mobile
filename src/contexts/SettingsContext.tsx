@@ -25,7 +25,6 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
   const [settings, setSettings] = useState<SettingsState>({
     theme: 'system',
     appVisibility: {},
-    hapticFeedback: true,
     isLoading: true,
     user: null,
     availableApps: []
@@ -56,17 +55,22 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
   useEffect(() => {
     const applyTheme = () => {
       const { theme } = settings;
+      const htmlElement = document.documentElement;
       
       if (theme === 'dark') {
+        htmlElement.classList.add('ion-palette-dark');
         document.body.classList.add('dark');
       } else if (theme === 'light') {
+        htmlElement.classList.remove('ion-palette-dark');
         document.body.classList.remove('dark');
       } else {
         // System theme - check system preference
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         if (prefersDark) {
+          htmlElement.classList.add('ion-palette-dark');
           document.body.classList.add('dark');
         } else {
+          htmlElement.classList.remove('ion-palette-dark');
           document.body.classList.remove('dark');
         }
       }
@@ -95,17 +99,12 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
       const themeResult = await Preferences.get({ key: STORAGE_KEYS.THEME });
       const theme = (themeResult.value as 'light' | 'dark' | 'system') || 'system';
 
-      // Load haptic feedback preference
-      const hapticResult = await Preferences.get({ key: 'haptic_feedback' });
-      const hapticFeedback = hapticResult.value !== 'false';
-
       // Initialize available apps
       const availableApps = await getAvailableApps();
 
       setSettings(prev => ({
         ...prev,
         theme,
-        hapticFeedback,
         availableApps,
         isLoading: false
       }));
@@ -187,14 +186,6 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
         });
       }
 
-      // Update haptic feedback if provided
-      if (newSettings.hapticFeedback !== undefined) {
-        await Preferences.set({
-          key: 'haptic_feedback',
-          value: String(newSettings.hapticFeedback)
-        });
-      }
-
       // Update state
       setSettings(prev => ({
         ...prev,
@@ -240,19 +231,12 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
    */
   const setTheme = async (theme: 'light' | 'dark' | 'system'): Promise<void> => {
     try {
-      console.log('setTheme called with:', theme);
-      
       await Preferences.set({
         key: STORAGE_KEYS.THEME,
         value: theme
       });
 
-      setSettings(prev => {
-        console.log('Updating settings from', prev.theme, 'to', theme);
-        return { ...prev, theme };
-      });
-      
-      console.log('Theme set successfully');
+      setSettings(prev => ({ ...prev, theme }));
     } catch (error) {
       console.error('Error setting theme:', error);
       throw error;

@@ -26,6 +26,7 @@
     "@capacitor/local-notifications": "^7.0.3",
     "@capacitor/preferences": "^7.0.2",
     "@capacitor/status-bar": "7.0.3",
+    "@capgo/inappbrowser": "^7.20.0",
     "@chakra-ui/icons": "^2.2.4",
     "@chakra-ui/react": "^3.27.0",
     "@dnd-kit/core": "^6.3.1",

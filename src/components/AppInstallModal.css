@@ -96,7 +96,20 @@
   margin-left: 12px;
 }
 
-/* Dark mode adjustments */
+/* Dark mode adjustments - manual toggle */
+body.dark .app-install-title {
+  color: var(--ion-color-light);
+}
+
+body.dark .app-install-benefits {
+  color: var(--ion-color-light);
+}
+
+body.dark .app-install-icon {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Dark mode adjustments - system preference */
 @media (prefers-color-scheme: dark) {
   .app-install-title {
     color: var(--ion-color-light);

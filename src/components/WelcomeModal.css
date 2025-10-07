@@ -60,7 +60,12 @@
   background: var(--ion-background-color);
 }
 
-/* Dark mode adjustments */
+/* Dark mode adjustments - manual toggle */
+body.dark .welcome-modal-actions {
+  border-top-color: var(--ion-color-step-100);
+}
+
+/* Dark mode adjustments - system preference */
 @media (prefers-color-scheme: dark) {
   .welcome-modal-actions {
     border-top-color: var(--ion-color-step-100);

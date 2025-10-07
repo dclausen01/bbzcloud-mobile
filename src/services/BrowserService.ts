@@ -1,35 +1,31 @@
 /**
  * BBZCloud Mobile - Browser Service
  * 
- * Handles opening web apps in InAppBrowser using Capacitor Browser plugin
+ * Handles opening web apps in InAppBrowser with JavaScript injection support
+ * Uses @capgo/inappbrowser for enhanced capabilities
  * 
- * @version 1.0.0
+ * @version 2.0.0
  */
 
-import { Browser } from '@capacitor/browser';
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
-import { BROWSER_CONFIG, UI_CONFIG, NAVIGATION_APPS } from '../utils/constants';
+import { InAppBrowser } from '@capgo/inappbrowser';
+import type { PluginListenerHandle } from '@capacitor/core';
+import { BROWSER_CONFIG, NAVIGATION_APPS } from '../utils/constants';
 import type { AppConfig } from '../utils/constants';
 import { isSmartphone, isIOS, isAndroid, canOpenNativeApps } from '../utils/deviceUtils';
 import type { BrowserOptions, ApiResponse, NativeAppResult } from '../types';
 import DatabaseService from './DatabaseService';
+import { getInjectionScript, type InjectionScript } from './InjectionScripts';
 
 class BrowserService {
   private currentAppId: string | null = null;
   private currentUrl: string | null = null;
+  private pageLoadedListener: PluginListenerHandle | null = null;
 
   /**
-   * Open a URL in the InAppBrowser
+   * Open a URL in the InAppBrowser with optional JavaScript injection
    */
   async openUrl(url: string, appId?: string, options?: Partial<BrowserOptions>): Promise<ApiResponse> {
     try {
-      // Provide haptic feedback if enabled
-      if (UI_CONFIG.HAPTIC_FEEDBACK) {
-        await Haptics.impact({ style: ImpactStyle.Light }).catch(() => {
-          // Haptics might not be available, ignore error
-        });
-      }
-
       // Store current app info
       if (appId) {
         this.currentAppId = appId;
@@ -39,13 +35,18 @@ class BrowserService {
         await DatabaseService.addToHistory(appId, url);
       }
 
-      // Open browser with options
-      await Browser.open({
-        url,
-        toolbarColor: options?.toolbarColor || BROWSER_CONFIG.TOOLBAR_COLOR,
-        presentationStyle: options?.presentationStyle || BROWSER_CONFIG.PRESENTATION_STYLE,
-        ...options
-      });
+      // Check if this app needs JavaScript injection
+      const injectionScript = appId ? getInjectionScript(appId) : null;
+      
+      // Always use openWebView for consistent experience
+      if (appId) {
+        await this.openWebViewWithInjection(url, appId, options, injectionScript);
+      } else {
+        // Fallback for URLs without appId
+        await InAppBrowser.open({
+          url,
+        });
+      }
 
       return { success: true };
     } catch (error) {
@@ -55,6 +56,74 @@ class BrowserService {
         error: error instanceof Error ? error.message : 'Failed to open URL'
       };
     }
+  }
+
+  /**
+   * Open WebView with JavaScript injection support
+   */
+  private async openWebViewWithInjection(
+    url: string,
+    appId: string,
+    options?: Partial<BrowserOptions>,
+    injectionScript?: InjectionScript
+  ): Promise<void> {
+    // Remove any existing page loaded listener
+    if (this.pageLoadedListener) {
+      await InAppBrowser.removeAllListeners();
+      this.pageLoadedListener = null;
+    }
+
+    // Set up page loaded listener for injection
+    if (injectionScript) {
+      this.pageLoadedListener = await InAppBrowser.addListener('browserPageLoaded', async () => {
+        console.log('[BrowserService] Page loaded, injecting scripts for', appId);
+        
+        try {
+          // Wait for the specified delay
+          if (injectionScript.delay) {
+            await new Promise(resolve => setTimeout(resolve, injectionScript.delay));
+          }
+
+          // Inject CSS if provided
+          if (injectionScript.css) {
+            console.log('[BrowserService] Injecting CSS');
+            const cssCode = `
+              (function() {
+                var style = document.createElement('style');
+                style.textContent = ${JSON.stringify(injectionScript.css)};
+                document.head.appendChild(style);
+              })();
+            `;
+            await InAppBrowser.executeScript({ code: cssCode });
+          }
+
+          // Inject JavaScript if provided
+          if (injectionScript.js) {
+            console.log('[BrowserService] Injecting JavaScript');
+            await InAppBrowser.executeScript({ code: injectionScript.js });
+          }
+
+          console.log('[BrowserService] Injection completed for', appId);
+        } catch (error) {
+          console.error('[BrowserService] Error injecting scripts:', error);
+        }
+      });
+    }
+
+    // Open the WebView
+    await InAppBrowser.openWebView({
+      url,
+      title: options?.showTitle !== false ? 'BBZCloud' : '',
+      toolbarColor: options?.toolbarColor || BROWSER_CONFIG.TOOLBAR_COLOR,
+      isPresentAfterPageLoad: true, // Show after page loads
+      showReloadButton: true,
+      closeModal: false, // Don't show confirm on close
+      visibleTitle: options?.showTitle !== false,
+      showArrow: false, // Use X instead of arrow
+      enableViewportScale: true,
+      // @ts-expect-error - ToolBarType enum issue with plugin types
+      toolbarType: 'activity', // Simple toolbar with close and share
+    });
   }
 
   /**
@@ -141,7 +210,7 @@ class BrowserService {
 
       try {
         // Try to open the native app
-        await Browser.open({ url: scheme });
+        await InAppBrowser.open({ url: scheme });
         
         // Add to history
         await DatabaseService.addToHistory(appConfig.id, scheme);
@@ -149,7 +218,7 @@ class BrowserService {
         // If we get here, the app opened successfully
         return { success: true };
       } catch (error) {
-        // If Browser.open throws an error, the app is not installed
+        // If InAppBrowser.open throws an error, the app is not installed
         console.log('Native app failed to open:', error);
         return { success: false, error: 'App not installed' };
       }
@@ -201,7 +270,13 @@ class BrowserService {
    */
   async close(): Promise<ApiResponse> {
     try {
-      await Browser.close();
+      await InAppBrowser.close();
+      
+      // Remove listeners
+      if (this.pageLoadedListener) {
+        await InAppBrowser.removeAllListeners();
+        this.pageLoadedListener = null;
+      }
       
       // Clear current session info
       this.currentAppId = null;
@@ -242,21 +317,22 @@ class BrowserService {
    * Listen for browser finished event
    */
   addBrowserFinishedListener(callback: () => void): void {
-    Browser.addListener('browserFinished', callback);
+    InAppBrowser.addListener('closeEvent', callback);
   }
 
   /**
    * Listen for browser page loaded event
    */
   addBrowserPageLoadedListener(callback: () => void): void {
-    Browser.addListener('browserPageLoaded', callback);
+    InAppBrowser.addListener('browserPageLoaded', callback);
   }
 
   /**
    * Remove all event listeners
    */
   removeAllListeners(): void {
-    Browser.removeAllListeners();
+    InAppBrowser.removeAllListeners();
+    this.pageLoadedListener = null;
   }
 
   /**
@@ -264,14 +340,8 @@ class BrowserService {
    */
   async openExternal(url: string): Promise<ApiResponse> {
     try {
-      if (UI_CONFIG.HAPTIC_FEEDBACK) {
-        await Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
-      }
-
-      await Browser.open({
-        url,
-        presentationStyle: 'fullscreen'
-      });
+      // Use _system target to open in external browser
+      await InAppBrowser.open({ url });
 
       return { success: true };
     } catch (error) {

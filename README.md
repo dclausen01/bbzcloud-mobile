@@ -17,6 +17,7 @@ BBZCloud Mobile ist die mobile Adaption der Desktop-Electron-App für iOS und An
 - 🔐 **Native Password-Manager Integration** (iOS Keychain, Android Autofill)
 - 📱 **Native App Support** für Moodle & Office
 - 🌐 **InAppBrowser** mit Autofill-Support
+- 🔧 **JavaScript Injection** für App-spezifische Anpassungen
 - 🔍 **Suche** über alle Apps
 - ✅ **Todo-Liste** mit Ordnern und Filterung
 - 🌓 **Dark Mode** (Hell/Dunkel/System)
@@ -197,6 +198,79 @@ Wenn Sie eine App zum ersten Mal öffnen und die native Version nicht installier
 ✅ **Geräte-Integration:** Tiefere Integration mit iOS/Android
 ✅ **Batterieschonend:** Optimiert für mobile Geräte
 
+## 🔧 JavaScript Injection
+
+Die App nutzt die **@capgo/inappbrowser** Plugin für erweiterte Browser-Funktionalitäten, einschließlich JavaScript-Injection für app-spezifische Anpassungen.
+
+### Unterstützte Anpassungen
+
+#### schul.cloud - Touch Scrolling Fix
+
+**Problem:** Channel- und Chat-Listen auf der linken Seite sind nur mit Maus, nicht per Finger scrollbar.
+
+**Lösung:** Automatische Injection von CSS und JavaScript beim Laden der Seite:
+
+- Aktiviert Touch-Scrolling für alle relevanten Container
+- Nutzt `-webkit-overflow-scrolling: touch` für optimale Performance
+- MutationObserver überwacht dynamisch hinzugefügte Elemente
+
+```typescript
+// Automatisch injiziert beim Öffnen von schul.cloud
+{
+  css: "overflow-y: auto !important; -webkit-overflow-scrolling: touch !important;",
+  js: "enableTouchScroll() + MutationObserver"
+}
+```
+
+#### WebUntis - Auto-Close Dialogs
+
+**Problem:** Beim Start erscheinen Warnmeldungen und Banner, die manuell geschlossen werden müssen.
+
+**Lösung:** Automatische Erkennung und Schließen von Dialogen:
+
+- Sucht nach gängigen Dialog-Selektoren
+- Klickt automatisch auf Schließen-Buttons
+- MutationObserver für dynamisch erscheinende Dialoge
+- Bis zu 10 Sekunden Versuchsdauer (konfigurierbar)
+
+```typescript
+// Automatisch injiziert beim Öffnen von WebUntis
+{
+  js: "closeDialogs() + MutationObserver für neue Dialoge";
+}
+```
+
+### Technische Details
+
+**Injection-System:**
+
+- Definiert in `src/services/InjectionScripts.ts`
+- Automatisch angewendet beim App-Start
+- Getrennte CSS- und JavaScript-Injection
+- Konfigurierbare Verzögerungen
+- Fehlertolerante Ausführung
+
+**Hinzufügen neuer Injections:**
+
+```typescript
+// In src/services/InjectionScripts.ts
+export const NEUE_APP_INJECTION: InjectionScript = {
+  css: `/* Ihre CSS-Anpassungen */`,
+  js: `/* Ihr JavaScript-Code */`,
+  delay: 1000, // Verzögerung in ms
+  description: "Beschreibung der Anpassung",
+};
+
+// In getInjectionScript() hinzufügen
+export function getInjectionScript(appId: string): InjectionScript | null {
+  switch (appId) {
+    case "neue-app":
+      return NEUE_APP_INJECTION;
+    // ...
+  }
+}
+```
+
 ## 🛠️ Technologie-Stack
 
 - **Framework:** [Ionic React](https://ionicframework.com/docs/react) mit TypeScript
@@ -207,7 +281,7 @@ Wenn Sie eine App zum ersten Mal öffnen und die native Version nicht installier
   - Capacitor Secure Storage (Credentials)
   - Capacitor Preferences (Settings)
   - SQLite (App-Daten)
-- **Browser:** Capacitor Browser (InAppBrowser)
+- **Browser:** @capgo/inappbrowser (mit JS Injection Support)
 - **Build:** Vite
 - **Mobile:** Capacitor 7
 
