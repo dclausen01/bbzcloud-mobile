@@ -123,6 +123,7 @@ class BrowserService {
       enableViewportScale: true,
       // @ts-expect-error - ToolBarType enum issue with plugin types
       toolbarType: 'activity', // Simple toolbar with close and share
+      isPullToRefreshEnabled: true, // Enable pull-to-refresh gesture
     });
   }
 
