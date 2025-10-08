@@ -110,9 +110,8 @@ class BrowserService {
       });
     }
 
-    // Prepare WebView options
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const webViewOptions: Record<string, any> = {
+    // Open the WebView
+    await InAppBrowser.openWebView({
       url,
       title: options?.showTitle !== false ? 'BBZCloud' : '',
       toolbarColor: options?.toolbarColor || BROWSER_CONFIG.TOOLBAR_COLOR,
@@ -122,19 +121,10 @@ class BrowserService {
       visibleTitle: options?.showTitle !== false,
       showArrow: false, // Use X instead of arrow
       enableViewportScale: true,
+      // @ts-expect-error - ToolBarType enum issue with plugin types
       toolbarType: 'activity', // Simple toolbar with close and share
       isPullToRefreshEnabled: true, // Enable pull-to-refresh gesture
-    };
-
-    // For Office app, set desktop user agent
-    if (appId === 'office') {
-      webViewOptions.userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-      console.log('[BrowserService] Setting desktop user agent for Office');
-    }
-
-    // Open the WebView
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await InAppBrowser.openWebView(webViewOptions as any);
+    });
   }
 
   /**

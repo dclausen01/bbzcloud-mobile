@@ -36,7 +36,6 @@ export const URLS = {
   OUTLOOK: 'https://exchange.bbz-rd-eck.de/owa/#path=/mail',
   
   // Productivity applications
-  OFFICE: 'https://m365.cloud.microsoft/apps/',
   CRYPTPAD: 'https://cryptpad.fr/drive',
   TASKCARDS: 'https://bbzrdeck.taskcards.app',
   
@@ -119,23 +118,6 @@ export const NAVIGATION_APPS: Record<string, AppConfig> = {
     requiresAuth: true,
     teacherOnly: true,
   },
-  office: {
-    id: 'office',
-    title: 'Office',
-    url: URLS.OFFICE,
-    icon: 'document-text',
-    color: '#D83B01',
-    description: 'Microsoft Office 365',
-    requiresAuth: true,
-    nativeApp: {
-      hasNativeApp: true,
-      preferNativeOnSmartphone: false,
-      iosScheme: 'ms-word://',
-      androidScheme: 'ms-word://',
-      androidPackage: 'com.microsoft.office.word',
-      iosAppStoreId: '586447913',
-    },
-  },
   cryptpad: {
     id: 'cryptpad',
     title: 'CryptPad',
@@ -195,7 +177,6 @@ export const NAVIGATION_APPS: Record<string, AppConfig> = {
 export const STUDENT_ALLOWED_APPS = [
   'schulcloud',
   'moodle',
-  'office',
   'cryptpad',
   'webuntis',
   'wiki',
