@@ -36,7 +36,7 @@ class BrowserService {
       }
 
       // Check if this app needs JavaScript injection
-      const injectionScript = appId ? getInjectionScript(appId) : null;
+      const injectionScript = appId ? getInjectionScript(appId) ?? undefined : undefined;
       
       // Always use openWebView for consistent experience
       if (appId) {
@@ -123,6 +123,7 @@ class BrowserService {
       enableViewportScale: true,
       // @ts-expect-error - ToolBarType enum issue with plugin types
       toolbarType: 'activity', // Simple toolbar with close and share
+      isPullToRefreshEnabled: true, // Enable pull-to-refresh gesture
     });
   }
 

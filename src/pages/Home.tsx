@@ -29,6 +29,7 @@ import WelcomeModal from '../components/WelcomeModal';
 import AppInstallModal from '../components/AppInstallModal';
 import { useSettings } from '../contexts/SettingsContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useAppSwitcher } from '../contexts/AppSwitcherContext';
 import BrowserService from '../services/BrowserService';
 import { ERROR_MESSAGES, NAVIGATION_APPS } from '../utils/constants';
 import type { App } from '../types';
@@ -38,6 +39,7 @@ const Home: React.FC = () => {
   const history = useHistory();
   const { settings, isLoading: settingsLoading } = useSettings();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { openApp } = useAppSwitcher();
   const [presentToast] = useIonToast();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -58,7 +60,7 @@ const Home: React.FC = () => {
   };
 
   /**
-   * Handle app card press - open with native support
+   * Handle app card press - use AppSwitcher for better memory management
    */
   const handleAppPress = async (app: App) => {
     try {
@@ -74,17 +76,8 @@ const Home: React.FC = () => {
       const hasNativeSupport = BrowserService.hasNativeSupport(app.id);
       
       if (!hasNativeSupport) {
-        // No native support - open directly in browser
-        const result = await BrowserService.openApp(app.id, app.url, app.color);
-        
-        if (!result.success) {
-          presentToast({
-            message: result.error || ERROR_MESSAGES.BROWSER_OPEN_FAILED,
-            duration: 3000,
-            color: 'danger',
-            position: 'bottom'
-          });
-        }
+        // No native support - open through AppSwitcher
+        await openApp(app);
       } else {
         // Has native support - check user preference
         const preferNative = BrowserService.getDefaultNativePreference(app.id);
@@ -99,17 +92,8 @@ const Home: React.FC = () => {
           // Successfully opened native app
           console.log('Opened native app:', app.id);
         } else if (nativeResult.opened === 'browser') {
-          // Opened in browser (tablet or user preference)
-          const result = await BrowserService.openApp(app.id, app.url, app.color);
-          
-          if (!result.success) {
-            presentToast({
-              message: result.error || ERROR_MESSAGES.BROWSER_OPEN_FAILED,
-              duration: 3000,
-              color: 'danger',
-              position: 'bottom'
-            });
-          }
+          // Opened in browser - use AppSwitcher
+          await openApp(app);
         } else {
           // Native app not installed - show install modal
           setInstallModalApp(app);
@@ -151,15 +135,11 @@ const Home: React.FC = () => {
   const handleOpenInBrowser = async () => {
     if (!installModalApp) return;
 
-    const result = await BrowserService.openApp(
-      installModalApp.id,
-      installModalApp.url,
-      installModalApp.color
-    );
-
-    if (!result.success) {
+    try {
+      await openApp(installModalApp);
+    } catch {
       presentToast({
-        message: result.error || ERROR_MESSAGES.BROWSER_OPEN_FAILED,
+        message: ERROR_MESSAGES.BROWSER_OPEN_FAILED,
         duration: 3000,
         color: 'danger',
         position: 'bottom'

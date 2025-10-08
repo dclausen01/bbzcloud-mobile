@@ -1,0 +1,71 @@
+/**
+ * BBZCloud Mobile - Global FAB Styles
+ */
+
+.global-fab-container {
+  position: fixed;
+  cursor: move;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: opacity 0.2s ease;
+}
+
+.global-fab-container.dragging {
+  opacity: 0.8;
+  cursor: grabbing;
+}
+
+.app-switcher-fab-global {
+  --background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --color: white;
+  --box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  position: relative;
+  cursor: move;
+}
+
+.global-fab-container.dragging .app-switcher-fab-global {
+  --box-shadow: 0 6px 16px rgba(102, 126, 234, 0.6);
+}
+
+.app-switcher-fab-global:hover {
+  --box-shadow: 0 6px 16px rgba(102, 126, 234, 0.6);
+}
+
+.app-switcher-fab-global:active {
+  --box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+}
+
+/* FAB Badge */
+.fab-badge-global {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 20px;
+  height: 20px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 2px 5px;
+  border-radius: 10px;
+  z-index: 1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+}
+
+/* Prevent text selection during drag */
+.global-fab-container * {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .app-switcher-fab-global {
+    --box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  }
+  
+  .global-fab-container.dragging .app-switcher-fab-global,
+  .app-switcher-fab-global:hover {
+    --box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5);
+  }
+}

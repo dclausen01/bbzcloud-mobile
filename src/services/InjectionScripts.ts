@@ -26,24 +26,46 @@ export interface InjectionScript {
 export const SCHULCLOUD_INJECTION: InjectionScript = {
   css: `
     /* Enable touch scrolling for schul.cloud channel and chat windows */
+    /* Target all possible list containers */
     .channel-list,
     .chat-list,
     .sidebar,
     .conversation-list,
+    .message-list,
+    .channels,
+    .conversations,
     [class*="channel"],
     [class*="sidebar"],
-    [class*="conversation"] {
+    [class*="conversation"],
+    [class*="message"],
+    [class*="list"],
+    [class*="scroll"],
+    [role="list"],
+    [role="listbox"] {
       overflow-y: auto !important;
+      overflow-x: hidden !important;
       -webkit-overflow-scrolling: touch !important;
       overscroll-behavior: contain !important;
+      touch-action: pan-y !important;
+      pointer-events: auto !important;
     }
     
     /* Ensure scrollable containers have proper touch handling */
     .scrollable,
-    [data-scrollable="true"] {
+    [data-scrollable="true"],
+    div[style*="overflow"],
+    div[style*="scroll"] {
       overflow-y: auto !important;
       -webkit-overflow-scrolling: touch !important;
       overscroll-behavior: contain !important;
+      touch-action: pan-y !important;
+    }
+    
+    /* Main content area should be scrollable */
+    main, [role="main"], .main-content, #main, #app, .app {
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+      touch-action: pan-y !important;
     }
   `,
   js: `
