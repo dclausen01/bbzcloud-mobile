@@ -18,114 +18,306 @@ export interface InjectionScript {
 }
 
 /**
- * schul.cloud - Fix touch scrolling for channel and chat windows
+ * schul.cloud - Production scroll fix
  * 
- * Problem: Channel list and chat windows on the left side are not scrollable by finger touch, only by mouse
- * Solution: Add CSS to enable touch scrolling with -webkit-overflow-scrolling
+ * Problem: Channel list and chat windows are not scrollable by finger touch
+ * Solution: Targeted CSS fixes for overflow:hidden containers
  */
 export const SCHULCLOUD_INJECTION: InjectionScript = {
   css: `
-    /* Enable touch scrolling for schul.cloud channel and chat windows */
-    /* Target all possible list containers */
-    .channel-list,
-    .chat-list,
-    .sidebar,
-    .conversation-list,
-    .message-list,
-    .channels,
-    .conversations,
-    [class*="channel"],
+    /* TARGETED CSS FIX - Production version */
+    /* Fix overflow:hidden on scrollable containers */
+    
+    /* schul.cloud specific containers that need scrolling */
+    [class*="outer-scroller"],
+    [class*="navigation-item-wrapper"],
+    [class*="channel-list"],
+    [class*="chat-list"],
+    [class*="conversation-list"],
+    [class*="message-list"],
     [class*="sidebar"],
-    [class*="conversation"],
-    [class*="message"],
-    [class*="list"],
-    [class*="scroll"],
-    [role="list"],
-    [role="listbox"] {
+    div[class*="List"],
+    div[class*="Sidebar"],
+    div[class*="scroller"] {
       overflow-y: auto !important;
       overflow-x: hidden !important;
       -webkit-overflow-scrolling: touch !important;
       overscroll-behavior: contain !important;
       touch-action: pan-y !important;
-      pointer-events: auto !important;
     }
     
-    /* Ensure scrollable containers have proper touch handling */
-    .scrollable,
-    [data-scrollable="true"],
-    div[style*="overflow"],
-    div[style*="scroll"] {
+    /* Ensure parent containers allow scrolling */
+    [class*="wrapper"][class*="ng-tns"] {
       overflow-y: auto !important;
-      -webkit-overflow-scrolling: touch !important;
-      overscroll-behavior: contain !important;
-      touch-action: pan-y !important;
-    }
-    
-    /* Main content area should be scrollable */
-    main, [role="main"], .main-content, #main, #app, .app {
-      overflow-y: auto !important;
-      -webkit-overflow-scrolling: touch !important;
-      touch-action: pan-y !important;
     }
   `,
   js: `
-    // Additional JavaScript to ensure touch scrolling works
+    // Production scroll fix - minimal JavaScript
     (function() {
-      console.log('[BBZCloud] Initializing schul.cloud touch scroll fix');
+      console.log('[BBZCloud] schul.cloud scroll fix active');
       
-      // Function to enable touch scrolling on elements
-      function enableTouchScroll(element) {
-        if (!element) return;
+      // Apply minimal fixes to ensure scrolling works
+      function applyScrollFixes() {
+        const scrollableSelectors = [
+          '[class*="outer-scroller"]',
+          '[class*="navigation-item-wrapper"]',
+          '[class*="scroller"]'
+        ];
         
-        element.style.overflowY = 'auto';
-        element.style.webkitOverflowScrolling = 'touch';
-        element.style.overscrollBehavior = 'contain';
-      }
-      
-      // Apply to common selectors
-      const selectors = [
-        '.channel-list',
-        '.chat-list',
-        '.sidebar',
-        '.conversation-list',
-        '[class*="channel"]',
-        '[class*="sidebar"]',
-        '[class*="conversation"]',
-        '.scrollable',
-        '[data-scrollable="true"]'
-      ];
-      
-      selectors.forEach(selector => {
-        document.querySelectorAll(selector).forEach(enableTouchScroll);
-      });
-      
-      // Use MutationObserver to handle dynamically added elements
-      const observer = new MutationObserver(function(mutations) {
-        mutations.forEach(function(mutation) {
-          mutation.addedNodes.forEach(function(node) {
-            if (node.nodeType === 1) { // ELEMENT_NODE
-              selectors.forEach(selector => {
-                if (node.matches && node.matches(selector)) {
-                  enableTouchScroll(node);
-                }
-                node.querySelectorAll && node.querySelectorAll(selector).forEach(enableTouchScroll);
-              });
+        scrollableSelectors.forEach(selector => {
+          const elements = document.querySelectorAll(selector);
+          elements.forEach(element => {
+            // Only apply if element has content to scroll
+            if (element.scrollHeight > element.clientHeight) {
+              element.style.webkitOverflowScrolling = 'touch';
+              
+              // Fix touch-action if it's blocking scroll
+              const touchAction = window.getComputedStyle(element).touchAction;
+              if (touchAction === 'none') {
+                element.style.touchAction = 'pan-y';
+              }
             }
           });
         });
+      }
+      
+      // Apply fixes on load and when new content is added
+      setTimeout(applyScrollFixes, 1000);
+      setInterval(applyScrollFixes, 5000);
+      
+      // Watch for DOM changes
+      const observer = new MutationObserver(function(mutations) {
+        let shouldReapply = false;
+        mutations.forEach(function(mutation) {
+          if (mutation.addedNodes.length > 0) {
+            shouldReapply = true;
+          }
+        });
+        if (shouldReapply) {
+          setTimeout(applyScrollFixes, 500);
+        }
       });
       
-      // Start observing
       observer.observe(document.body, {
         childList: true,
         subtree: true
       });
       
-      console.log('[BBZCloud] schul.cloud touch scroll fix applied');
+      console.log('[BBZCloud] Scroll fix initialized');
     })();
   `,
-  delay: 1000,
-  description: 'Enable touch scrolling for channel and chat windows'
+  delay: 1500,
+  description: 'Production scroll fix for touch scrolling'
+};
+
+/**
+ * Office 365 - Comprehensive Desktop Spoofing
+ * 
+ * Problem: Office 365 detects mobile device and redirects to App Store
+ * Solution: Comprehensive spoofing to appear as Chrome on Windows 10 Desktop
+ */
+export const OFFICE_INJECTION: InjectionScript = {
+  js: `
+    // Comprehensive Desktop Browser Spoofing for Office 365
+    (function() {
+      console.log('[BBZCloud] Office 365 comprehensive desktop spoofing active');
+      
+      // Desktop User Agent (Chrome 120 on Windows 10)
+      const desktopUA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+      
+      // Override navigator properties to appear as desktop Chrome
+      Object.defineProperty(navigator, 'userAgent', {
+        get: function() { return desktopUA; },
+        configurable: true
+      });
+      
+      Object.defineProperty(navigator, 'appVersion', {
+        get: function() { return '5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'; },
+        configurable: true
+      });
+      
+      Object.defineProperty(navigator, 'platform', {
+        get: function() { return 'Win32'; },
+        configurable: true
+      });
+      
+      Object.defineProperty(navigator, 'vendor', {
+        get: function() { return 'Google Inc.'; },
+        configurable: true
+      });
+      
+      Object.defineProperty(navigator, 'maxTouchPoints', {
+        get: function() { return 0; },
+        configurable: true
+      });
+      
+      // Spoof mobile-specific properties
+      if (navigator.userAgentData) {
+        Object.defineProperty(navigator, 'userAgentData', {
+          get: function() {
+            return {
+              brands: [
+                { brand: 'Not_A Brand', version: '8' },
+                { brand: 'Chromium', version: '120' },
+                { brand: 'Google Chrome', version: '120' }
+              ],
+              mobile: false,
+              platform: 'Windows'
+            };
+          },
+          configurable: true
+        });
+      }
+      
+      // Override screen properties to desktop resolution
+      Object.defineProperty(window.screen, 'width', {
+        get: function() { return 1920; },
+        configurable: true
+      });
+      
+      Object.defineProperty(window.screen, 'height', {
+        get: function() { return 1080; },
+        configurable: true
+      });
+      
+      Object.defineProperty(window.screen, 'availWidth', {
+        get: function() { return 1920; },
+        configurable: true
+      });
+      
+      Object.defineProperty(window.screen, 'availHeight', {
+        get: function() { return 1040; },
+        configurable: true
+      });
+      
+      // Override window.orientation (mobile only)
+      if ('orientation' in window) {
+        delete window.orientation;
+      }
+      
+      // Override matchMedia for mobile detection
+      const originalMatchMedia = window.matchMedia;
+      window.matchMedia = function(query) {
+        const result = originalMatchMedia.call(window, query);
+        // Override mobile/touch queries
+        if (query.includes('hover: none') || query.includes('pointer: coarse')) {
+          return {
+            matches: false,
+            media: query,
+            onchange: null,
+            addListener: function() {},
+            removeListener: function() {},
+            addEventListener: function() {},
+            removeEventListener: function() {},
+            dispatchEvent: function() { return true; }
+          };
+        }
+        return result;
+      };
+      
+      // Remove touch event support indicators
+      if ('ontouchstart' in window) {
+        Object.defineProperty(window, 'ontouchstart', {
+          get: function() { return undefined; },
+          configurable: true
+        });
+      }
+      
+      if ('ontouchend' in window) {
+        Object.defineProperty(window, 'ontouchend', {
+          get: function() { return undefined; },
+          configurable: true
+        });
+      }
+      
+      // Intercept and block App Store redirects
+      const originalOpen = window.open;
+      window.open = function(url, ...args) {
+        if (url && (url.includes('apps.apple.com') || url.includes('play.google.com') || url.includes('itunes.apple'))) {
+          console.log('[BBZCloud] Blocked App Store redirect:', url);
+          return null;
+        }
+        return originalOpen.call(window, url, ...args);
+      };
+      
+      // Block location changes to app stores
+      const originalLocationDescriptor = Object.getOwnPropertyDescriptor(window, 'location');
+      const originalLocationHref = Object.getOwnPropertyDescriptor(window.location, 'href');
+      
+      Object.defineProperty(window.location, 'href', {
+        set: function(value) {
+          if (value && (value.includes('apps.apple.com') || value.includes('play.google.com') || value.includes('itunes.apple'))) {
+            console.log('[BBZCloud] Blocked location.href change to App Store:', value);
+            return;
+          }
+          originalLocationHref.set.call(window.location, value);
+        },
+        get: originalLocationHref.get,
+        configurable: true
+      });
+      
+      // Intercept location.replace
+      const originalReplace = window.location.replace;
+      window.location.replace = function(url) {
+        if (url && (url.includes('apps.apple.com') || url.includes('play.google.com') || url.includes('itunes.apple'))) {
+          console.log('[BBZCloud] Blocked location.replace to App Store:', url);
+          return;
+        }
+        return originalReplace.call(window.location, url);
+      };
+      
+      // Intercept location.assign
+      const originalAssign = window.location.assign;
+      window.location.assign = function(url) {
+        if (url && (url.includes('apps.apple.com') || url.includes('play.google.com') || url.includes('itunes.apple'))) {
+          console.log('[BBZCloud] Blocked location.assign to App Store:', url);
+          return;
+        }
+        return originalAssign.call(window.location, url);
+      };
+      
+      // Intercept clicks on App Store links
+      document.addEventListener('click', function(e) {
+        const target = e.target.closest('a');
+        if (target && target.href) {
+          if (target.href.includes('apps.apple.com') || 
+              target.href.includes('play.google.com') || 
+              target.href.includes('itunes.apple')) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            console.log('[BBZCloud] Blocked App Store link click:', target.href);
+            return false;
+          }
+        }
+      }, true);
+      
+      // Monitor for dynamic redirects
+      let redirectAttempts = 0;
+      const originalSetTimeout = window.setTimeout;
+      window.setTimeout = function(callback, delay, ...args) {
+        const wrappedCallback = function() {
+          try {
+            callback.apply(this, arguments);
+          } catch (e) {
+            // If callback tries to redirect, catch it
+            if (e.message && (e.message.includes('apple') || e.message.includes('play.google'))) {
+              console.log('[BBZCloud] Blocked setTimeout redirect attempt');
+              redirectAttempts++;
+              return;
+            }
+            throw e;
+          }
+        };
+        return originalSetTimeout.call(window, wrappedCallback, delay, ...args);
+      };
+      
+      console.log('[BBZCloud] Office 365 comprehensive desktop spoofing initialized');
+      console.log('[BBZCloud] Spoofed as: Chrome 120 on Windows 10 (1920x1080)');
+    })();
+  `,
+  delay: 100,
+  description: 'Comprehensive desktop browser spoofing for Office 365'
 };
 
 /**
@@ -260,6 +452,8 @@ export function getInjectionScript(appId: string): InjectionScript | null {
   switch (appId) {
     case 'schulcloud':
       return SCHULCLOUD_INJECTION;
+    case 'office':
+      return OFFICE_INJECTION;
     case 'webuntis':
       return WEBUNTIS_INJECTION;
     default:

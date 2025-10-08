@@ -36,7 +36,7 @@ export const URLS = {
   OUTLOOK: 'https://exchange.bbz-rd-eck.de/owa/#path=/mail',
   
   // Productivity applications
-  OFFICE: 'https://m365.cloud.microsoft/apps/?auth=2',
+  OFFICE: 'https://m365.cloud.microsoft/apps/',
   CRYPTPAD: 'https://cryptpad.fr/drive',
   TASKCARDS: 'https://bbzrdeck.taskcards.app',
   
