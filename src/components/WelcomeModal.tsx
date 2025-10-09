@@ -24,6 +24,7 @@ import {
 } from '@ionic/react';
 import { mailOutline } from 'ionicons/icons';
 import { useAuth } from '../contexts/AuthContext';
+import { hideKeyboard } from '../utils/keyboardUtils';
 import { INFO_MESSAGES, ERROR_MESSAGES } from '../utils/constants';
 import type { WelcomeModalProps } from '../types';
 import './WelcomeModal.css';
@@ -46,6 +47,8 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onComplete }) => {
    * Handle form submission
    */
   const handleSubmit = async () => {
+    await hideKeyboard();
+    
     // Validate required fields
     if (!email) {
       presentToast({
@@ -116,7 +119,13 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onComplete }) => {
               <IonInput
                 type="email"
                 value={email}
+                enterkeyhint="go"
                 onIonInput={(e) => setEmail(e.detail.value || '')}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSubmit();
+                  }
+                }}
                 placeholder="vorname.nachname@bbz-rd-eck.de"
                 required
               />
