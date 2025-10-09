@@ -61,10 +61,10 @@ export const GLOBAL_INJECTION: InjectionScript = {
     }
   `,
   js: `
-    // GLOBAL KEYBOARD FIX - Optimized Version
+    // GLOBAL KEYBOARD FIX - Optimized Version with Native Bridge
     (function() {
       'use strict';
-      console.log('[BBZCloud] Initializing keyboard fixes v2.0');
+      console.log('[BBZCloud] Initializing keyboard fixes v3.0 with native bridge');
       
       // Configuration
       const CONFIG = {
@@ -77,6 +77,8 @@ export const GLOBAL_INJECTION: InjectionScript = {
       let lastHeight = window.innerHeight;
       let resizeTimeout = null;
       let isKeyboardVisible = false;
+      let keyboardHeightFromNative = 0;
+      let originalBodyHeight = null;
       
       // 1. Ensure proper viewport configuration
       function setupViewport() {
@@ -170,17 +172,89 @@ export const GLOBAL_INJECTION: InjectionScript = {
         }, CONFIG.DEBOUNCE_DELAY);
       }
       
-      // 5. Initialize on load
+      // 5. Adjust WebView height for keyboard
+      function adjustWebViewForKeyboard(keyboardHeight) {
+        if (!originalBodyHeight) {
+          originalBodyHeight = document.body.style.height;
+        }
+        
+        // Calculate new height
+        const viewportHeight = window.innerHeight;
+        const newHeight = viewportHeight - keyboardHeight;
+        
+        console.log('[BBZCloud] Adjusting WebView height:', {
+          viewport: viewportHeight,
+          keyboard: keyboardHeight,
+          newHeight: newHeight
+        });
+        
+        // Apply height restriction
+        document.documentElement.style.height = newHeight + 'px';
+        document.body.style.height = newHeight + 'px';
+        document.body.style.overflow = 'hidden';
+        
+        // Add visual indicator (optional - can be removed)
+        document.body.style.borderBottom = '2px solid #007bff';
+      }
+      
+      // 6. Reset WebView height
+      function resetWebViewHeight() {
+        console.log('[BBZCloud] Resetting WebView height');
+        
+        document.documentElement.style.height = '';
+        document.body.style.height = originalBodyHeight || '';
+        document.body.style.overflow = '';
+        document.body.style.borderBottom = '';
+        
+        originalBodyHeight = null;
+      }
+      
+      // 7. Listen for native keyboard events (from BrowserService)
+      function setupNativeBridge() {
+        window.addEventListener('messageFromNative', (event) => {
+          const data = event.detail;
+          
+          if (data.type === 'keyboardShow') {
+            console.log('[BBZCloud] Native keyboard show event received:', data.keyboardHeight);
+            keyboardHeightFromNative = data.keyboardHeight;
+            isKeyboardVisible = true;
+            document.body.classList.add('bbz-keyboard-visible');
+            
+            // Adjust WebView height
+            adjustWebViewForKeyboard(data.keyboardHeight);
+            
+            // Also scroll focused element
+            const focused = document.activeElement;
+            if (focused && focused.matches('input, textarea, select, [contenteditable="true"]')) {
+              setTimeout(() => scrollInputIntoView(focused), CONFIG.SCROLL_DELAY);
+            }
+          } else if (data.type === 'keyboardHide') {
+            console.log('[BBZCloud] Native keyboard hide event received');
+            isKeyboardVisible = false;
+            keyboardHeightFromNative = 0;
+            document.body.classList.remove('bbz-keyboard-visible');
+            
+            // Reset WebView height
+            resetWebViewHeight();
+          }
+        });
+        
+        console.log('[BBZCloud] Native bridge listener setup complete');
+      }
+      
+      // 8. Initialize on load
       function initialize() {
         setupViewport();
         handleInputFocus();
+        setupNativeBridge(); // NEW: Setup native event listener
         
-        // Listen for resize events
+        // Listen for resize events (fallback if native events don't work)
         window.addEventListener('resize', detectKeyboard, { passive: true });
         window.addEventListener('orientationchange', () => {
           setTimeout(() => {
             lastHeight = window.innerHeight;
             isKeyboardVisible = false;
+            resetWebViewHeight();
           }, 500);
         }, { passive: true });
         
@@ -211,7 +285,7 @@ export const GLOBAL_INJECTION: InjectionScript = {
           subtree: true
         });
         
-        console.log('[BBZCloud] Keyboard fixes initialized');
+        console.log('[BBZCloud] Keyboard fixes v3.0 initialized with native bridge');
       }
       
       // Run after DOM is ready

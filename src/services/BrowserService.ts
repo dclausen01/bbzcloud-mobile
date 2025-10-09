@@ -9,6 +9,8 @@
 
 import { InAppBrowser } from '@capgo/inappbrowser';
 import type { PluginListenerHandle } from '@capacitor/core';
+import { Keyboard } from '@capacitor/keyboard';
+import { Capacitor } from '@capacitor/core';
 import { BROWSER_CONFIG, NAVIGATION_APPS } from '../utils/constants';
 import type { AppConfig } from '../utils/constants';
 import { isSmartphone, isIOS, isAndroid, canOpenNativeApps } from '../utils/deviceUtils';
@@ -20,6 +22,9 @@ class BrowserService {
   private currentAppId: string | null = null;
   private currentUrl: string | null = null;
   private pageLoadedListener: PluginListenerHandle | null = null;
+  private keyboardShowListener: PluginListenerHandle | null = null;
+  private keyboardHideListener: PluginListenerHandle | null = null;
+  private isKeyboardBridgeActive: boolean = false;
 
   /**
    * Open a URL in the InAppBrowser with optional JavaScript injection
@@ -59,6 +64,76 @@ class BrowserService {
   }
 
   /**
+   * Setup keyboard event bridge for InAppBrowser
+   * This forwards keyboard events from MainActivity to the WebView
+   */
+  private async setupKeyboardBridge(): Promise<void> {
+    if (!Capacitor.isNativePlatform() || this.isKeyboardBridgeActive) {
+      return;
+    }
+
+    console.log('[BrowserService] Setting up keyboard bridge');
+
+    try {
+      // Listen for keyboard show events in MainActivity
+      this.keyboardShowListener = await Keyboard.addListener('keyboardWillShow', async (info) => {
+        console.log('[BrowserService] Keyboard will show, height:', info.keyboardHeight);
+        
+        // Send keyboard info to InAppBrowser WebView
+        try {
+          await InAppBrowser.postMessage({
+            detail: {
+              type: 'keyboardShow',
+              keyboardHeight: info.keyboardHeight,
+              timestamp: Date.now()
+            }
+          });
+        } catch (error) {
+          console.error('[BrowserService] Error sending keyboard show event:', error);
+        }
+      });
+
+      // Listen for keyboard hide events in MainActivity
+      this.keyboardHideListener = await Keyboard.addListener('keyboardWillHide', async () => {
+        console.log('[BrowserService] Keyboard will hide');
+        
+        // Notify WebView that keyboard is hiding
+        try {
+          await InAppBrowser.postMessage({
+            detail: {
+              type: 'keyboardHide',
+              timestamp: Date.now()
+            }
+          });
+        } catch (error) {
+          console.error('[BrowserService] Error sending keyboard hide event:', error);
+        }
+      });
+
+      this.isKeyboardBridgeActive = true;
+      console.log('[BrowserService] Keyboard bridge active');
+    } catch (error) {
+      console.error('[BrowserService] Error setting up keyboard bridge:', error);
+    }
+  }
+
+  /**
+   * Cleanup keyboard event bridge
+   */
+  private async cleanupKeyboardBridge(): Promise<void> {
+    if (this.keyboardShowListener) {
+      await this.keyboardShowListener.remove();
+      this.keyboardShowListener = null;
+    }
+    if (this.keyboardHideListener) {
+      await this.keyboardHideListener.remove();
+      this.keyboardHideListener = null;
+    }
+    this.isKeyboardBridgeActive = false;
+    console.log('[BrowserService] Keyboard bridge cleaned up');
+  }
+
+  /**
    * Open WebView with JavaScript injection support
    */
   private async openWebViewWithInjection(
@@ -72,6 +147,9 @@ class BrowserService {
       await InAppBrowser.removeAllListeners();
       this.pageLoadedListener = null;
     }
+
+    // Setup keyboard bridge to forward events to WebView
+    await this.setupKeyboardBridge();
 
     // ALWAYS set up page loaded listener for global + app-specific injection
     this.pageLoadedListener = await InAppBrowser.addListener('browserPageLoaded', async () => {
@@ -307,6 +385,9 @@ class BrowserService {
         await InAppBrowser.removeAllListeners();
         this.pageLoadedListener = null;
       }
+
+      // Cleanup keyboard bridge
+      await this.cleanupKeyboardBridge();
       
       // Clear current session info
       this.currentAppId = null;
