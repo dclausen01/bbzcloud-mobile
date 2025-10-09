@@ -37,6 +37,7 @@ import {
 } from '@ionic/react';
 import { add, trash, create, folderOutline, checkmarkCircle, ellipseOutline } from 'ionicons/icons';
 import { Preferences } from '@capacitor/preferences';
+import { hideKeyboard } from '../utils/keyboardUtils';
 import type { Todo, TodoState } from '../types';
 import './Todos.css';
 
@@ -140,7 +141,7 @@ const Todos: React.FC = () => {
     });
   };
 
-  const updateTodo = (id: number, text: string) => {
+  const updateTodo = async (id: number, text: string) => {
     if (!text.trim()) return;
 
     setTodoState(prev => ({
@@ -151,6 +152,8 @@ const Todos: React.FC = () => {
     }));
 
     setEditingTodo(null);
+    await hideKeyboard();
+    
     presentToast({
       message: 'Aufgabe aktualisiert',
       duration: 2000,
@@ -306,6 +309,7 @@ const Todos: React.FC = () => {
                   {editingTodo?.id === todo.id ? (
                     <IonInput
                       value={editingTodo.text}
+                      enterkeyhint="done"
                       onIonChange={e => setEditingTodo({ ...editingTodo, text: e.detail.value || '' })}
                       onIonBlur={() => updateTodo(todo.id, editingTodo.text)}
                       onKeyPress={e => {
@@ -360,7 +364,10 @@ const Todos: React.FC = () => {
           {
             name: 'todoText',
             type: 'textarea',
-            placeholder: 'Aufgabe eingeben...'
+            placeholder: 'Aufgabe eingeben...',
+            attributes: {
+              enterkeyhint: 'done'
+            }
           }
         ]}
         buttons={[
@@ -389,7 +396,10 @@ const Todos: React.FC = () => {
           {
             name: 'folderName',
             type: 'text',
-            placeholder: 'Neuer Ordnername'
+            placeholder: 'Neuer Ordnername',
+            attributes: {
+              enterkeyhint: 'done'
+            }
           }
         ]}
         buttons={[

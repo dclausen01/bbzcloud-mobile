@@ -199,6 +199,7 @@ const Home: React.FC = () => {
             value={searchQuery}
             onIonInput={(e) => setSearchQuery(e.detail.value || '')}
             placeholder="Apps durchsuchen..."
+            enterkeyhint="search"
             debounce={300}
           />
         </IonToolbar>
