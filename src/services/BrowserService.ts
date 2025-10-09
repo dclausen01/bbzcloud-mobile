@@ -14,7 +14,7 @@ import type { AppConfig } from '../utils/constants';
 import { isSmartphone, isIOS, isAndroid, canOpenNativeApps } from '../utils/deviceUtils';
 import type { BrowserOptions, ApiResponse, NativeAppResult } from '../types';
 import DatabaseService from './DatabaseService';
-import { getInjectionScript, type InjectionScript } from './InjectionScripts';
+import { getInjectionScript, GLOBAL_INJECTION, type InjectionScript } from './InjectionScripts';
 
 class BrowserService {
   private currentAppId: string | null = null;
@@ -73,42 +73,70 @@ class BrowserService {
       this.pageLoadedListener = null;
     }
 
-    // Set up page loaded listener for injection
-    if (injectionScript) {
-      this.pageLoadedListener = await InAppBrowser.addListener('browserPageLoaded', async () => {
-        console.log('[BrowserService] Page loaded, injecting scripts for', appId);
+    // ALWAYS set up page loaded listener for global + app-specific injection
+    this.pageLoadedListener = await InAppBrowser.addListener('browserPageLoaded', async () => {
+      console.log('[BrowserService] Page loaded, injecting scripts for', appId);
+      
+      try {
+        // STEP 1: Inject GLOBAL scripts first (for all apps)
+        console.log('[BrowserService] Injecting GLOBAL scripts');
         
-        try {
-          // Wait for the specified delay
+        // Wait for global delay
+        if (GLOBAL_INJECTION.delay) {
+          await new Promise(resolve => setTimeout(resolve, GLOBAL_INJECTION.delay));
+        }
+
+        // Inject GLOBAL CSS
+        if (GLOBAL_INJECTION.css) {
+          const globalCssCode = `
+            (function() {
+              var style = document.createElement('style');
+              style.textContent = ${JSON.stringify(GLOBAL_INJECTION.css)};
+              document.head.appendChild(style);
+              console.log('[BBZCloud] Global CSS injected');
+            })();
+          `;
+          await InAppBrowser.executeScript({ code: globalCssCode });
+        }
+
+        // Inject GLOBAL JavaScript
+        if (GLOBAL_INJECTION.js) {
+          await InAppBrowser.executeScript({ code: GLOBAL_INJECTION.js });
+        }
+
+        // STEP 2: Inject app-specific scripts if provided
+        if (injectionScript) {
+          console.log('[BrowserService] Injecting app-specific scripts for', appId);
+          
+          // Wait for app-specific delay
           if (injectionScript.delay) {
             await new Promise(resolve => setTimeout(resolve, injectionScript.delay));
           }
 
-          // Inject CSS if provided
+          // Inject app-specific CSS
           if (injectionScript.css) {
-            console.log('[BrowserService] Injecting CSS');
-            const cssCode = `
+            const appCssCode = `
               (function() {
                 var style = document.createElement('style');
                 style.textContent = ${JSON.stringify(injectionScript.css)};
                 document.head.appendChild(style);
+                console.log('[BBZCloud] App-specific CSS injected for ${appId}');
               })();
             `;
-            await InAppBrowser.executeScript({ code: cssCode });
+            await InAppBrowser.executeScript({ code: appCssCode });
           }
 
-          // Inject JavaScript if provided
+          // Inject app-specific JavaScript
           if (injectionScript.js) {
-            console.log('[BrowserService] Injecting JavaScript');
             await InAppBrowser.executeScript({ code: injectionScript.js });
           }
-
-          console.log('[BrowserService] Injection completed for', appId);
-        } catch (error) {
-          console.error('[BrowserService] Error injecting scripts:', error);
         }
-      });
-    }
+
+        console.log('[BrowserService] All injections completed for', appId);
+      } catch (error) {
+        console.error('[BrowserService] Error injecting scripts:', error);
+      }
+    });
 
     // Open the WebView
     await InAppBrowser.openWebView({
@@ -124,6 +152,7 @@ class BrowserService {
       // @ts-expect-error - ToolBarType enum issue with plugin types
       toolbarType: 'activity', // Simple toolbar with close and share
       isPullToRefreshEnabled: true, // Enable pull-to-refresh gesture
+      enabledSafeBottomMargin: true, // Creates 20px safe margin at bottom for navigation bar
     });
   }
 

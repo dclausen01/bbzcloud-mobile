@@ -3,7 +3,7 @@
  * 
  * JavaScript and CSS injection scripts for specific apps that need modifications
  * 
- * @version 1.0.0
+ * @version 2.0.0
  */
 
 export interface InjectionScript {
@@ -16,6 +16,215 @@ export interface InjectionScript {
   // Description of what this injection does
   description: string;
 }
+
+/**
+ * GLOBAL INJECTION - Applied to ALL web apps
+ * 
+ * Fixes:
+ * 1. Keyboard handling - ensures input fields are not covered by keyboard
+ * 2. Android navigation bar collision - adds safe padding at bottom
+ */
+export const GLOBAL_INJECTION: InjectionScript = {
+  css: `
+    /* GLOBAL KEYBOARD FIX - Optimized Version */
+    /* Note: Bottom margin is handled by enabledSafeBottomMargin in BrowserService */
+    
+    /* Ensure all form inputs scroll into view when focused */
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="search"],
+    input[type="tel"],
+    input[type="url"],
+    input[type="number"],
+    input[type="date"],
+    input[type="time"],
+    input[type="datetime-local"],
+    textarea,
+    select,
+    [contenteditable="true"],
+    [role="textbox"] {
+      scroll-margin-bottom: 150px !important;
+      scroll-margin-top: 100px !important;
+    }
+    
+    /* Smooth scroll behavior for better UX */
+    html {
+      scroll-behavior: smooth !important;
+    }
+    
+    /* Prevent zoom on input focus (optional - can be removed if zoom is desired) */
+    @media screen and (max-width: 768px) {
+      input, textarea, select {
+        font-size: 16px !important; /* Prevents iOS zoom */
+      }
+    }
+  `,
+  js: `
+    // GLOBAL KEYBOARD FIX - Optimized Version
+    (function() {
+      'use strict';
+      console.log('[BBZCloud] Initializing keyboard fixes v2.0');
+      
+      // Configuration
+      const CONFIG = {
+        KEYBOARD_THRESHOLD: 0.75,     // More sensitive detection
+        SCROLL_DELAY: 200,             // Reduced delay for faster response
+        KEYBOARD_ESTIMATE: 0.45,       // Better keyboard height estimate
+        DEBOUNCE_DELAY: 150,           // Debounce for resize events
+      };
+      
+      let lastHeight = window.innerHeight;
+      let resizeTimeout = null;
+      let isKeyboardVisible = false;
+      
+      // 1. Ensure proper viewport configuration
+      function setupViewport() {
+        let viewport = document.querySelector('meta[name="viewport"]');
+        if (!viewport) {
+          viewport = document.createElement('meta');
+          viewport.name = 'viewport';
+          document.head.appendChild(viewport);
+        }
+        // Allow user scaling for accessibility, but prevent auto-zoom on input
+        viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover';
+      }
+      
+      // 2. Smart scroll for focused inputs
+      function scrollInputIntoView(input) {
+        const rect = input.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const keyboardHeight = viewportHeight * CONFIG.KEYBOARD_ESTIMATE;
+        const visibleArea = viewportHeight - keyboardHeight;
+        
+        // Check if input is in keyboard area
+        if (rect.bottom > visibleArea - 50 || rect.top < 50) {
+          // Calculate optimal scroll position
+          const elementMiddle = rect.top + (rect.height / 2);
+          const targetPosition = visibleArea / 2;
+          const scrollAmount = elementMiddle - targetPosition;
+          
+          // Scroll to position
+          window.scrollBy({
+            top: scrollAmount,
+            behavior: 'smooth'
+          });
+        }
+      }
+      
+      // 3. Enhanced input focus handler
+      function handleInputFocus() {
+        const inputSelectors = 
+          'input:not([type="hidden"]):not([type="submit"]):not([type="button"]), ' +
+          'textarea, select, [contenteditable="true"], [role="textbox"]';
+        
+        const inputs = document.querySelectorAll(inputSelectors);
+        
+        inputs.forEach(input => {
+          // Skip if already has listener
+          if (input.dataset.bbzFocusListener) return;
+          input.dataset.bbzFocusListener = 'true';
+          
+          input.addEventListener('focus', function() {
+            setTimeout(() => {
+              if (isKeyboardVisible || document.activeElement === this) {
+                scrollInputIntoView(this);
+              }
+            }, CONFIG.SCROLL_DELAY);
+          }, { passive: true });
+        });
+      }
+      
+      // 4. Debounced keyboard detection
+      function detectKeyboard() {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+          const currentHeight = window.innerHeight;
+          const heightDiff = Math.abs(currentHeight - lastHeight);
+          
+          // Only react to significant height changes (keyboard show/hide)
+          if (heightDiff > 100) {
+            if (currentHeight < lastHeight * CONFIG.KEYBOARD_THRESHOLD) {
+              // Keyboard appeared
+              if (!isKeyboardVisible) {
+                isKeyboardVisible = true;
+                document.body.classList.add('bbz-keyboard-visible');
+                console.log('[BBZCloud] Keyboard: visible');
+                
+                // Scroll focused element into view
+                const focused = document.activeElement;
+                if (focused && focused.matches('input, textarea, select, [contenteditable="true"]')) {
+                  setTimeout(() => scrollInputIntoView(focused), CONFIG.SCROLL_DELAY);
+                }
+              }
+            } else {
+              // Keyboard hidden
+              if (isKeyboardVisible) {
+                isKeyboardVisible = false;
+                document.body.classList.remove('bbz-keyboard-visible');
+                console.log('[BBZCloud] Keyboard: hidden');
+              }
+            }
+            lastHeight = currentHeight;
+          }
+        }, CONFIG.DEBOUNCE_DELAY);
+      }
+      
+      // 5. Initialize on load
+      function initialize() {
+        setupViewport();
+        handleInputFocus();
+        
+        // Listen for resize events
+        window.addEventListener('resize', detectKeyboard, { passive: true });
+        window.addEventListener('orientationchange', () => {
+          setTimeout(() => {
+            lastHeight = window.innerHeight;
+            isKeyboardVisible = false;
+          }, 500);
+        }, { passive: true });
+        
+        // Watch for dynamically added inputs
+        const observer = new MutationObserver((mutations) => {
+          let hasNewInputs = false;
+          for (const mutation of mutations) {
+            if (mutation.addedNodes.length > 0) {
+              for (const node of mutation.addedNodes) {
+                if (node.nodeType === 1 && 
+                    (node.matches('input, textarea, select, [contenteditable="true"]') ||
+                     node.querySelector && node.querySelector('input, textarea, select, [contenteditable="true"]'))) {
+                  hasNewInputs = true;
+                  break;
+                }
+              }
+            }
+            if (hasNewInputs) break;
+          }
+          
+          if (hasNewInputs) {
+            setTimeout(handleInputFocus, 300);
+          }
+        });
+        
+        observer.observe(document.body, {
+          childList: true,
+          subtree: true
+        });
+        
+        console.log('[BBZCloud] Keyboard fixes initialized');
+      }
+      
+      // Run after DOM is ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initialize);
+      } else {
+        initialize();
+      }
+    })();
+  `,
+  delay: 500,
+  description: 'Global keyboard handling and navigation bar padding for all apps'
+};
 
 /**
  * schul.cloud - Production scroll fix
