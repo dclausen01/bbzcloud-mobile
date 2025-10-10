@@ -14,6 +14,7 @@ import Settings from './pages/Settings';
 import Todos from './pages/Todos';
 import AppSwitcher from './components/AppSwitcher';
 import GlobalFAB from './components/GlobalFAB';
+import ErrorBoundary from './components/ErrorBoundary';
 import { AuthProvider } from './contexts/AuthContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { AppSwitcherProvider } from './contexts/AppSwitcherContext';
@@ -52,32 +53,34 @@ setupIonicReact();
 
 const App: React.FC = () => (
   <IonApp>
-    <AuthProvider>
-      <SettingsProvider>
-        <AppSwitcherProvider>
-          <IonReactRouter>
-            <IonSplitPane contentId="main-content">
-              <AppSwitcher />
-              <IonRouterOutlet id="main-content">
-                <Route exact path="/home">
-                  <Home />
-                </Route>
-                <Route exact path="/settings">
-                  <Settings />
-                </Route>
-                <Route exact path="/todos">
-                  <Todos />
-                </Route>
-                <Route exact path="/">
-                  <Redirect to="/home" />
-                </Route>
-              </IonRouterOutlet>
-            </IonSplitPane>
-            <GlobalFAB />
-          </IonReactRouter>
-        </AppSwitcherProvider>
-      </SettingsProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <SettingsProvider>
+          <AppSwitcherProvider>
+            <IonReactRouter>
+              <IonSplitPane contentId="main-content">
+                <AppSwitcher />
+                <IonRouterOutlet id="main-content">
+                  <Route exact path="/home">
+                    <Home />
+                  </Route>
+                  <Route exact path="/settings">
+                    <Settings />
+                  </Route>
+                  <Route exact path="/todos">
+                    <Todos />
+                  </Route>
+                  <Route exact path="/">
+                    <Redirect to="/home" />
+                  </Route>
+                </IonRouterOutlet>
+              </IonSplitPane>
+              <GlobalFAB />
+            </IonReactRouter>
+          </AppSwitcherProvider>
+        </SettingsProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   </IonApp>
 );
 

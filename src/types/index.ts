@@ -259,6 +259,26 @@ export interface AppError {
 
 export type ErrorHandler = (error: AppError) => void;
 
+// Auth-specific error codes
+export type AuthErrorCode = 
+  | 'INVALID_EMAIL' 
+  | 'DB_ERROR' 
+  | 'NETWORK_ERROR' 
+  | 'STORAGE_ERROR'
+  | 'UNKNOWN_ERROR';
+
+export class AuthError extends Error {
+  code: AuthErrorCode;
+  originalError?: Error;
+
+  constructor(code: AuthErrorCode, message: string, originalError?: Error) {
+    super(message);
+    this.name = 'AuthError';
+    this.code = code;
+    this.originalError = originalError;
+  }
+}
+
 // ============================================================================
 // EVENT TYPES
 // ============================================================================

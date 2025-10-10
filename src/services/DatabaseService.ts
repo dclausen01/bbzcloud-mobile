@@ -13,7 +13,9 @@ import type { DatabaseResult, User, BrowserHistory, DBSettings } from '../types'
 class DatabaseService {
   private sqlite: SQLiteConnection;
   private db: SQLiteDBConnection | null = null;
-  private isInitialized = false;
+  private initPromise: Promise<DatabaseResult> | null = null;
+  private settingsCache: Map<string, { value: string; timestamp: number }> = new Map();
+  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
   constructor() {
     this.sqlite = new SQLiteConnection(CapacitorSQLite);
@@ -21,10 +23,26 @@ class DatabaseService {
 
   /**
    * Initialize the database connection and create tables
+   * Uses promise caching to prevent race conditions
    */
   async initialize(): Promise<DatabaseResult> {
+    // Return existing initialization promise if already initializing
+    if (this.initPromise) {
+      return this.initPromise;
+    }
+
+    // Create and cache the initialization promise
+    this.initPromise = this._initializeDatabase();
+    return this.initPromise;
+  }
+
+  /**
+   * Internal initialization method
+   */
+  private async _initializeDatabase(): Promise<DatabaseResult> {
     try {
-      if (this.isInitialized) {
+      // Check if already initialized
+      if (this.db) {
         return { success: true };
       }
 
@@ -42,12 +60,13 @@ class DatabaseService {
       // Create tables
       await this.createTables();
 
-      this.isInitialized = true;
       console.log('Database initialized successfully');
 
       return { success: true };
     } catch (error) {
       console.error('Database initialization error:', error);
+      // Reset init promise on error so it can be retried
+      this.initPromise = null;
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown database error'
@@ -83,7 +102,8 @@ class DatabaseService {
       if (this.db) {
         await this.db.close();
         this.db = null;
-        this.isInitialized = false;
+        this.initPromise = null;
+        this.settingsCache.clear();
       }
     } catch (error) {
       console.error('Error closing database:', error);
@@ -95,19 +115,37 @@ class DatabaseService {
   // ============================================================================
 
   /**
-   * Get a setting value by key
+   * Get a setting value by key with caching
    */
   async getSetting(key: string): Promise<string | null> {
     try {
-      if (!this.db) await this.initialize();
+      // Check cache first
+      const cached = this.settingsCache.get(key);
+      if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+        return cached.value;
+      }
+
+      if (!this.db) {
+        const initResult = await this.initialize();
+        if (!initResult.success) {
+          throw new Error('Database initialization failed');
+        }
+      }
+
+      if (!this.db) {
+        throw new Error('Database not initialized');
+      }
       
-      const result = await this.db!.query(
+      const result = await this.db.query(
         'SELECT value FROM settings WHERE key = ?',
         [key]
       );
 
       if (result.values && result.values.length > 0) {
-        return result.values[0].value;
+        const value = result.values[0].value;
+        // Update cache
+        this.settingsCache.set(key, { value, timestamp: Date.now() });
+        return value;
       }
 
       return null;
@@ -118,17 +156,37 @@ class DatabaseService {
   }
 
   /**
-   * Save or update a setting
+   * Save or update a setting with validation
    */
   async saveSetting(key: string, value: string): Promise<DatabaseResult> {
     try {
-      if (!this.db) await this.initialize();
+      // Validate input
+      if (!key || key.length > 255) {
+        return { success: false, error: 'Invalid key: must be 1-255 characters' };
+      }
+      if (value.length > 10000) {
+        return { success: false, error: 'Value too large: maximum 10000 characters' };
+      }
 
-      await this.db!.run(
+      if (!this.db) {
+        const initResult = await this.initialize();
+        if (!initResult.success) {
+          return initResult;
+        }
+      }
+
+      if (!this.db) {
+        return { success: false, error: 'Database not initialized' };
+      }
+
+      await this.db.run(
         `INSERT INTO settings (key, value) VALUES (?, ?)
          ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = CURRENT_TIMESTAMP`,
         [key, value, value]
       );
+
+      // Invalidate cache for this key
+      this.settingsCache.delete(key);
 
       return { success: true };
     } catch (error) {
@@ -145,9 +203,18 @@ class DatabaseService {
    */
   async getAllSettings(): Promise<DatabaseResult<DBSettings[]>> {
     try {
-      if (!this.db) await this.initialize();
+      if (!this.db) {
+        const initResult = await this.initialize();
+        if (!initResult.success) {
+          return { success: false, error: 'Database initialization failed' };
+        }
+      }
 
-      const result = await this.db!.query('SELECT * FROM settings');
+      if (!this.db) {
+        return { success: false, error: 'Database not initialized' };
+      }
+
+      const result = await this.db.query('SELECT * FROM settings');
 
       return {
         success: true,
@@ -171,9 +238,18 @@ class DatabaseService {
    */
   async getUserProfile(email: string): Promise<User | null> {
     try {
-      if (!this.db) await this.initialize();
+      if (!this.db) {
+        const initResult = await this.initialize();
+        if (!initResult.success) {
+          throw new Error('Database initialization failed');
+        }
+      }
 
-      const result = await this.db!.query(
+      if (!this.db) {
+        throw new Error('Database not initialized');
+      }
+
+      const result = await this.db.query(
         'SELECT * FROM user_profile WHERE email = ?',
         [email]
       );
@@ -201,9 +277,18 @@ class DatabaseService {
    */
   async saveUserProfile(user: User): Promise<DatabaseResult<number>> {
     try {
-      if (!this.db) await this.initialize();
+      if (!this.db) {
+        const initResult = await this.initialize();
+        if (!initResult.success) {
+          return { success: false, error: 'Database initialization failed' };
+        }
+      }
 
-      const result = await this.db!.run(
+      if (!this.db) {
+        return { success: false, error: 'Database not initialized' };
+      }
+
+      const result = await this.db.run(
         `INSERT INTO user_profile (email, role) VALUES (?, ?)
          ON CONFLICT(email) DO UPDATE SET role = ?, updated_at = CURRENT_TIMESTAMP
          RETURNING id`,
@@ -232,9 +317,18 @@ class DatabaseService {
    */
   async getAppVisibility(userId: number): Promise<Record<string, boolean>> {
     try {
-      if (!this.db) await this.initialize();
+      if (!this.db) {
+        const initResult = await this.initialize();
+        if (!initResult.success) {
+          throw new Error('Database initialization failed');
+        }
+      }
 
-      const result = await this.db!.query(
+      if (!this.db) {
+        throw new Error('Database not initialized');
+      }
+
+      const result = await this.db.query(
         'SELECT app_id, is_visible FROM app_visibility WHERE user_id = ?',
         [userId]
       );
@@ -263,9 +357,18 @@ class DatabaseService {
     isVisible: boolean
   ): Promise<DatabaseResult> {
     try {
-      if (!this.db) await this.initialize();
+      if (!this.db) {
+        const initResult = await this.initialize();
+        if (!initResult.success) {
+          return initResult;
+        }
+      }
 
-      await this.db!.run(
+      if (!this.db) {
+        return { success: false, error: 'Database not initialized' };
+      }
+
+      await this.db.run(
         `INSERT INTO app_visibility (app_id, user_id, is_visible) VALUES (?, ?, ?)
          ON CONFLICT(app_id, user_id) DO UPDATE SET is_visible = ?`,
         [appId, userId, isVisible ? 1 : 0, isVisible ? 1 : 0]
@@ -290,9 +393,18 @@ class DatabaseService {
    */
   async addToHistory(appId: string, url: string, title?: string): Promise<DatabaseResult> {
     try {
-      if (!this.db) await this.initialize();
+      if (!this.db) {
+        const initResult = await this.initialize();
+        if (!initResult.success) {
+          return initResult;
+        }
+      }
 
-      await this.db!.run(
+      if (!this.db) {
+        return { success: false, error: 'Database not initialized' };
+      }
+
+      await this.db.run(
         'INSERT INTO browser_history (app_id, url, title) VALUES (?, ?, ?)',
         [appId, url, title || '']
       );
@@ -312,9 +424,18 @@ class DatabaseService {
    */
   async getHistory(appId: string, limit: number = 50): Promise<DatabaseResult<BrowserHistory[]>> {
     try {
-      if (!this.db) await this.initialize();
+      if (!this.db) {
+        const initResult = await this.initialize();
+        if (!initResult.success) {
+          return { success: false, error: 'Database initialization failed' };
+        }
+      }
 
-      const result = await this.db!.query(
+      if (!this.db) {
+        return { success: false, error: 'Database not initialized' };
+      }
+
+      const result = await this.db.query(
         'SELECT * FROM browser_history WHERE app_id = ? ORDER BY visited_at DESC LIMIT ?',
         [appId, limit]
       );
@@ -348,12 +469,21 @@ class DatabaseService {
    */
   async clearHistory(appId?: string): Promise<DatabaseResult> {
     try {
-      if (!this.db) await this.initialize();
+      if (!this.db) {
+        const initResult = await this.initialize();
+        if (!initResult.success) {
+          return initResult;
+        }
+      }
+
+      if (!this.db) {
+        return { success: false, error: 'Database not initialized' };
+      }
 
       if (appId) {
-        await this.db!.run('DELETE FROM browser_history WHERE app_id = ?', [appId]);
+        await this.db.run('DELETE FROM browser_history WHERE app_id = ?', [appId]);
       } else {
-        await this.db!.run('DELETE FROM browser_history');
+        await this.db.run('DELETE FROM browser_history');
       }
 
       return { success: true };

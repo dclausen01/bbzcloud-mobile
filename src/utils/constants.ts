@@ -23,27 +23,32 @@ export const APP_CONFIG = {
 // WEB APPLICATION URLS
 // ============================================================================
 
+// Helper function to get environment variable or fallback
+const getEnvUrl = (key: string, fallback: string): string => {
+  return import.meta.env[key] || fallback;
+};
+
 export const URLS = {
   // Organization website
-  BBZ_WEBSITE: 'https://www.bbz-rd-eck.de',
+  BBZ_WEBSITE: getEnvUrl('VITE_BBZ_WEBSITE', 'https://www.bbz-rd-eck.de'),
   
   // Educational platforms
-  SCHULCLOUD: 'https://app.schul.cloud',
-  MOODLE: 'https://portal.bbz-rd-eck.com',
+  SCHULCLOUD: getEnvUrl('VITE_SCHULCLOUD', 'https://app.schul.cloud'),
+  MOODLE: getEnvUrl('VITE_MOODLE', 'https://portal.bbz-rd-eck.com'),
   
   // Communication tools
-  BBB: 'https://bbb.bbz-rd-eck.de/b/signin',
-  OUTLOOK: 'https://exchange.bbz-rd-eck.de/owa/#path=/mail',
+  BBB: getEnvUrl('VITE_BBB', 'https://bbb.bbz-rd-eck.de/b/signin'),
+  OUTLOOK: getEnvUrl('VITE_OUTLOOK', 'https://exchange.bbz-rd-eck.de/owa/#path=/mail'),
   
   // Productivity applications
-  CRYPTPAD: 'https://cryptpad.fr/drive',
-  TASKCARDS: 'https://bbzrdeck.taskcards.app',
+  CRYPTPAD: getEnvUrl('VITE_CRYPTPAD', 'https://cryptpad.fr/drive'),
+  TASKCARDS: getEnvUrl('VITE_TASKCARDS', 'https://bbzrdeck.taskcards.app'),
   
   // Administrative tools
-  WEBUNTIS: 'https://neilo.webuntis.com/WebUntis/?school=bbz-rd-eck#/basic/login',
-  FOBIZZ: 'https://tools.fobizz.com/',
-  WIKI: 'https://wiki.bbz-rd-eck.com',
-  ANTRAEGE: 'https://dms.bbz-rd-eck.de/',
+  WEBUNTIS: getEnvUrl('VITE_WEBUNTIS', 'https://neilo.webuntis.com/WebUntis/?school=bbz-rd-eck#/basic/login'),
+  FOBIZZ: getEnvUrl('VITE_FOBIZZ', 'https://tools.fobizz.com/'),
+  WIKI: getEnvUrl('VITE_WIKI', 'https://wiki.bbz-rd-eck.com'),
+  ANTRAEGE: getEnvUrl('VITE_ANTRAEGE', 'https://dms.bbz-rd-eck.de/'),
 };
 
 // ============================================================================

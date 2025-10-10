@@ -68,8 +68,13 @@ class BrowserService {
    * This forwards keyboard events from MainActivity to the WebView
    */
   private async setupKeyboardBridge(): Promise<void> {
-    if (!Capacitor.isNativePlatform() || this.isKeyboardBridgeActive) {
+    if (!Capacitor.isNativePlatform()) {
       return;
+    }
+
+    // Always cleanup existing listeners first to prevent duplicates
+    if (this.isKeyboardBridgeActive) {
+      await this.cleanupKeyboardBridge();
     }
 
     console.log('[BrowserService] Setting up keyboard bridge');
@@ -142,7 +147,8 @@ class BrowserService {
     options?: Partial<BrowserOptions>,
     injectionScript?: InjectionScript
   ): Promise<void> {
-    // Remove any existing page loaded listener
+    // CRITICAL: Cleanup all existing listeners first to prevent memory leaks
+    await this.cleanupKeyboardBridge();
     if (this.pageLoadedListener) {
       await InAppBrowser.removeAllListeners();
       this.pageLoadedListener = null;

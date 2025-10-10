@@ -10,7 +10,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { USER_ROLES } from '../utils/constants';
 import CredentialService from '../services/CredentialService';
 import DatabaseService from '../services/DatabaseService';
-import type { AuthContextType, User, UserCredentials, UserRole } from '../types';
+import type { AuthContextType, User, UserCredentials, UserRole, AuthError } from '../types';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -88,12 +88,40 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       setIsLoading(true);
 
+      // Validate email
+      if (!email || !email.includes('@')) {
+        const authError: AuthError = {
+          name: 'AuthError',
+          message: 'Ungültige E-Mail-Adresse',
+          code: 'INVALID_EMAIL'
+        };
+        throw authError;
+      }
+
       // Save email credential
-      await CredentialService.saveCredential('email', email);
+      const emailResult = await CredentialService.saveCredential('email', email);
+      if (!emailResult.success) {
+        const authError: AuthError = {
+          name: 'AuthError',
+          message: 'Fehler beim Speichern der E-Mail',
+          code: 'STORAGE_ERROR',
+          originalError: new Error(emailResult.error)
+        };
+        throw authError;
+      }
       
       // Save password if provided
       if (password) {
-        await CredentialService.saveCredential('password', password);
+        const passwordResult = await CredentialService.saveCredential('password', password);
+        if (!passwordResult.success) {
+          const authError: AuthError = {
+            name: 'AuthError',
+            message: 'Fehler beim Speichern des Passworts',
+            code: 'STORAGE_ERROR',
+            originalError: new Error(passwordResult.error)
+          };
+          throw authError;
+        }
       }
 
       // Determine user role
@@ -103,7 +131,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const newUser: User = { email, role };
       const result = await DatabaseService.saveUserProfile(newUser);
 
-      if (result.success && result.data) {
+      if (!result.success) {
+        const authError: AuthError = {
+          name: 'AuthError',
+          message: 'Fehler beim Speichern des Benutzerprofils',
+          code: 'DB_ERROR',
+          originalError: new Error(result.error)
+        };
+        throw authError;
+      }
+
+      if (result.data) {
         setUser({ ...newUser, id: result.data });
         setIsAuthenticated(true);
 
@@ -112,7 +150,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     } catch (error) {
       console.error('Login error:', error);
-      throw error;
+      
+      // Re-throw AuthError as-is, wrap others
+      if (error && typeof error === 'object' && 'code' in error) {
+        throw error;
+      } else {
+        const authError: AuthError = {
+          name: 'AuthError',
+          message: 'Anmeldung fehlgeschlagen',
+          code: 'UNKNOWN_ERROR',
+          originalError: error instanceof Error ? error : new Error(String(error))
+        };
+        throw authError;
+      }
     } finally {
       setIsLoading(false);
     }
@@ -126,7 +176,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setIsLoading(true);
 
       // Clear all credentials
-      await CredentialService.clearAllCredentials();
+      const result = await CredentialService.clearAllCredentials();
+      if (!result.success) {
+        console.warn('Failed to clear credentials:', result.error);
+        // Continue logout even if clearing fails
+      }
 
       // Reset state
       setUser(null);
@@ -134,7 +188,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setIsAuthenticated(false);
     } catch (error) {
       console.error('Logout error:', error);
-      throw error;
+      
+      // Still reset state even if error occurs
+      setUser(null);
+      setCredentials({});
+      setIsAuthenticated(false);
+      
+      const authError: AuthError = {
+        name: 'AuthError',
+        message: 'Fehler beim Abmelden',
+        code: 'UNKNOWN_ERROR',
+        originalError: error instanceof Error ? error : new Error(String(error))
+      };
+      throw authError;
     } finally {
       setIsLoading(false);
     }
@@ -177,17 +243,43 @@ export function AuthProvider({ children }: AuthProviderProps) {
    */
   const updateUserRole = async (role: UserRole): Promise<void> => {
     try {
-      if (!user) return;
+      if (!user) {
+        const authError: AuthError = {
+          name: 'AuthError',
+          message: 'Kein Benutzer angemeldet',
+          code: 'UNKNOWN_ERROR'
+        };
+        throw authError;
+      }
 
       const updatedUser = { ...user, role };
       const result = await DatabaseService.saveUserProfile(updatedUser);
 
-      if (result.success) {
-        setUser(updatedUser);
+      if (!result.success) {
+        const authError: AuthError = {
+          name: 'AuthError',
+          message: 'Fehler beim Aktualisieren der Benutzerrolle',
+          code: 'DB_ERROR',
+          originalError: new Error(result.error)
+        };
+        throw authError;
       }
+
+      setUser(updatedUser);
     } catch (error) {
       console.error('Error updating user role:', error);
-      throw error;
+      
+      if (error && typeof error === 'object' && 'code' in error) {
+        throw error;
+      } else {
+        const authError: AuthError = {
+          name: 'AuthError',
+          message: 'Fehler beim Aktualisieren der Rolle',
+          code: 'UNKNOWN_ERROR',
+          originalError: error instanceof Error ? error : new Error(String(error))
+        };
+        throw authError;
+      }
     }
   };
 
