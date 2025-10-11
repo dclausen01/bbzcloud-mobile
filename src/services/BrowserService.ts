@@ -147,84 +147,199 @@ class BrowserService {
       (function() {
         console.log('[BBZCloud] Navigation bar detection started');
         
+        let navBarHeight = 0;
+        let isKeyboardVisible = false;
+        let initialViewportHeight = window.innerHeight;
+        
         // Detect if navigation bar is present (Android)
-        function getNavigationBarHeight() {
+        function detectNavigationBar() {
           // Check if we're on Android with navigation bar
           const isAndroid = /Android/i.test(navigator.userAgent);
-          if (!isAndroid) return 0;
-          
-          // Calculate the difference between screen height and available viewport
-          const screenHeight = window.screen.height;
-          const viewportHeight = window.innerHeight;
-          const heightDiff = screenHeight - viewportHeight;
-          
-          // If difference is significant (more than 24px for status bar), we likely have a navbar
-          // Typical navbar height is 48-96px depending on device
-          if (heightDiff > 60) {
-            const navBarHeight = heightDiff - 24; // Subtract status bar height
-            console.log('[BBZCloud] Navigation bar detected, height:', navBarHeight);
-            return navBarHeight;
+          if (!isAndroid) {
+            console.log('[BBZCloud] Not Android, no navbar');
+            return 0;
           }
           
+          // Method 1: Use CSS env() variables if available (most reliable)
+          const safeAreaInsetBottom = parseInt(getComputedStyle(document.documentElement)
+            .getPropertyValue('env(safe-area-inset-bottom)')) || 0;
+          
+          if (safeAreaInsetBottom > 0) {
+            console.log('[BBZCloud] Safe area inset bottom (env):', safeAreaInsetBottom);
+            return safeAreaInsetBottom;
+          }
+          
+          // Method 2: Check visualViewport if available (more accurate)
+          if (window.visualViewport) {
+            const visualHeight = window.visualViewport.height;
+            const windowHeight = window.innerHeight;
+            const diff = windowHeight - visualHeight;
+            
+            // If there's a small difference, it's likely the navbar
+            if (diff > 20 && diff < 120) {
+              console.log('[BBZCloud] Navigation bar from visualViewport:', diff);
+              return diff;
+            }
+          }
+          
+          // Method 3: Conservative fallback - only detect typical navbar heights
+          // Only when keyboard is definitely not visible
+          if (!isKeyboardVisible) {
+            const currentHeight = window.innerHeight;
+            const heightDiff = initialViewportHeight - currentHeight;
+            
+            // Navbar is typically 48-96px on most devices
+            // If we detect something in this range AND viewport hasn't changed much, it's navbar
+            if (Math.abs(heightDiff) < 50) { // Viewport stable
+              const screenHeight = window.screen.height;
+              const viewportHeight = window.innerHeight;
+              const statusBarHeight = 24; // Typical status bar
+              
+              const totalDiff = screenHeight - viewportHeight - statusBarHeight;
+              
+              // STRICT: Only accept navbar heights between 48-96px
+              if (totalDiff >= 48 && totalDiff <= 96) {
+                console.log('[BBZCloud] Navigation bar detected (conservative):', totalDiff);
+                return totalDiff;
+              }
+            }
+          }
+          
+          console.log('[BBZCloud] No navbar detected');
           return 0;
         }
         
-        // Apply safe area padding for navigation bar
+        // Apply safe area padding for navigation bar ONLY (not keyboard)
         function applySafeAreaPadding() {
-          const navBarHeight = getNavigationBarHeight();
+          // Only detect navbar when keyboard is NOT visible
+          if (!isKeyboardVisible) {
+            navBarHeight = detectNavigationBar();
+          }
           
-          if (navBarHeight > 0) {
-            console.log('[BBZCloud] Applying safe area padding:', navBarHeight + 'px');
-            
-            // Create or update CSS for safe area
-            let style = document.getElementById('bbzcloud-safe-area');
-            if (!style) {
-              style = document.createElement('style');
-              style.id = 'bbzcloud-safe-area';
-              document.head.appendChild(style);
-            }
-            
-            // Add padding to body and html to prevent content overlap
-            style.textContent = \`
-              /* BBZCloud Safe Area for Navigation Bar */
-              html {
-                padding-bottom: \${navBarHeight}px !important;
-                box-sizing: border-box !important;
-              }
-              
-              body {
-                padding-bottom: \${navBarHeight}px !important;
-                box-sizing: border-box !important;
-                min-height: calc(100vh - \${navBarHeight}px) !important;
-              }
-              
-              /* Ensure fixed bottom elements are above nav bar */
-              [style*="position: fixed"][style*="bottom"],
-              .fixed-bottom,
-              .bottom-bar,
-              .bottom-navigation {
-                bottom: \${navBarHeight}px !important;
-              }
-              
-              /* Handle sticky footers */
-              footer,
-              [role="contentinfo"] {
-                padding-bottom: \${navBarHeight}px !important;
-              }
-            \`;
-            
-            console.log('[BBZCloud] Safe area padding applied');
+          // Apply padding only if:
+          // 1. Navbar exists (height > 0)
+          // 2. Keyboard is NOT visible
+          // 3. Height is reasonable (48-96px)
+          const shouldApplyPadding = navBarHeight > 0 && 
+                                     navBarHeight >= 48 && 
+                                     navBarHeight <= 96 && 
+                                     !isKeyboardVisible;
+          
+          if (shouldApplyPadding) {
+            console.log('[BBZCloud] Applying navbar padding:', navBarHeight + 'px');
+            updatePadding(navBarHeight);
           } else {
-            console.log('[BBZCloud] No navigation bar detected, no padding needed');
+            console.log('[BBZCloud] No padding needed (navbar:', navBarHeight, 'keyboard:', isKeyboardVisible + ')');
+            updatePadding(0);
           }
         }
         
-        // Apply immediately
-        applySafeAreaPadding();
+        // Update the actual padding
+        function updatePadding(padding) {
+          let style = document.getElementById('bbzcloud-safe-area');
+          if (!style) {
+            style = document.createElement('style');
+            style.id = 'bbzcloud-safe-area';
+            document.head.appendChild(style);
+          }
+          
+          if (padding > 0) {
+            style.textContent = \`
+              /* BBZCloud Safe Area for Navigation Bar */
+              body {
+                padding-bottom: \${padding}px !important;
+                box-sizing: border-box !important;
+              }
+              
+              /* Ensure fixed bottom elements are above nav bar */
+              [style*="position: fixed"][style*="bottom: 0"],
+              [style*="position:fixed"][style*="bottom:0"],
+              .fixed-bottom,
+              .bottom-bar,
+              .bottom-navigation {
+                bottom: \${padding}px !important;
+              }
+            \`;
+          } else {
+            // Remove padding
+            style.textContent = '';
+          }
+        }
+        
+        // Listen for viewport changes
+        let resizeTimeout;
+        let lastHeight = window.innerHeight;
+        
+        window.addEventListener('resize', function() {
+          clearTimeout(resizeTimeout);
+          resizeTimeout = setTimeout(() => {
+            const currentHeight = window.innerHeight;
+            const heightChange = lastHeight - currentHeight;
+            
+            console.log('[BBZCloud] Resize detected. Height change:', heightChange, 'px');
+            
+            // Large reduction = keyboard appeared (>150px change)
+            if (heightChange > 150) {
+              isKeyboardVisible = true;
+              console.log('[BBZCloud] Keyboard appeared');
+              applySafeAreaPadding();
+            } 
+            // Large increase = keyboard disappeared (>100px change)
+            else if (heightChange < -100) {
+              isKeyboardVisible = false;
+              console.log('[BBZCloud] Keyboard disappeared');
+              // Reset initial height when keyboard closes
+              initialViewportHeight = currentHeight;
+              applySafeAreaPadding();
+            }
+            // Small change = just rotation or minor adjustment
+            else if (Math.abs(heightChange) < 50) {
+              console.log('[BBZCloud] Minor viewport change, recalculating navbar');
+              initialViewportHeight = currentHeight;
+              applySafeAreaPadding();
+            }
+            
+            lastHeight = currentHeight;
+          }, 150);
+        });
+        
+        // Listen for keyboard events from native bridge
+        window.addEventListener('message', function(event) {
+          try {
+            const data = event.data;
+            if (!data || !data.type) return;
+            
+            if (data.type === 'keyboardShow') {
+              isKeyboardVisible = true;
+              console.log('[BBZCloud] Keyboard show event from native');
+              applySafeAreaPadding();
+            } else if (data.type === 'keyboardHide') {
+              isKeyboardVisible = false;
+              console.log('[BBZCloud] Keyboard hide event from native');
+              // Reset viewport height when keyboard hides
+              setTimeout(() => {
+                initialViewportHeight = window.innerHeight;
+                applySafeAreaPadding();
+              }, 200);
+            }
+          } catch (error) {
+            console.error('[BBZCloud] Error handling message:', error);
+          }
+        });
+        
+        // Apply immediately on load (with delay to let page settle)
+        setTimeout(() => {
+          initialViewportHeight = window.innerHeight;
+          applySafeAreaPadding();
+        }, 500);
         
         // Reapply on orientation change
         window.addEventListener('orientationchange', function() {
-          setTimeout(applySafeAreaPadding, 300);
+          setTimeout(() => {
+            isKeyboardVisible = false; // Reset keyboard state
+            initialViewportHeight = window.innerHeight;
+            applySafeAreaPadding();
+          }, 500);
         });
         
         console.log('[BBZCloud] Navigation bar detection completed');
