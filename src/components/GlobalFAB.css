@@ -1,46 +1,45 @@
 /**
- * BBZCloud Mobile - Global FAB Styles
+ * BBZCloud Mobile - Slider Open Button Styles
  */
 
-.global-fab-container {
+.slider-open-button-container {
   position: fixed;
-  cursor: move;
-  touch-action: none;
-  user-select: none;
-  -webkit-user-select: none;
-  transition: opacity 0.2s ease;
+  left: 0;
+  top: 80px;
+  z-index: 9999;
+  pointer-events: none;
 }
 
-.global-fab-container.dragging {
-  opacity: 0.8;
-  cursor: grabbing;
-}
-
-.app-switcher-fab-global {
+.slider-open-button {
   --background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   --color: white;
-  --box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  --box-shadow: 2px 2px 8px rgba(102, 126, 234, 0.4);
+  --border-radius: 0 12px 12px 0;
+  --padding-start: 8px;
+  --padding-end: 12px;
+  height: 48px;
+  width: 48px;
+  font-size: 1.3rem;
   position: relative;
-  cursor: move;
+  pointer-events: auto;
+  transition: all 0.3s ease;
 }
 
-.global-fab-container.dragging .app-switcher-fab-global {
-  --box-shadow: 0 6px 16px rgba(102, 126, 234, 0.6);
+.slider-open-button:hover {
+  --box-shadow: 2px 4px 12px rgba(102, 126, 234, 0.6);
+  transform: translateX(2px);
 }
 
-.app-switcher-fab-global:hover {
-  --box-shadow: 0 6px 16px rgba(102, 126, 234, 0.6);
+.slider-open-button:active {
+  --box-shadow: 2px 2px 6px rgba(102, 126, 234, 0.4);
+  transform: translateX(0);
 }
 
-.app-switcher-fab-global:active {
-  --box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
-}
-
-/* FAB Badge */
-.fab-badge-global {
+/* Badge */
+.slider-badge {
   position: absolute;
-  top: -4px;
-  right: -4px;
+  top: -6px;
+  right: -6px;
   min-width: 20px;
   height: 20px;
   font-size: 0.65rem;
@@ -52,20 +51,22 @@
   pointer-events: none;
 }
 
-/* Prevent text selection during drag */
-.global-fab-container * {
-  user-select: none;
-  -webkit-user-select: none;
-}
-
 /* Dark mode */
 @media (prefers-color-scheme: dark) {
-  .app-switcher-fab-global {
-    --box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  .slider-open-button {
+    --box-shadow: 2px 2px 8px rgba(102, 126, 234, 0.3);
   }
   
-  .global-fab-container.dragging .app-switcher-fab-global,
-  .app-switcher-fab-global:hover {
-    --box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5);
+  .slider-open-button:hover {
+    --box-shadow: 2px 4px 12px rgba(102, 126, 234, 0.5);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+  .slider-open-button {
+    height: 44px;
+    width: 44px;
+    font-size: 1.2rem;
   }
 }

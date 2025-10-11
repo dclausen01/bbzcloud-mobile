@@ -35,14 +35,10 @@ const AppSwitcher: React.FC = () => {
   const {
     loadedApps,
     activeAppId,
-    maxLoadedApps,
     switchToApp,
     closeApp,
-    closeAllApps,
-    getMemoryUsage
+    closeAllApps
   } = useAppSwitcher();
-
-  const memoryUsage = getMemoryUsage();
 
   /**
    * Handle app switch
@@ -120,7 +116,6 @@ const AppSwitcher: React.FC = () => {
                   
                   <IonLabel>
                     <h2>{app.title}</h2>
-                    <p className="app-switcher-url">{new URL(app.url).hostname}</p>
                   </IonLabel>
 
                   {app.isActive && (
@@ -142,17 +137,6 @@ const AppSwitcher: React.FC = () => {
                 </IonItem>
               ))}
             </IonList>
-
-            <div className="app-switcher-footer">
-              <IonText color="medium">
-                <p className="memory-info">
-                  {loadedApps.length} / {maxLoadedApps} Apps geladen
-                </p>
-                <p className="memory-usage">
-                  ~{memoryUsage} MB Speicher
-                </p>
-              </IonText>
-            </div>
           </>
         )}
       </IonContent>

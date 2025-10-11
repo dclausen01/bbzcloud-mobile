@@ -141,25 +141,12 @@
 .app-switcher-item ion-label h2 {
   font-size: 1rem;
   font-weight: 500;
-  margin-bottom: 4px;
   color: var(--ion-text-color);
 }
 
 .app-switcher-item.active ion-label h2 {
   color: white;
   font-weight: 600;
-}
-
-.app-switcher-url {
-  font-size: 0.75rem;
-  color: var(--ion-color-medium);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.app-switcher-item.active .app-switcher-url {
-  color: rgba(255, 255, 255, 0.85);
 }
 
 /* Active Badge */
@@ -207,29 +194,6 @@
   opacity: 0.4;
 }
 
-/* Footer */
-.app-switcher-footer {
-  padding: 1rem;
-  border-top: 1px solid var(--ion-border-color);
-  background: var(--ion-color-light);
-  margin-top: auto;
-}
-
-.memory-info,
-.memory-usage {
-  margin: 0.25rem 0;
-  font-size: 0.75rem;
-  text-align: center;
-}
-
-.memory-info {
-  font-weight: 500;
-}
-
-.memory-usage {
-  opacity: 0.7;
-}
-
 /* Tablet Optimizations */
 @media (min-width: 768px) {
   .app-switcher-menu {
@@ -252,10 +216,6 @@
   .app-switcher-item ion-label h2 {
     font-size: 1.1rem;
   }
-
-  .app-switcher-url {
-    font-size: 0.875rem;
-  }
 }
 
 /* Dark Mode */
@@ -274,10 +234,6 @@
 
   .app-switcher-item.active .app-switcher-icon {
     background: color-mix(in srgb, var(--app-color, var(--ion-color-primary)) 20%, transparent);
-  }
-
-  .app-switcher-footer {
-    background: rgba(255, 255, 255, 0.02);
   }
 }
 

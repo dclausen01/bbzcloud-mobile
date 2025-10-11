@@ -58,7 +58,7 @@ const App: React.FC = () => (
         <SettingsProvider>
           <AppSwitcherProvider>
             <IonReactRouter>
-              <IonSplitPane contentId="main-content">
+              <IonSplitPane contentId="main-content" when="false">
                 <AppSwitcher />
                 <IonRouterOutlet id="main-content">
                   <Route exact path="/home">
