@@ -67,14 +67,15 @@ export const GLOBAL_INJECTION: InjectionScript = {
     }
   `,
   js: `
-    // GLOBAL KEYBOARD FIX - WebView API Based (No Native Bridge Required)
+    // GLOBAL KEYBOARD FIX - Aggressive Multi-Method Approach
     (function() {
       'use strict';
-      console.log('[BBZCloud] Keyboard handler v4.0 - WebView API based');
+      console.log('[BBZCloud] 🎹 Keyboard handler v4.2 - Aggressive multi-method');
       
       // Configuration
       const CONFIG = {
         SCROLL_DELAY: 300,           // Delay before scrolling input (wait for keyboard)
+        IMMEDIATE_SCROLL_DELAY: 100, // Immediate scroll attempt
         DEBOUNCE_DELAY: 100,         // Debounce for resize events
         KEYBOARD_MIN_HEIGHT: 150,    // Minimum height change to consider as keyboard
       };
@@ -82,6 +83,16 @@ export const GLOBAL_INJECTION: InjectionScript = {
       let isKeyboardVisible = false;
       let keyboardHeight = 0;
       let focusedInput = null;
+      let lastViewportHeight = window.innerHeight;
+      
+      // Debug helper
+      function debugLog(message, data) {
+        if (data) {
+          console.log('[BBZCloud] 🎹', message, data);
+        } else {
+          console.log('[BBZCloud] 🎹', message);
+        }
+      }
       
       // 1. Ensure proper viewport configuration
       function setupViewport() {
@@ -90,15 +101,25 @@ export const GLOBAL_INJECTION: InjectionScript = {
           viewport = document.createElement('meta');
           viewport.name = 'viewport';
           document.head.appendChild(viewport);
+          debugLog('Created new viewport meta tag');
         }
+        const oldContent = viewport.content;
         // Optimal viewport settings for mobile web apps
         viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover';
+        debugLog('Viewport configured', { old: oldContent, new: viewport.content });
       }
       
       // 2. Precise keyboard detection using visualViewport API
       function setupKeyboardDetection() {
-        if (window.visualViewport) {
-          console.log('[BBZCloud] Using visualViewport API for keyboard detection');
+        const hasVisualViewport = typeof window.visualViewport !== 'undefined';
+        debugLog('Keyboard detection method', { 
+          hasVisualViewport, 
+          windowHeight: window.innerHeight,
+          visualHeight: hasVisualViewport ? window.visualViewport.height : 'N/A'
+        });
+        
+        if (hasVisualViewport) {
+          debugLog('✅ Using visualViewport API (precise)');
           
           // visualViewport provides precise measurements
           window.visualViewport.addEventListener('resize', () => {
@@ -106,16 +127,24 @@ export const GLOBAL_INJECTION: InjectionScript = {
             const windowHeight = window.innerHeight;
             const heightDiff = windowHeight - viewportHeight;
             
+            debugLog('visualViewport resize', {
+              windowHeight,
+              viewportHeight,
+              heightDiff,
+              threshold: CONFIG.KEYBOARD_MIN_HEIGHT
+            });
+            
             if (heightDiff > CONFIG.KEYBOARD_MIN_HEIGHT) {
               // Keyboard is visible
               if (!isKeyboardVisible) {
                 isKeyboardVisible = true;
                 keyboardHeight = heightDiff;
                 document.body.classList.add('bbz-keyboard-visible');
-                console.log('[BBZCloud] Keyboard shown, height:', keyboardHeight);
+                debugLog('✅ Keyboard SHOWN', { height: keyboardHeight });
                 
                 // Scroll focused input if exists
                 if (focusedInput) {
+                  debugLog('Scrolling focused input from keyboard detection');
                   scrollInputIntoView(focusedInput);
                 }
               }
@@ -125,12 +154,12 @@ export const GLOBAL_INJECTION: InjectionScript = {
                 isKeyboardVisible = false;
                 keyboardHeight = 0;
                 document.body.classList.remove('bbz-keyboard-visible');
-                console.log('[BBZCloud] Keyboard hidden');
+                debugLog('❌ Keyboard HIDDEN');
               }
             }
           });
         } else {
-          console.log('[BBZCloud] Using window.resize fallback for keyboard detection');
+          debugLog('⚠️ Using window.resize fallback (less precise)');
           
           // Fallback: Use window.resize (less precise)
           let lastHeight = window.innerHeight;
@@ -142,15 +171,23 @@ export const GLOBAL_INJECTION: InjectionScript = {
               const currentHeight = window.innerHeight;
               const heightDiff = lastHeight - currentHeight;
               
+              debugLog('window resize', {
+                lastHeight,
+                currentHeight,
+                heightDiff,
+                threshold: CONFIG.KEYBOARD_MIN_HEIGHT
+              });
+              
               if (heightDiff > CONFIG.KEYBOARD_MIN_HEIGHT) {
                 // Keyboard appeared
                 if (!isKeyboardVisible) {
                   isKeyboardVisible = true;
                   keyboardHeight = heightDiff;
                   document.body.classList.add('bbz-keyboard-visible');
-                  console.log('[BBZCloud] Keyboard shown (fallback), estimated height:', keyboardHeight);
+                  debugLog('✅ Keyboard SHOWN (fallback)', { height: keyboardHeight });
                   
                   if (focusedInput) {
+                    debugLog('Scrolling focused input from fallback detection');
                     scrollInputIntoView(focusedInput);
                   }
                 }
@@ -160,7 +197,7 @@ export const GLOBAL_INJECTION: InjectionScript = {
                   isKeyboardVisible = false;
                   keyboardHeight = 0;
                   document.body.classList.remove('bbz-keyboard-visible');
-                  console.log('[BBZCloud] Keyboard hidden (fallback)');
+                  debugLog('❌ Keyboard HIDDEN (fallback)');
                   lastHeight = currentHeight;
                 }
               }
@@ -169,111 +206,317 @@ export const GLOBAL_INJECTION: InjectionScript = {
         }
       }
       
-      // 3. Smart scroll for focused inputs
-      function scrollInputIntoView(input) {
-        if (!input) return;
+      // 3. AGGRESSIVE scroll for focused inputs - Multiple Methods
+      function scrollInputIntoView(input, immediate = false) {
+        if (!input) {
+          debugLog('⚠️ scrollInputIntoView called without input');
+          return;
+        }
         
         try {
           const rect = input.getBoundingClientRect();
           const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-          
-          // Check if input is covered by keyboard or out of view
           const inputBottom = rect.bottom;
-          const visibleBottom = viewportHeight - 20; // 20px padding
+          const inputTop = rect.top;
+          const visibleBottom = viewportHeight - 100; // 100px safe zone
           
-          if (inputBottom > visibleBottom || rect.top < 80) {
-            console.log('[BBZCloud] Scrolling input into view');
-            
-            // Method 1: scrollIntoView (most reliable)
+          debugLog('Input position check', {
+            immediate,
+            inputTag: input.tagName,
+            inputType: input.type,
+            inputTop,
+            inputBottom,
+            viewportHeight,
+            visibleBottom,
+            needsScroll: inputBottom > visibleBottom || inputTop < 100
+          });
+          
+          // ALWAYS scroll, even if it looks visible (keyboard might not be detected yet)
+          debugLog('🔄 AGGRESSIVE SCROLL - Using ALL methods');
+          
+          // Method 1: scrollIntoView
+          try {
             input.scrollIntoView({
-              behavior: 'smooth',
+              behavior: immediate ? 'auto' : 'smooth',
               block: 'center',
               inline: 'nearest'
             });
-            
-            // Method 2: Manual scroll calculation (backup)
-            setTimeout(() => {
+            debugLog('✅ Method 1: scrollIntoView executed');
+          } catch (e) {
+            debugLog('❌ Method 1 failed:', e.message);
+          }
+          
+          // Method 2: Focus the input (triggers native scroll on some browsers)
+          setTimeout(() => {
+            try {
+              if (document.activeElement !== input) {
+                input.focus();
+                debugLog('✅ Method 2: Re-focused input');
+              }
+            } catch (e) {
+              debugLog('❌ Method 2 failed:', e.message);
+            }
+          }, 50);
+          
+          // Method 3: Manual scroll with window.scrollTo
+          setTimeout(() => {
+            try {
               const newRect = input.getBoundingClientRect();
-              if (newRect.bottom > visibleBottom) {
-                const scrollAmount = newRect.bottom - visibleBottom + 50;
+              const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+              const targetY = scrollTop + newRect.top - (viewportHeight * 0.3);
+              
+              debugLog('📊 Method 3: Manual scroll', { 
+                currentScrollTop: scrollTop,
+                targetY,
+                inputTop: newRect.top 
+              });
+              
+              window.scrollTo({
+                top: Math.max(0, targetY),
+                behavior: immediate ? 'auto' : 'smooth'
+              });
+              debugLog('✅ Method 3: scrollTo executed');
+            } catch (e) {
+              debugLog('❌ Method 3 failed:', e.message);
+            }
+          }, 150);
+          
+          // Method 4: Scroll parent containers
+          setTimeout(() => {
+            try {
+              let parent = input.parentElement;
+              let scrolled = false;
+              
+              while (parent && parent !== document.body && !scrolled) {
+                const parentStyle = window.getComputedStyle(parent);
+                const hasScroll = parentStyle.overflowY === 'scroll' || 
+                                  parentStyle.overflowY === 'auto' ||
+                                  parent.scrollHeight > parent.clientHeight;
+                
+                if (hasScroll) {
+                  const parentRect = parent.getBoundingClientRect();
+                  const inputRect = input.getBoundingClientRect();
+                  
+                  if (inputRect.bottom > parentRect.bottom || inputRect.top < parentRect.top) {
+                    parent.scrollTop = input.offsetTop - parent.offsetTop - (parent.clientHeight / 3);
+                    debugLog('✅ Method 4: Scrolled parent container', {
+                      parent: parent.tagName,
+                      scrollTop: parent.scrollTop
+                    });
+                    scrolled = true;
+                  }
+                }
+                parent = parent.parentElement;
+              }
+              
+              if (!scrolled) {
+                debugLog('⚠️ Method 4: No scrollable parent found');
+              }
+            } catch (e) {
+              debugLog('❌ Method 4 failed:', e.message);
+            }
+          }, 200);
+          
+          // Method 5: Force scroll with scrollBy
+          setTimeout(() => {
+            try {
+              const finalRect = input.getBoundingClientRect();
+              const finalViewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+              
+              if (finalRect.bottom > finalViewportHeight - 100 || finalRect.top < 100) {
+                const scrollAmount = finalRect.bottom - (finalViewportHeight * 0.7);
+                debugLog('📊 Method 5: Final adjustment', { scrollAmount });
+                
                 window.scrollBy({
                   top: scrollAmount,
                   behavior: 'smooth'
                 });
+                debugLog('✅ Method 5: scrollBy executed');
               }
-            }, 150);
-          }
+            } catch (e) {
+              debugLog('❌ Method 5 failed:', e.message);
+            }
+          }, 300);
+          
         } catch (error) {
-          console.error('[BBZCloud] Error scrolling input:', error);
+          debugLog('❌ Error in scrollInputIntoView', error.message);
         }
       }
       
-      // 4. Setup input focus handlers
+      // 4. Setup input focus handlers with AGGRESSIVE scrolling
       function setupInputHandlers() {
+        debugLog('Setting up AGGRESSIVE input focus handlers');
+        
         // Use event delegation for better performance
         document.addEventListener('focusin', (e) => {
           const target = e.target;
           
           // Check if target is an input element
-          if (target && (
-            target.tagName === 'INPUT' && !['hidden', 'submit', 'button'].includes(target.type) ||
+          const isInputElement = target && (
+            (target.tagName === 'INPUT' && !['hidden', 'submit', 'button', 'checkbox', 'radio', 'file', 'image'].includes(target.type)) ||
             target.tagName === 'TEXTAREA' ||
             target.tagName === 'SELECT' ||
             target.isContentEditable ||
             target.getAttribute('role') === 'textbox'
-          )) {
+          );
+          
+          if (isInputElement) {
             focusedInput = target;
-            console.log('[BBZCloud] Input focused:', target.tagName);
+            debugLog('🎯 Input FOCUSED - AGGRESSIVE MODE', {
+              tag: target.tagName,
+              type: target.type,
+              id: target.id,
+              className: target.className,
+              contentEditable: target.isContentEditable
+            });
             
-            // Wait for keyboard to appear, then scroll
+            // Immediate scroll (RIGHT NOW)
+            scrollInputIntoView(target, true);
+            
+            // Second attempt at 100ms
             setTimeout(() => {
               if (focusedInput === target) {
-                scrollInputIntoView(target);
+                debugLog('2nd scroll attempt (100ms)');
+                scrollInputIntoView(target, true);
               }
-            }, CONFIG.SCROLL_DELAY);
+            }, 100);
+            
+            // Third attempt at 300ms (keyboard should be visible)
+            setTimeout(() => {
+              if (focusedInput === target) {
+                debugLog('3rd scroll attempt (300ms - keyboard visible)');
+                scrollInputIntoView(target, false);
+              }
+            }, 300);
+            
+            // Fourth attempt at 500ms (final)
+            setTimeout(() => {
+              if (focusedInput === target) {
+                debugLog('4th scroll attempt (500ms - final)');
+                scrollInputIntoView(target, false);
+              }
+            }, 500);
+            
+            // Fifth attempt at 800ms (aggressive final)
+            setTimeout(() => {
+              if (focusedInput === target) {
+                debugLog('5th scroll attempt (800ms - aggressive final)');
+                scrollInputIntoView(target, false);
+              }
+            }, 800);
+            
+          } else {
+            debugLog('Focus on non-input element', {
+              tag: target ? target.tagName : 'null',
+              type: target ? target.type : 'null'
+            });
           }
         }, true);
         
-        document.addEventListener('focusout', () => {
+        // Also listen for click events on inputs
+        document.addEventListener('click', (e) => {
+          const target = e.target;
+          const isInputElement = target && (
+            (target.tagName === 'INPUT' && !['hidden', 'submit', 'button', 'checkbox', 'radio', 'file', 'image'].includes(target.type)) ||
+            target.tagName === 'TEXTAREA' ||
+            target.tagName === 'SELECT' ||
+            target.isContentEditable ||
+            target.getAttribute('role') === 'textbox'
+          );
+          
+          if (isInputElement) {
+            debugLog('🖱️ Input CLICKED - triggering scroll');
+            setTimeout(() => {
+              scrollInputIntoView(target, true);
+            }, 50);
+            setTimeout(() => {
+              scrollInputIntoView(target, false);
+            }, 350);
+          }
+        }, true);
+        
+        document.addEventListener('focusout', (e) => {
+          if (focusedInput) {
+            debugLog('🎯 Input BLURRED', {
+              tag: focusedInput.tagName,
+              type: focusedInput.type
+            });
+          }
           focusedInput = null;
         }, true);
+        
+        debugLog('✅ AGGRESSIVE input handlers registered');
       }
       
       // 5. Handle orientation changes
       function setupOrientationHandler() {
         window.addEventListener('orientationchange', () => {
-          console.log('[BBZCloud] Orientation changed');
+          debugLog('🔄 Orientation changed');
           
           // Reset keyboard state
           setTimeout(() => {
             isKeyboardVisible = false;
             keyboardHeight = 0;
             document.body.classList.remove('bbz-keyboard-visible');
+            lastViewportHeight = window.innerHeight;
+            
+            debugLog('Orientation state reset', {
+              newHeight: window.innerHeight
+            });
             
             // Re-scroll focused input if exists
             if (focusedInput) {
+              debugLog('Re-scrolling focused input after orientation');
               setTimeout(() => scrollInputIntoView(focusedInput), 500);
             }
           }, 500);
         });
+        
+        debugLog('✅ Orientation handler registered');
       }
       
       // 6. Initialize
       function initialize() {
-        console.log('[BBZCloud] Initializing keyboard handler...');
+        debugLog('🚀 Initializing keyboard handler...');
+        debugLog('Environment', {
+          userAgent: navigator.userAgent,
+          platform: navigator.platform,
+          readyState: document.readyState,
+          windowHeight: window.innerHeight,
+          visualViewport: typeof window.visualViewport !== 'undefined'
+        });
         
-        setupViewport();
-        setupKeyboardDetection();
-        setupInputHandlers();
-        setupOrientationHandler();
-        
-        console.log('[BBZCloud] Keyboard handler initialized');
+        try {
+          setupViewport();
+          setupKeyboardDetection();
+          setupInputHandlers();
+          setupOrientationHandler();
+          
+          debugLog('✅ Keyboard handler initialized successfully');
+          
+          // Test with a sample input if any exists
+          setTimeout(() => {
+            const inputs = document.querySelectorAll('input:not([type="hidden"]), textarea');
+            debugLog('Found inputs on page', { count: inputs.length });
+            if (inputs.length > 0) {
+              debugLog('Sample inputs', Array.from(inputs).slice(0, 3).map(i => ({
+                tag: i.tagName,
+                type: i.type,
+                id: i.id
+              })));
+            }
+          }, 1000);
+        } catch (error) {
+          debugLog('❌ Initialization error', error.message);
+        }
       }
       
       // Run after DOM is ready
       if (document.readyState === 'loading') {
+        debugLog('Waiting for DOMContentLoaded...');
         document.addEventListener('DOMContentLoaded', initialize);
       } else {
+        debugLog('DOM already loaded, initializing immediately');
         initialize();
       }
     })();
