@@ -568,4 +568,146 @@ class BrowserService {
     }
 
     if (isAndroid() && appConfig.nativeApp.androidPackage) {
-      return `https://play.google.com/store/apps/details?
+      return `https://play.google.com/store/apps/details?id=${appConfig.nativeApp.androidPackage}`;
+    }
+
+    return null;
+  }
+
+  /**
+   * Check if an app has native support
+   */
+  hasNativeSupport(appId: string): boolean {
+    const appConfig = NAVIGATION_APPS[appId];
+    return !!appConfig?.nativeApp?.hasNativeApp;
+  }
+
+  /**
+   * Get default native preference for an app
+   */
+  getDefaultNativePreference(appId: string): boolean {
+    const appConfig = NAVIGATION_APPS[appId];
+    return appConfig?.nativeApp?.preferNativeOnSmartphone ?? false;
+  }
+
+  /**
+   * Close the current browser session
+   */
+  async close(): Promise<ApiResponse> {
+    try {
+      await InAppBrowser.close();
+
+      if (this.pageLoadedListener) {
+        await InAppBrowser.removeAllListeners();
+        this.pageLoadedListener = null;
+      }
+
+      await this.cleanupKeyboardBridge();
+
+      this.currentAppId = null;
+      this.currentUrl = null;
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error closing browser:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to close browser'
+      };
+    }
+  }
+
+  /**
+   * Get the currently open app ID
+   */
+  getCurrentAppId(): string | null {
+    return this.currentAppId;
+  }
+
+  /**
+   * Get the currently open URL
+   */
+  getCurrentUrl(): string | null {
+    return this.currentUrl;
+  }
+
+  /**
+   * Check if a browser session is active
+   */
+  isActive(): boolean {
+    return this.currentAppId !== null;
+  }
+
+  /**
+   * Listen for browser finished event
+   */
+  addBrowserFinishedListener(callback: () => void): void {
+    InAppBrowser.addListener('closeEvent', callback);
+  }
+
+  /**
+   * Listen for browser page loaded event
+   */
+  addBrowserPageLoadedListener(callback: () => void): void {
+    InAppBrowser.addListener('browserPageLoaded', callback);
+  }
+
+  /**
+   * Remove all event listeners
+   */
+  removeAllListeners(): void {
+    InAppBrowser.removeAllListeners();
+    this.pageLoadedListener = null;
+  }
+
+  /**
+   * Open URL in external browser (system default)
+   */
+  async openExternal(url: string): Promise<ApiResponse> {
+    try {
+      await InAppBrowser.open({ url });
+      return { success: true };
+    } catch (error) {
+      console.error('Error opening external browser:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to open external browser'
+      };
+    }
+  }
+
+  /**
+   * Get browser history for an app
+   */
+  async getAppHistory(appId: string, limit?: number): Promise<ApiResponse> {
+    try {
+      const result = await DatabaseService.getHistory(appId, limit);
+      return result;
+    } catch (error) {
+      console.error('Error getting app history:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get history'
+      };
+    }
+  }
+
+  /**
+   * Clear browser history for an app or all apps
+   */
+  async clearHistory(appId?: string): Promise<ApiResponse> {
+    try {
+      const result = await DatabaseService.clearHistory(appId);
+      return result;
+    } catch (error) {
+      console.error('Error clearing history:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to clear history'
+      };
+    }
+  }
+}
+
+// Export a singleton instance
+export default new BrowserService();
