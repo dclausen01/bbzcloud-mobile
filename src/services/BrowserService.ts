@@ -1,10 +1,10 @@
 /**
- * BBZCloud Mobile - Browser Service
+ * BBZCloud Mobile - Browser Service (Optimized for Keyboard)
  * 
  * Handles opening web apps in InAppBrowser with JavaScript injection support
  * Uses @capgo/inappbrowser for enhanced capabilities
  * 
- * @version 2.0.0
+ * @version 2.1.0 - Enhanced keyboard handling
  */
 
 import { InAppBrowser } from '@capgo/inappbrowser';
@@ -42,7 +42,7 @@ class BrowserService {
 
       // Check if this app needs JavaScript injection
       const injectionScript = appId ? getInjectionScript(appId) ?? undefined : undefined;
-      
+
       // Always use openWebView for consistent experience
       if (appId) {
         await this.openWebViewWithInjection(url, appId, options, injectionScript);
@@ -83,7 +83,7 @@ class BrowserService {
       // Listen for keyboard show events in MainActivity
       this.keyboardShowListener = await Keyboard.addListener('keyboardWillShow', async (info) => {
         console.log('[BrowserService] Keyboard will show, height:', info.keyboardHeight);
-        
+
         // Send keyboard info to InAppBrowser WebView
         try {
           await InAppBrowser.postMessage({
@@ -101,7 +101,7 @@ class BrowserService {
       // Listen for keyboard hide events in MainActivity
       this.keyboardHideListener = await Keyboard.addListener('keyboardWillHide', async () => {
         console.log('[BrowserService] Keyboard will hide');
-        
+
         // Notify WebView that keyboard is hiding
         try {
           await InAppBrowser.postMessage({
@@ -139,6 +139,218 @@ class BrowserService {
   }
 
   /**
+   * Detect Android navigation bar height
+   * This helps us add appropriate padding to avoid content overlap
+   */
+  private getNavigationBarDetectionScript(): string {
+    return `
+      (function() {
+        console.log('[BBZCloud] Navigation bar detection started');
+        
+        // Detect if navigation bar is present (Android)
+        function getNavigationBarHeight() {
+          // Check if we're on Android with navigation bar
+          const isAndroid = /Android/i.test(navigator.userAgent);
+          if (!isAndroid) return 0;
+          
+          // Calculate the difference between screen height and available viewport
+          const screenHeight = window.screen.height;
+          const viewportHeight = window.innerHeight;
+          const heightDiff = screenHeight - viewportHeight;
+          
+          // If difference is significant (more than 24px for status bar), we likely have a navbar
+          // Typical navbar height is 48-96px depending on device
+          if (heightDiff > 60) {
+            const navBarHeight = heightDiff - 24; // Subtract status bar height
+            console.log('[BBZCloud] Navigation bar detected, height:', navBarHeight);
+            return navBarHeight;
+          }
+          
+          return 0;
+        }
+        
+        // Apply safe area padding for navigation bar
+        function applySafeAreaPadding() {
+          const navBarHeight = getNavigationBarHeight();
+          
+          if (navBarHeight > 0) {
+            console.log('[BBZCloud] Applying safe area padding:', navBarHeight + 'px');
+            
+            // Create or update CSS for safe area
+            let style = document.getElementById('bbzcloud-safe-area');
+            if (!style) {
+              style = document.createElement('style');
+              style.id = 'bbzcloud-safe-area';
+              document.head.appendChild(style);
+            }
+            
+            // Add padding to body and html to prevent content overlap
+            style.textContent = \`
+              /* BBZCloud Safe Area for Navigation Bar */
+              html {
+                padding-bottom: \${navBarHeight}px !important;
+                box-sizing: border-box !important;
+              }
+              
+              body {
+                padding-bottom: \${navBarHeight}px !important;
+                box-sizing: border-box !important;
+                min-height: calc(100vh - \${navBarHeight}px) !important;
+              }
+              
+              /* Ensure fixed bottom elements are above nav bar */
+              [style*="position: fixed"][style*="bottom"],
+              .fixed-bottom,
+              .bottom-bar,
+              .bottom-navigation {
+                bottom: \${navBarHeight}px !important;
+              }
+              
+              /* Handle sticky footers */
+              footer,
+              [role="contentinfo"] {
+                padding-bottom: \${navBarHeight}px !important;
+              }
+            \`;
+            
+            console.log('[BBZCloud] Safe area padding applied');
+          } else {
+            console.log('[BBZCloud] No navigation bar detected, no padding needed');
+          }
+        }
+        
+        // Apply immediately
+        applySafeAreaPadding();
+        
+        // Reapply on orientation change
+        window.addEventListener('orientationchange', function() {
+          setTimeout(applySafeAreaPadding, 300);
+        });
+        
+        console.log('[BBZCloud] Navigation bar detection completed');
+      })();
+    `;
+  }
+
+  /**
+   * Get enhanced keyboard injection script
+   * This script helps the WebView handle keyboard events better
+   */
+  private getKeyboardInjectionScript(): string {
+    return `
+      (function() {
+        console.log('[BBZCloud] Keyboard handler injection started');
+        
+        // Track active input element
+        let activeInput = null;
+        let keyboardHeight = 0;
+        let originalViewportHeight = window.innerHeight;
+        
+        // Listen for focus on input elements
+        document.addEventListener('focusin', function(e) {
+          const target = e.target;
+          if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+            activeInput = target;
+            console.log('[BBZCloud] Input focused:', target.tagName);
+            
+            // Small delay to ensure keyboard is visible
+            setTimeout(() => {
+              if (activeInput) {
+                scrollInputIntoView(activeInput);
+              }
+            }, 300);
+          }
+        }, true);
+        
+        // Listen for blur on input elements
+        document.addEventListener('focusout', function(e) {
+          console.log('[BBZCloud] Input blurred');
+          activeInput = null;
+        }, true);
+        
+        // Listen for keyboard messages from native app
+        window.addEventListener('message', function(event) {
+          try {
+            const data = event.data;
+            if (!data || !data.type) return;
+            
+            if (data.type === 'keyboardShow') {
+              console.log('[BBZCloud] Keyboard show event received, height:', data.keyboardHeight);
+              keyboardHeight = data.keyboardHeight || 0;
+              
+              // Scroll active input into view
+              if (activeInput) {
+                setTimeout(() => {
+                  scrollInputIntoView(activeInput);
+                }, 100);
+              }
+            } else if (data.type === 'keyboardHide') {
+              console.log('[BBZCloud] Keyboard hide event received');
+              keyboardHeight = 0;
+            }
+          } catch (error) {
+            console.error('[BBZCloud] Error handling keyboard message:', error);
+          }
+        });
+        
+        // Function to scroll input into view
+        function scrollInputIntoView(element) {
+          if (!element) return;
+          
+          try {
+            const rect = element.getBoundingClientRect();
+            const viewportHeight = window.innerHeight;
+            const elementBottom = rect.bottom;
+            
+            // Check if element is hidden by keyboard
+            if (keyboardHeight > 0 && elementBottom > (viewportHeight - keyboardHeight - 20)) {
+              console.log('[BBZCloud] Input hidden by keyboard, scrolling...');
+              
+              // Scroll element into view with some padding
+              element.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+              });
+              
+              // Alternative: Scroll by calculating offset
+              const scrollOffset = elementBottom - (viewportHeight - keyboardHeight - 20);
+              if (scrollOffset > 0) {
+                window.scrollBy({
+                  top: scrollOffset + 50, // Extra padding
+                  behavior: 'smooth'
+                });
+              }
+            }
+          } catch (error) {
+            console.error('[BBZCloud] Error scrolling input:', error);
+          }
+        }
+        
+        // Handle window resize (when keyboard shows/hides)
+        let resizeTimeout;
+        window.addEventListener('resize', function() {
+          clearTimeout(resizeTimeout);
+          resizeTimeout = setTimeout(() => {
+            const newHeight = window.innerHeight;
+            const heightDiff = originalViewportHeight - newHeight;
+            
+            // If viewport shrunk significantly, keyboard is likely shown
+            if (heightDiff > 100 && activeInput) {
+              console.log('[BBZCloud] Viewport resized (keyboard?), scrolling input');
+              scrollInputIntoView(activeInput);
+            } else if (heightDiff < 50) {
+              // Viewport restored, keyboard likely hidden
+              originalViewportHeight = newHeight;
+            }
+          }, 150);
+        });
+        
+        console.log('[BBZCloud] Keyboard handler injection completed');
+      })();
+    `;
+  }
+
+  /**
    * Open WebView with JavaScript injection support
    */
   private async openWebViewWithInjection(
@@ -160,11 +372,24 @@ class BrowserService {
     // ALWAYS set up page loaded listener for global + app-specific injection
     this.pageLoadedListener = await InAppBrowser.addListener('browserPageLoaded', async () => {
       console.log('[BrowserService] Page loaded, injecting scripts for', appId);
-      
+
       try {
-        // STEP 1: Inject GLOBAL scripts first (for all apps)
+        // STEP 1: Inject NAVIGATION BAR DETECTION first (for Android navbar)
+        console.log('[BrowserService] Injecting navigation bar detection');
+        const navBarScript = this.getNavigationBarDetectionScript();
+        await InAppBrowser.executeScript({ code: navBarScript });
+
+        // Small delay to let navigation bar detection complete
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // STEP 2: Inject KEYBOARD HANDLER (critical for input fields)
+        console.log('[BrowserService] Injecting keyboard handler');
+        const keyboardScript = this.getKeyboardInjectionScript();
+        await InAppBrowser.executeScript({ code: keyboardScript });
+
+        // STEP 3: Inject GLOBAL scripts
         console.log('[BrowserService] Injecting GLOBAL scripts');
-        
+
         // Wait for global delay
         if (GLOBAL_INJECTION.delay) {
           await new Promise(resolve => setTimeout(resolve, GLOBAL_INJECTION.delay));
@@ -188,10 +413,10 @@ class BrowserService {
           await InAppBrowser.executeScript({ code: GLOBAL_INJECTION.js });
         }
 
-        // STEP 2: Inject app-specific scripts if provided
+        // STEP 4: Inject app-specific scripts if provided
         if (injectionScript) {
           console.log('[BrowserService] Injecting app-specific scripts for', appId);
-          
+
           // Wait for app-specific delay
           if (injectionScript.delay) {
             await new Promise(resolve => setTimeout(resolve, injectionScript.delay));
@@ -222,21 +447,21 @@ class BrowserService {
       }
     });
 
-    // Open the WebView
+    // Open the WebView with optimized keyboard settings
     await InAppBrowser.openWebView({
       url,
       title: options?.showTitle !== false ? 'BBZCloud' : '',
       toolbarColor: options?.toolbarColor || BROWSER_CONFIG.TOOLBAR_COLOR,
-      isPresentAfterPageLoad: true, // Show after page loads
+      isPresentAfterPageLoad: true,
       showReloadButton: true,
-      closeModal: false, // Don't show confirm on close
+      closeModal: false,
       visibleTitle: options?.showTitle !== false,
-      showArrow: false, // Use X instead of arrow
+      showArrow: false,
       enableViewportScale: true,
       // @ts-expect-error - ToolBarType enum issue with plugin types
-      toolbarType: 'activity', // Simple toolbar with close and share
-      isPullToRefreshEnabled: true, // Enable pull-to-refresh gesture
-      enabledSafeBottomMargin: true, // Creates 20px safe margin at bottom for navigation bar
+      toolbarType: 'activity',
+      isPullToRefreshEnabled: true,
+      enabledSafeBottomMargin: true, // Safe margin for navigation
     });
   }
 
@@ -260,34 +485,28 @@ class BrowserService {
     preferNative: boolean
   ): Promise<NativeAppResult> {
     try {
-      // Check if device supports native apps
       if (!canOpenNativeApps()) {
         return { success: true, opened: 'browser' };
       }
 
-      // Check if app has native support
       if (!appConfig.nativeApp?.hasNativeApp) {
         return { success: true, opened: 'browser' };
       }
 
-      // On tablets, always use browser
       if (!isSmartphone()) {
         return { success: true, opened: 'browser' };
       }
 
-      // If user doesn't prefer native, use browser
       if (!preferNative) {
         return { success: true, opened: 'browser' };
       }
 
-      // Try to open native app
       const nativeResult = await this.tryOpenNativeApp(appConfig);
-      
+
       if (nativeResult.success) {
         return { success: true, opened: 'native' };
       }
 
-      // Native app failed or not installed - will show install prompt
       return { success: false, opened: 'none', error: 'not_installed' };
 
     } catch (error) {
@@ -311,7 +530,6 @@ class BrowserService {
 
       let scheme: string | undefined;
 
-      // Get the appropriate URL scheme for the platform
       if (isIOS()) {
         scheme = appConfig.nativeApp.iosScheme;
       } else if (isAndroid()) {
@@ -323,22 +541,15 @@ class BrowserService {
       }
 
       try {
-        // Try to open the native app
         await InAppBrowser.open({ url: scheme });
-        
-        // Add to history
         await DatabaseService.addToHistory(appConfig.id, scheme);
-        
-        // If we get here, the app opened successfully
         return { success: true };
       } catch (error) {
-        // If InAppBrowser.open throws an error, the app is not installed
         console.log('Native app failed to open:', error);
         return { success: false, error: 'App not installed' };
       }
 
     } catch (error) {
-      // General error
       console.log('Native app error:', error);
       return { success: false, error: 'App not installed' };
     }
@@ -357,151 +568,4 @@ class BrowserService {
     }
 
     if (isAndroid() && appConfig.nativeApp.androidPackage) {
-      return `https://play.google.com/store/apps/details?id=${appConfig.nativeApp.androidPackage}`;
-    }
-
-    return null;
-  }
-
-  /**
-   * Check if an app has native support
-   */
-  hasNativeSupport(appId: string): boolean {
-    const appConfig = NAVIGATION_APPS[appId];
-    return !!appConfig?.nativeApp?.hasNativeApp;
-  }
-
-  /**
-   * Get default native preference for an app
-   */
-  getDefaultNativePreference(appId: string): boolean {
-    const appConfig = NAVIGATION_APPS[appId];
-    return appConfig?.nativeApp?.preferNativeOnSmartphone ?? false;
-  }
-
-  /**
-   * Close the current browser session
-   */
-  async close(): Promise<ApiResponse> {
-    try {
-      await InAppBrowser.close();
-      
-      // Remove listeners
-      if (this.pageLoadedListener) {
-        await InAppBrowser.removeAllListeners();
-        this.pageLoadedListener = null;
-      }
-
-      // Cleanup keyboard bridge
-      await this.cleanupKeyboardBridge();
-      
-      // Clear current session info
-      this.currentAppId = null;
-      this.currentUrl = null;
-
-      return { success: true };
-    } catch (error) {
-      console.error('Error closing browser:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to close browser'
-      };
-    }
-  }
-
-  /**
-   * Get the currently open app ID
-   */
-  getCurrentAppId(): string | null {
-    return this.currentAppId;
-  }
-
-  /**
-   * Get the currently open URL
-   */
-  getCurrentUrl(): string | null {
-    return this.currentUrl;
-  }
-
-  /**
-   * Check if a browser session is active
-   */
-  isActive(): boolean {
-    return this.currentAppId !== null;
-  }
-
-  /**
-   * Listen for browser finished event
-   */
-  addBrowserFinishedListener(callback: () => void): void {
-    InAppBrowser.addListener('closeEvent', callback);
-  }
-
-  /**
-   * Listen for browser page loaded event
-   */
-  addBrowserPageLoadedListener(callback: () => void): void {
-    InAppBrowser.addListener('browserPageLoaded', callback);
-  }
-
-  /**
-   * Remove all event listeners
-   */
-  removeAllListeners(): void {
-    InAppBrowser.removeAllListeners();
-    this.pageLoadedListener = null;
-  }
-
-  /**
-   * Open URL in external browser (system default)
-   */
-  async openExternal(url: string): Promise<ApiResponse> {
-    try {
-      // Use _system target to open in external browser
-      await InAppBrowser.open({ url });
-
-      return { success: true };
-    } catch (error) {
-      console.error('Error opening external browser:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to open external browser'
-      };
-    }
-  }
-
-  /**
-   * Get browser history for an app
-   */
-  async getAppHistory(appId: string, limit?: number): Promise<ApiResponse> {
-    try {
-      const result = await DatabaseService.getHistory(appId, limit);
-      return result;
-    } catch (error) {
-      console.error('Error getting app history:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to get history'
-      };
-    }
-  }
-
-  /**
-   * Clear browser history for an app or all apps
-   */
-  async clearHistory(appId?: string): Promise<ApiResponse> {
-    try {
-      const result = await DatabaseService.clearHistory(appId);
-      return result;
-    } catch (error) {
-      console.error('Error clearing history:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to clear history'
-      };
-    }
-  }
-}
-
-// Export a singleton instance
-export default new BrowserService();
+      return `https://play.google.com/store/apps/details?
