@@ -51,12 +51,68 @@ jobs:
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
 
+      - name: Get build info
+        id: build_info
+        run: |
+          echo "date=$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
+          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "branch=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g')" >> $GITHUB_OUTPUT
+
+      - name: Rename APK with build info
+        run: |
+          mkdir -p artifacts
+          APK_NAME="bbzcloud-mobile-${{ steps.build_info.outputs.branch }}-${{ steps.build_info.outputs.sha_short }}-${{ steps.build_info.outputs.date }}-debug.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "artifacts/${APK_NAME}"
+          echo "APK_NAME=${APK_NAME}" >> $GITHUB_ENV
+
+      - name: Create build info file
+        run: |
+          cat > artifacts/build-info.txt << EOF
+          Build Information
+          ==================
+          App: BBZCloud Mobile
+          Build Type: Debug APK
+          Build Date: $(date +'%Y-%m-%d %H:%M:%S')
+          Git Branch: ${{ steps.build_info.outputs.branch }}
+          Git Commit: ${{ github.sha }}
+          Git Commit (short): ${{ steps.build_info.outputs.sha_short }}
+          Workflow Run: ${{ github.run_number }}
+          Triggered by: ${{ github.event_name }}
+          Actor: ${{ github.actor }}
+          
+          File: ${APK_NAME}
+          EOF
+          cat artifacts/build-info.txt
+
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
-          name: android-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: android-debug-${{ steps.build_info.outputs.branch }}-${{ steps.build_info.outputs.sha_short }}
+          path: artifacts/
           retention-days: 30
+          if-no-files-found: error
+
+      - name: Add build summary
+        run: |
+          echo "## 📱 Android Build Successful" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**APK File:** \`${APK_NAME}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Build Details" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** ${{ steps.build_info.outputs.branch }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${{ steps.build_info.outputs.sha_short }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build Time:** ${{ steps.build_info.outputs.date }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build Type:** Debug APK" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📥 Download" >> $GITHUB_STEP_SUMMARY
+          echo "The APK is available as a workflow artifact and will be retained for 30 days." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔧 Installation" >> $GITHUB_STEP_SUMMARY
+          echo "1. Download the APK artifact from this workflow run" >> $GITHUB_STEP_SUMMARY
+          echo "2. Extract the ZIP file" >> $GITHUB_STEP_SUMMARY
+          echo "3. Transfer the APK to your Android device" >> $GITHUB_STEP_SUMMARY
+          echo "4. Enable 'Install from Unknown Sources' in Android settings" >> $GITHUB_STEP_SUMMARY
+          echo "5. Install the APK" >> $GITHUB_STEP_SUMMARY
 
   build-ios:
     name: Build iOS App
@@ -102,15 +158,71 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
 
-      - name: Create iOS build archive
-        working-directory: ios/App
+      - name: Get build info
+        id: build_info
         run: |
-          cd build/Build/Products/Debug-iphonesimulator
-          zip -r ios-app-simulator.zip App.app
+          echo "date=$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
+          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "branch=$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//-/g')" >> $GITHUB_OUTPUT
+
+      - name: Create iOS build archive
+        run: |
+          mkdir -p artifacts
+          cd ios/App/build/Build/Products/Debug-iphonesimulator
+          APP_NAME="bbzcloud-mobile-${{ steps.build_info.outputs.branch }}-${{ steps.build_info.outputs.sha_short }}-${{ steps.build_info.outputs.date }}-simulator.zip"
+          zip -r "${APP_NAME}" App.app
+          mv "${APP_NAME}" "${{ github.workspace }}/artifacts/"
+          echo "APP_NAME=${APP_NAME}" >> $GITHUB_ENV
+
+      - name: Create build info file
+        run: |
+          cat > artifacts/build-info.txt << EOF
+          Build Information
+          ==================
+          App: BBZCloud Mobile
+          Build Type: iOS Simulator (Debug)
+          Build Date: $(date +'%Y-%m-%d %H:%M:%S')
+          Git Branch: ${{ steps.build_info.outputs.branch }}
+          Git Commit: ${{ github.sha }}
+          Git Commit (short): ${{ steps.build_info.outputs.sha_short }}
+          Workflow Run: ${{ github.run_number }}
+          Triggered by: ${{ github.event_name }}
+          Actor: ${{ github.actor }}
+          
+          File: ${APP_NAME}
+          
+          Note: This build is for iOS Simulator only and cannot be installed on physical devices.
+          EOF
+          cat artifacts/build-info.txt
 
       - name: Upload iOS Build
         uses: actions/upload-artifact@v4
         with:
-          name: ios-simulator-build
-          path: ios/App/build/Build/Products/Debug-iphonesimulator/ios-app-simulator.zip
+          name: ios-simulator-${{ steps.build_info.outputs.branch }}-${{ steps.build_info.outputs.sha_short }}
+          path: artifacts/
           retention-days: 30
+          if-no-files-found: error
+
+      - name: Add build summary
+        run: |
+          echo "## 📱 iOS Build Successful" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**App File:** \`${APP_NAME}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Build Details" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** ${{ steps.build_info.outputs.branch }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${{ steps.build_info.outputs.sha_short }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build Time:** ${{ steps.build_info.outputs.date }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build Type:** iOS Simulator (Debug)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📥 Download" >> $GITHUB_STEP_SUMMARY
+          echo "The iOS app is available as a workflow artifact and will be retained for 30 days." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ⚠️ Important" >> $GITHUB_STEP_SUMMARY
+          echo "This build is for **iOS Simulator only** and cannot be installed on physical devices." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔧 Installation" >> $GITHUB_STEP_SUMMARY
+          echo "1. Download the artifact from this workflow run" >> $GITHUB_STEP_SUMMARY
+          echo "2. Extract the ZIP file" >> $GITHUB_STEP_SUMMARY
+          echo "3. Open the iOS Simulator (via Xcode)" >> $GITHUB_STEP_SUMMARY
+          echo "4. Drag and drop the \`.app\` file onto the simulator" >> $GITHUB_STEP_SUMMARY

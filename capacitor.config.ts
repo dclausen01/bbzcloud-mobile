@@ -5,21 +5,8 @@ const config: CapacitorConfig = {
   appName: 'bbzcloud-temp',
   webDir: 'dist',
   plugins: {
-    Keyboard: {
-      resize: 'body', // WICHTIG: 'body' statt 'native' für bessere WebView-Unterstützung
-      style: 'dark',
-      resizeOnFullScreen: true,
-      // Android-spezifische Einstellungen
-      android: {
-        resizeMode: 'adjustResize' // Explizit adjustResize setzen
-      }
-    },
-    // Konfiguration für @capgo/inappbrowser falls verfügbar
-    InAppBrowser: {
-      androidToolbarColor: '#1976d2',
-      showToolbar: true,
-      closeButtonText: 'Schließen'
-    }
+    // Note: Keyboard config only affects MainActivity, not InAppBrowser
+    // InAppBrowser handles keyboard via JavaScript injection
   },
   // Server-Konfiguration für Development
   server: {

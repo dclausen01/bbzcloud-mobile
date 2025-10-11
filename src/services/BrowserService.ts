@@ -1,16 +1,14 @@
 /**
- * BBZCloud Mobile - Browser Service (Optimized for Keyboard)
+ * BBZCloud Mobile - Browser Service
  * 
  * Handles opening web apps in InAppBrowser with JavaScript injection support
  * Uses @capgo/inappbrowser for enhanced capabilities
  * 
- * @version 2.1.0 - Enhanced keyboard handling
+ * @version 3.0.0 - Simplified architecture using WebView APIs only
  */
 
 import { InAppBrowser } from '@capgo/inappbrowser';
 import type { PluginListenerHandle } from '@capacitor/core';
-import { Keyboard } from '@capacitor/keyboard';
-import { Capacitor } from '@capacitor/core';
 import { BROWSER_CONFIG, NAVIGATION_APPS } from '../utils/constants';
 import type { AppConfig } from '../utils/constants';
 import { isSmartphone, isIOS, isAndroid, canOpenNativeApps } from '../utils/deviceUtils';
@@ -22,9 +20,6 @@ class BrowserService {
   private currentAppId: string | null = null;
   private currentUrl: string | null = null;
   private pageLoadedListener: PluginListenerHandle | null = null;
-  private keyboardShowListener: PluginListenerHandle | null = null;
-  private keyboardHideListener: PluginListenerHandle | null = null;
-  private isKeyboardBridgeActive: boolean = false;
 
   /**
    * Open a URL in the InAppBrowser with optional JavaScript injection
@@ -63,407 +58,6 @@ class BrowserService {
     }
   }
 
-  /**
-   * Setup keyboard event bridge for InAppBrowser
-   * This forwards keyboard events from MainActivity to the WebView
-   */
-  private async setupKeyboardBridge(): Promise<void> {
-    if (!Capacitor.isNativePlatform()) {
-      return;
-    }
-
-    // Always cleanup existing listeners first to prevent duplicates
-    if (this.isKeyboardBridgeActive) {
-      await this.cleanupKeyboardBridge();
-    }
-
-    console.log('[BrowserService] Setting up keyboard bridge');
-
-    try {
-      // Listen for keyboard show events in MainActivity
-      this.keyboardShowListener = await Keyboard.addListener('keyboardWillShow', async (info) => {
-        console.log('[BrowserService] Keyboard will show, height:', info.keyboardHeight);
-
-        // Send keyboard info to InAppBrowser WebView
-        try {
-          await InAppBrowser.postMessage({
-            detail: {
-              type: 'keyboardShow',
-              keyboardHeight: info.keyboardHeight,
-              timestamp: Date.now()
-            }
-          });
-        } catch (error) {
-          console.error('[BrowserService] Error sending keyboard show event:', error);
-        }
-      });
-
-      // Listen for keyboard hide events in MainActivity
-      this.keyboardHideListener = await Keyboard.addListener('keyboardWillHide', async () => {
-        console.log('[BrowserService] Keyboard will hide');
-
-        // Notify WebView that keyboard is hiding
-        try {
-          await InAppBrowser.postMessage({
-            detail: {
-              type: 'keyboardHide',
-              timestamp: Date.now()
-            }
-          });
-        } catch (error) {
-          console.error('[BrowserService] Error sending keyboard hide event:', error);
-        }
-      });
-
-      this.isKeyboardBridgeActive = true;
-      console.log('[BrowserService] Keyboard bridge active');
-    } catch (error) {
-      console.error('[BrowserService] Error setting up keyboard bridge:', error);
-    }
-  }
-
-  /**
-   * Cleanup keyboard event bridge
-   */
-  private async cleanupKeyboardBridge(): Promise<void> {
-    if (this.keyboardShowListener) {
-      await this.keyboardShowListener.remove();
-      this.keyboardShowListener = null;
-    }
-    if (this.keyboardHideListener) {
-      await this.keyboardHideListener.remove();
-      this.keyboardHideListener = null;
-    }
-    this.isKeyboardBridgeActive = false;
-    console.log('[BrowserService] Keyboard bridge cleaned up');
-  }
-
-  /**
-   * Detect Android navigation bar height
-   * This helps us add appropriate padding to avoid content overlap
-   */
-  private getNavigationBarDetectionScript(): string {
-    return `
-      (function() {
-        console.log('[BBZCloud] Navigation bar detection started');
-        
-        let navBarHeight = 0;
-        let isKeyboardVisible = false;
-        let initialViewportHeight = window.innerHeight;
-        
-        // Detect if navigation bar is present (Android)
-        function detectNavigationBar() {
-          // Check if we're on Android with navigation bar
-          const isAndroid = /Android/i.test(navigator.userAgent);
-          if (!isAndroid) {
-            console.log('[BBZCloud] Not Android, no navbar');
-            return 0;
-          }
-          
-          // Method 1: Use CSS env() variables if available (most reliable)
-          const safeAreaInsetBottom = parseInt(getComputedStyle(document.documentElement)
-            .getPropertyValue('env(safe-area-inset-bottom)')) || 0;
-          
-          if (safeAreaInsetBottom > 0) {
-            console.log('[BBZCloud] Safe area inset bottom (env):', safeAreaInsetBottom);
-            return safeAreaInsetBottom;
-          }
-          
-          // Method 2: Check visualViewport if available (more accurate)
-          if (window.visualViewport) {
-            const visualHeight = window.visualViewport.height;
-            const windowHeight = window.innerHeight;
-            const diff = windowHeight - visualHeight;
-            
-            // If there's a small difference, it's likely the navbar
-            if (diff > 20 && diff < 120) {
-              console.log('[BBZCloud] Navigation bar from visualViewport:', diff);
-              return diff;
-            }
-          }
-          
-          // Method 3: Conservative fallback - only detect typical navbar heights
-          // Only when keyboard is definitely not visible
-          if (!isKeyboardVisible) {
-            const currentHeight = window.innerHeight;
-            const heightDiff = initialViewportHeight - currentHeight;
-            
-            // Navbar is typically 48-96px on most devices
-            // If we detect something in this range AND viewport hasn't changed much, it's navbar
-            if (Math.abs(heightDiff) < 50) { // Viewport stable
-              const screenHeight = window.screen.height;
-              const viewportHeight = window.innerHeight;
-              const statusBarHeight = 24; // Typical status bar
-              
-              const totalDiff = screenHeight - viewportHeight - statusBarHeight;
-              
-              // STRICT: Only accept navbar heights between 48-96px
-              if (totalDiff >= 48 && totalDiff <= 96) {
-                console.log('[BBZCloud] Navigation bar detected (conservative):', totalDiff);
-                return totalDiff;
-              }
-            }
-          }
-          
-          console.log('[BBZCloud] No navbar detected');
-          return 0;
-        }
-        
-        // Apply safe area padding for navigation bar ONLY (not keyboard)
-        function applySafeAreaPadding() {
-          // Only detect navbar when keyboard is NOT visible
-          if (!isKeyboardVisible) {
-            navBarHeight = detectNavigationBar();
-          }
-          
-          // Apply padding only if:
-          // 1. Navbar exists (height > 0)
-          // 2. Keyboard is NOT visible
-          // 3. Height is reasonable (48-96px)
-          const shouldApplyPadding = navBarHeight > 0 && 
-                                     navBarHeight >= 48 && 
-                                     navBarHeight <= 96 && 
-                                     !isKeyboardVisible;
-          
-          if (shouldApplyPadding) {
-            console.log('[BBZCloud] Applying navbar padding:', navBarHeight + 'px');
-            updatePadding(navBarHeight);
-          } else {
-            console.log('[BBZCloud] No padding needed (navbar:', navBarHeight, 'keyboard:', isKeyboardVisible + ')');
-            updatePadding(0);
-          }
-        }
-        
-        // Update the actual padding
-        function updatePadding(padding) {
-          let style = document.getElementById('bbzcloud-safe-area');
-          if (!style) {
-            style = document.createElement('style');
-            style.id = 'bbzcloud-safe-area';
-            document.head.appendChild(style);
-          }
-          
-          if (padding > 0) {
-            style.textContent = \`
-              /* BBZCloud Safe Area for Navigation Bar */
-              body {
-                padding-bottom: \${padding}px !important;
-                box-sizing: border-box !important;
-              }
-              
-              /* Ensure fixed bottom elements are above nav bar */
-              [style*="position: fixed"][style*="bottom: 0"],
-              [style*="position:fixed"][style*="bottom:0"],
-              .fixed-bottom,
-              .bottom-bar,
-              .bottom-navigation {
-                bottom: \${padding}px !important;
-              }
-            \`;
-          } else {
-            // Remove padding
-            style.textContent = '';
-          }
-        }
-        
-        // Listen for viewport changes
-        let resizeTimeout;
-        let lastHeight = window.innerHeight;
-        
-        window.addEventListener('resize', function() {
-          clearTimeout(resizeTimeout);
-          resizeTimeout = setTimeout(() => {
-            const currentHeight = window.innerHeight;
-            const heightChange = lastHeight - currentHeight;
-            
-            console.log('[BBZCloud] Resize detected. Height change:', heightChange, 'px');
-            
-            // Large reduction = keyboard appeared (>150px change)
-            if (heightChange > 150) {
-              isKeyboardVisible = true;
-              console.log('[BBZCloud] Keyboard appeared');
-              applySafeAreaPadding();
-            } 
-            // Large increase = keyboard disappeared (>100px change)
-            else if (heightChange < -100) {
-              isKeyboardVisible = false;
-              console.log('[BBZCloud] Keyboard disappeared');
-              // Reset initial height when keyboard closes
-              initialViewportHeight = currentHeight;
-              applySafeAreaPadding();
-            }
-            // Small change = just rotation or minor adjustment
-            else if (Math.abs(heightChange) < 50) {
-              console.log('[BBZCloud] Minor viewport change, recalculating navbar');
-              initialViewportHeight = currentHeight;
-              applySafeAreaPadding();
-            }
-            
-            lastHeight = currentHeight;
-          }, 150);
-        });
-        
-        // Listen for keyboard events from native bridge
-        window.addEventListener('message', function(event) {
-          try {
-            const data = event.data;
-            if (!data || !data.type) return;
-            
-            if (data.type === 'keyboardShow') {
-              isKeyboardVisible = true;
-              console.log('[BBZCloud] Keyboard show event from native');
-              applySafeAreaPadding();
-            } else if (data.type === 'keyboardHide') {
-              isKeyboardVisible = false;
-              console.log('[BBZCloud] Keyboard hide event from native');
-              // Reset viewport height when keyboard hides
-              setTimeout(() => {
-                initialViewportHeight = window.innerHeight;
-                applySafeAreaPadding();
-              }, 200);
-            }
-          } catch (error) {
-            console.error('[BBZCloud] Error handling message:', error);
-          }
-        });
-        
-        // Apply immediately on load (with delay to let page settle)
-        setTimeout(() => {
-          initialViewportHeight = window.innerHeight;
-          applySafeAreaPadding();
-        }, 500);
-        
-        // Reapply on orientation change
-        window.addEventListener('orientationchange', function() {
-          setTimeout(() => {
-            isKeyboardVisible = false; // Reset keyboard state
-            initialViewportHeight = window.innerHeight;
-            applySafeAreaPadding();
-          }, 500);
-        });
-        
-        console.log('[BBZCloud] Navigation bar detection completed');
-      })();
-    `;
-  }
-
-  /**
-   * Get enhanced keyboard injection script
-   * This script helps the WebView handle keyboard events better
-   */
-  private getKeyboardInjectionScript(): string {
-    return `
-      (function() {
-        console.log('[BBZCloud] Keyboard handler injection started');
-        
-        // Track active input element
-        let activeInput = null;
-        let keyboardHeight = 0;
-        let originalViewportHeight = window.innerHeight;
-        
-        // Listen for focus on input elements
-        document.addEventListener('focusin', function(e) {
-          const target = e.target;
-          if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
-            activeInput = target;
-            console.log('[BBZCloud] Input focused:', target.tagName);
-            
-            // Small delay to ensure keyboard is visible
-            setTimeout(() => {
-              if (activeInput) {
-                scrollInputIntoView(activeInput);
-              }
-            }, 300);
-          }
-        }, true);
-        
-        // Listen for blur on input elements
-        document.addEventListener('focusout', function(e) {
-          console.log('[BBZCloud] Input blurred');
-          activeInput = null;
-        }, true);
-        
-        // Listen for keyboard messages from native app
-        window.addEventListener('message', function(event) {
-          try {
-            const data = event.data;
-            if (!data || !data.type) return;
-            
-            if (data.type === 'keyboardShow') {
-              console.log('[BBZCloud] Keyboard show event received, height:', data.keyboardHeight);
-              keyboardHeight = data.keyboardHeight || 0;
-              
-              // Scroll active input into view
-              if (activeInput) {
-                setTimeout(() => {
-                  scrollInputIntoView(activeInput);
-                }, 100);
-              }
-            } else if (data.type === 'keyboardHide') {
-              console.log('[BBZCloud] Keyboard hide event received');
-              keyboardHeight = 0;
-            }
-          } catch (error) {
-            console.error('[BBZCloud] Error handling keyboard message:', error);
-          }
-        });
-        
-        // Function to scroll input into view
-        function scrollInputIntoView(element) {
-          if (!element) return;
-          
-          try {
-            const rect = element.getBoundingClientRect();
-            const viewportHeight = window.innerHeight;
-            const elementBottom = rect.bottom;
-            
-            // Check if element is hidden by keyboard
-            if (keyboardHeight > 0 && elementBottom > (viewportHeight - keyboardHeight - 20)) {
-              console.log('[BBZCloud] Input hidden by keyboard, scrolling...');
-              
-              // Scroll element into view with some padding
-              element.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center'
-              });
-              
-              // Alternative: Scroll by calculating offset
-              const scrollOffset = elementBottom - (viewportHeight - keyboardHeight - 20);
-              if (scrollOffset > 0) {
-                window.scrollBy({
-                  top: scrollOffset + 50, // Extra padding
-                  behavior: 'smooth'
-                });
-              }
-            }
-          } catch (error) {
-            console.error('[BBZCloud] Error scrolling input:', error);
-          }
-        }
-        
-        // Handle window resize (when keyboard shows/hides)
-        let resizeTimeout;
-        window.addEventListener('resize', function() {
-          clearTimeout(resizeTimeout);
-          resizeTimeout = setTimeout(() => {
-            const newHeight = window.innerHeight;
-            const heightDiff = originalViewportHeight - newHeight;
-            
-            // If viewport shrunk significantly, keyboard is likely shown
-            if (heightDiff > 100 && activeInput) {
-              console.log('[BBZCloud] Viewport resized (keyboard?), scrolling input');
-              scrollInputIntoView(activeInput);
-            } else if (heightDiff < 50) {
-              // Viewport restored, keyboard likely hidden
-              originalViewportHeight = newHeight;
-            }
-          }, 150);
-        });
-        
-        console.log('[BBZCloud] Keyboard handler injection completed');
-      })();
-    `;
-  }
 
   /**
    * Open WebView with JavaScript injection support
@@ -474,43 +68,23 @@ class BrowserService {
     options?: Partial<BrowserOptions>,
     injectionScript?: InjectionScript
   ): Promise<void> {
-    // CRITICAL: Cleanup all existing listeners first to prevent memory leaks
-    await this.cleanupKeyboardBridge();
+    // Cleanup existing listeners to prevent memory leaks
     if (this.pageLoadedListener) {
       await InAppBrowser.removeAllListeners();
       this.pageLoadedListener = null;
     }
 
-    // Setup keyboard bridge to forward events to WebView
-    await this.setupKeyboardBridge();
-
-    // ALWAYS set up page loaded listener for global + app-specific injection
+    // Set up page loaded listener for injection
     this.pageLoadedListener = await InAppBrowser.addListener('browserPageLoaded', async () => {
       console.log('[BrowserService] Page loaded, injecting scripts for', appId);
 
       try {
-        // STEP 1: Inject NAVIGATION BAR DETECTION first (for Android navbar)
-        console.log('[BrowserService] Injecting navigation bar detection');
-        const navBarScript = this.getNavigationBarDetectionScript();
-        await InAppBrowser.executeScript({ code: navBarScript });
-
-        // Small delay to let navigation bar detection complete
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        // STEP 2: Inject KEYBOARD HANDLER (critical for input fields)
-        console.log('[BrowserService] Injecting keyboard handler');
-        const keyboardScript = this.getKeyboardInjectionScript();
-        await InAppBrowser.executeScript({ code: keyboardScript });
-
-        // STEP 3: Inject GLOBAL scripts
-        console.log('[BrowserService] Injecting GLOBAL scripts');
-
         // Wait for global delay
         if (GLOBAL_INJECTION.delay) {
           await new Promise(resolve => setTimeout(resolve, GLOBAL_INJECTION.delay));
         }
 
-        // Inject GLOBAL CSS
+        // STEP 1: Inject GLOBAL CSS
         if (GLOBAL_INJECTION.css) {
           const globalCssCode = `
             (function() {
@@ -523,12 +97,13 @@ class BrowserService {
           await InAppBrowser.executeScript({ code: globalCssCode });
         }
 
-        // Inject GLOBAL JavaScript
+        // STEP 2: Inject GLOBAL JavaScript (includes keyboard handling)
         if (GLOBAL_INJECTION.js) {
           await InAppBrowser.executeScript({ code: GLOBAL_INJECTION.js });
+          console.log('[BBZCloud] Global JavaScript injected');
         }
 
-        // STEP 4: Inject app-specific scripts if provided
+        // STEP 3: Inject app-specific scripts if provided
         if (injectionScript) {
           console.log('[BrowserService] Injecting app-specific scripts for', appId);
 
@@ -562,7 +137,7 @@ class BrowserService {
       }
     });
 
-    // Open the WebView with optimized keyboard settings
+    // Open the WebView with optimal settings
     await InAppBrowser.openWebView({
       url,
       title: options?.showTitle !== false ? 'BBZCloud' : '',
@@ -576,7 +151,7 @@ class BrowserService {
       // @ts-expect-error - ToolBarType enum issue with plugin types
       toolbarType: 'activity',
       isPullToRefreshEnabled: true,
-      enabledSafeBottomMargin: true, // Safe margin for navigation
+      enabledSafeBottomMargin: true, // Handles navigation bar padding (20px)
     });
   }
 
@@ -716,8 +291,6 @@ class BrowserService {
         await InAppBrowser.removeAllListeners();
         this.pageLoadedListener = null;
       }
-
-      await this.cleanupKeyboardBridge();
 
       this.currentAppId = null;
       this.currentUrl = null;

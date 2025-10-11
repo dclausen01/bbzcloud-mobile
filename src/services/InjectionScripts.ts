@@ -22,14 +22,15 @@ export interface InjectionScript {
  * 
  * Fixes:
  * 1. Keyboard handling - ensures input fields are not covered by keyboard
- * 2. Android navigation bar collision - adds safe padding at bottom
+ * 2. Uses visualViewport API for precise keyboard detection
+ * 
+ * Note: Navigation bar padding is handled by enabledSafeBottomMargin: true in BrowserService
  */
 export const GLOBAL_INJECTION: InjectionScript = {
   css: `
-    /* GLOBAL KEYBOARD FIX - Optimized Version */
-    /* Note: Bottom margin is handled by enabledSafeBottomMargin in BrowserService */
+    /* GLOBAL KEYBOARD FIX - WebView API Based */
     
-    /* Ensure all form inputs scroll into view when focused */
+    /* Ensure all form inputs can scroll into view with padding */
     input[type="text"],
     input[type="email"],
     input[type="password"],
@@ -53,32 +54,34 @@ export const GLOBAL_INJECTION: InjectionScript = {
       scroll-behavior: smooth !important;
     }
     
-    /* Prevent zoom on input focus (optional - can be removed if zoom is desired) */
+    /* Prevent zoom on input focus on mobile (16px minimum prevents iOS zoom) */
     @media screen and (max-width: 768px) {
       input, textarea, select {
-        font-size: 16px !important; /* Prevents iOS zoom */
+        font-size: 16px !important;
       }
+    }
+    
+    /* Visual indicator when keyboard is visible (optional) */
+    body.bbz-keyboard-visible {
+      /* Can be used by websites to adjust their layout */
     }
   `,
   js: `
-    // GLOBAL KEYBOARD FIX - Optimized Version with Native Bridge
+    // GLOBAL KEYBOARD FIX - WebView API Based (No Native Bridge Required)
     (function() {
       'use strict';
-      console.log('[BBZCloud] Initializing keyboard fixes v3.0 with native bridge');
+      console.log('[BBZCloud] Keyboard handler v4.0 - WebView API based');
       
       // Configuration
       const CONFIG = {
-        KEYBOARD_THRESHOLD: 0.75,     // More sensitive detection
-        SCROLL_DELAY: 200,             // Reduced delay for faster response
-        KEYBOARD_ESTIMATE: 0.45,       // Better keyboard height estimate
-        DEBOUNCE_DELAY: 150,           // Debounce for resize events
+        SCROLL_DELAY: 300,           // Delay before scrolling input (wait for keyboard)
+        DEBOUNCE_DELAY: 100,         // Debounce for resize events
+        KEYBOARD_MIN_HEIGHT: 150,    // Minimum height change to consider as keyboard
       };
       
-      let lastHeight = window.innerHeight;
-      let resizeTimeout = null;
       let isKeyboardVisible = false;
-      let keyboardHeightFromNative = 0;
-      let originalBodyHeight = null;
+      let keyboardHeight = 0;
+      let focusedInput = null;
       
       // 1. Ensure proper viewport configuration
       function setupViewport() {
@@ -88,204 +91,183 @@ export const GLOBAL_INJECTION: InjectionScript = {
           viewport.name = 'viewport';
           document.head.appendChild(viewport);
         }
-        // Allow user scaling for accessibility, but prevent auto-zoom on input
-        viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover';
+        // Optimal viewport settings for mobile web apps
+        viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover';
       }
       
-      // 2. Smart scroll for focused inputs
-      function scrollInputIntoView(input) {
-        const rect = input.getBoundingClientRect();
-        const viewportHeight = window.innerHeight;
-        const keyboardHeight = viewportHeight * CONFIG.KEYBOARD_ESTIMATE;
-        const visibleArea = viewportHeight - keyboardHeight;
-        
-        // Check if input is in keyboard area
-        if (rect.bottom > visibleArea - 50 || rect.top < 50) {
-          // Calculate optimal scroll position
-          const elementMiddle = rect.top + (rect.height / 2);
-          const targetPosition = visibleArea / 2;
-          const scrollAmount = elementMiddle - targetPosition;
+      // 2. Precise keyboard detection using visualViewport API
+      function setupKeyboardDetection() {
+        if (window.visualViewport) {
+          console.log('[BBZCloud] Using visualViewport API for keyboard detection');
           
-          // Scroll to position
-          window.scrollBy({
-            top: scrollAmount,
-            behavior: 'smooth'
+          // visualViewport provides precise measurements
+          window.visualViewport.addEventListener('resize', () => {
+            const viewportHeight = window.visualViewport.height;
+            const windowHeight = window.innerHeight;
+            const heightDiff = windowHeight - viewportHeight;
+            
+            if (heightDiff > CONFIG.KEYBOARD_MIN_HEIGHT) {
+              // Keyboard is visible
+              if (!isKeyboardVisible) {
+                isKeyboardVisible = true;
+                keyboardHeight = heightDiff;
+                document.body.classList.add('bbz-keyboard-visible');
+                console.log('[BBZCloud] Keyboard shown, height:', keyboardHeight);
+                
+                // Scroll focused input if exists
+                if (focusedInput) {
+                  scrollInputIntoView(focusedInput);
+                }
+              }
+            } else {
+              // Keyboard is hidden
+              if (isKeyboardVisible) {
+                isKeyboardVisible = false;
+                keyboardHeight = 0;
+                document.body.classList.remove('bbz-keyboard-visible');
+                console.log('[BBZCloud] Keyboard hidden');
+              }
+            }
+          });
+        } else {
+          console.log('[BBZCloud] Using window.resize fallback for keyboard detection');
+          
+          // Fallback: Use window.resize (less precise)
+          let lastHeight = window.innerHeight;
+          let resizeTimeout;
+          
+          window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+              const currentHeight = window.innerHeight;
+              const heightDiff = lastHeight - currentHeight;
+              
+              if (heightDiff > CONFIG.KEYBOARD_MIN_HEIGHT) {
+                // Keyboard appeared
+                if (!isKeyboardVisible) {
+                  isKeyboardVisible = true;
+                  keyboardHeight = heightDiff;
+                  document.body.classList.add('bbz-keyboard-visible');
+                  console.log('[BBZCloud] Keyboard shown (fallback), estimated height:', keyboardHeight);
+                  
+                  if (focusedInput) {
+                    scrollInputIntoView(focusedInput);
+                  }
+                }
+              } else if (heightDiff < -100) {
+                // Keyboard disappeared
+                if (isKeyboardVisible) {
+                  isKeyboardVisible = false;
+                  keyboardHeight = 0;
+                  document.body.classList.remove('bbz-keyboard-visible');
+                  console.log('[BBZCloud] Keyboard hidden (fallback)');
+                  lastHeight = currentHeight;
+                }
+              }
+            }, CONFIG.DEBOUNCE_DELAY);
           });
         }
       }
       
-      // 3. Enhanced input focus handler
-      function handleInputFocus() {
-        const inputSelectors = 
-          'input:not([type="hidden"]):not([type="submit"]):not([type="button"]), ' +
-          'textarea, select, [contenteditable="true"], [role="textbox"]';
+      // 3. Smart scroll for focused inputs
+      function scrollInputIntoView(input) {
+        if (!input) return;
         
-        const inputs = document.querySelectorAll(inputSelectors);
-        
-        inputs.forEach(input => {
-          // Skip if already has listener
-          if (input.dataset.bbzFocusListener) return;
-          input.dataset.bbzFocusListener = 'true';
+        try {
+          const rect = input.getBoundingClientRect();
+          const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
           
-          input.addEventListener('focus', function() {
+          // Check if input is covered by keyboard or out of view
+          const inputBottom = rect.bottom;
+          const visibleBottom = viewportHeight - 20; // 20px padding
+          
+          if (inputBottom > visibleBottom || rect.top < 80) {
+            console.log('[BBZCloud] Scrolling input into view');
+            
+            // Method 1: scrollIntoView (most reliable)
+            input.scrollIntoView({
+              behavior: 'smooth',
+              block: 'center',
+              inline: 'nearest'
+            });
+            
+            // Method 2: Manual scroll calculation (backup)
             setTimeout(() => {
-              if (isKeyboardVisible || document.activeElement === this) {
-                scrollInputIntoView(this);
+              const newRect = input.getBoundingClientRect();
+              if (newRect.bottom > visibleBottom) {
+                const scrollAmount = newRect.bottom - visibleBottom + 50;
+                window.scrollBy({
+                  top: scrollAmount,
+                  behavior: 'smooth'
+                });
+              }
+            }, 150);
+          }
+        } catch (error) {
+          console.error('[BBZCloud] Error scrolling input:', error);
+        }
+      }
+      
+      // 4. Setup input focus handlers
+      function setupInputHandlers() {
+        // Use event delegation for better performance
+        document.addEventListener('focusin', (e) => {
+          const target = e.target;
+          
+          // Check if target is an input element
+          if (target && (
+            target.tagName === 'INPUT' && !['hidden', 'submit', 'button'].includes(target.type) ||
+            target.tagName === 'TEXTAREA' ||
+            target.tagName === 'SELECT' ||
+            target.isContentEditable ||
+            target.getAttribute('role') === 'textbox'
+          )) {
+            focusedInput = target;
+            console.log('[BBZCloud] Input focused:', target.tagName);
+            
+            // Wait for keyboard to appear, then scroll
+            setTimeout(() => {
+              if (focusedInput === target) {
+                scrollInputIntoView(target);
               }
             }, CONFIG.SCROLL_DELAY);
-          }, { passive: true });
-        });
-      }
-      
-      // 4. Debounced keyboard detection
-      function detectKeyboard() {
-        clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(() => {
-          const currentHeight = window.innerHeight;
-          const heightDiff = Math.abs(currentHeight - lastHeight);
-          
-          // Only react to significant height changes (keyboard show/hide)
-          if (heightDiff > 100) {
-            if (currentHeight < lastHeight * CONFIG.KEYBOARD_THRESHOLD) {
-              // Keyboard appeared
-              if (!isKeyboardVisible) {
-                isKeyboardVisible = true;
-                document.body.classList.add('bbz-keyboard-visible');
-                console.log('[BBZCloud] Keyboard: visible');
-                
-                // Scroll focused element into view
-                const focused = document.activeElement;
-                if (focused && focused.matches('input, textarea, select, [contenteditable="true"]')) {
-                  setTimeout(() => scrollInputIntoView(focused), CONFIG.SCROLL_DELAY);
-                }
-              }
-            } else {
-              // Keyboard hidden
-              if (isKeyboardVisible) {
-                isKeyboardVisible = false;
-                document.body.classList.remove('bbz-keyboard-visible');
-                console.log('[BBZCloud] Keyboard: hidden');
-              }
-            }
-            lastHeight = currentHeight;
           }
-        }, CONFIG.DEBOUNCE_DELAY);
+        }, true);
+        
+        document.addEventListener('focusout', () => {
+          focusedInput = null;
+        }, true);
       }
       
-      // 5. Adjust WebView height for keyboard
-      function adjustWebViewForKeyboard(keyboardHeight) {
-        if (!originalBodyHeight) {
-          originalBodyHeight = document.body.style.height;
-        }
-        
-        // Calculate new height
-        const viewportHeight = window.innerHeight;
-        const newHeight = viewportHeight - keyboardHeight;
-        
-        console.log('[BBZCloud] Adjusting WebView height:', {
-          viewport: viewportHeight,
-          keyboard: keyboardHeight,
-          newHeight: newHeight
-        });
-        
-        // Apply height restriction
-        document.documentElement.style.height = newHeight + 'px';
-        document.body.style.height = newHeight + 'px';
-        document.body.style.overflow = 'hidden';
-        
-        // Add visual indicator (optional - can be removed)
-        document.body.style.borderBottom = '2px solid #007bff';
-      }
-      
-      // 6. Reset WebView height
-      function resetWebViewHeight() {
-        console.log('[BBZCloud] Resetting WebView height');
-        
-        document.documentElement.style.height = '';
-        document.body.style.height = originalBodyHeight || '';
-        document.body.style.overflow = '';
-        document.body.style.borderBottom = '';
-        
-        originalBodyHeight = null;
-      }
-      
-      // 7. Listen for native keyboard events (from BrowserService)
-      function setupNativeBridge() {
-        window.addEventListener('messageFromNative', (event) => {
-          const data = event.detail;
+      // 5. Handle orientation changes
+      function setupOrientationHandler() {
+        window.addEventListener('orientationchange', () => {
+          console.log('[BBZCloud] Orientation changed');
           
-          if (data.type === 'keyboardShow') {
-            console.log('[BBZCloud] Native keyboard show event received:', data.keyboardHeight);
-            keyboardHeightFromNative = data.keyboardHeight;
-            isKeyboardVisible = true;
-            document.body.classList.add('bbz-keyboard-visible');
-            
-            // Adjust WebView height
-            adjustWebViewForKeyboard(data.keyboardHeight);
-            
-            // Also scroll focused element
-            const focused = document.activeElement;
-            if (focused && focused.matches('input, textarea, select, [contenteditable="true"]')) {
-              setTimeout(() => scrollInputIntoView(focused), CONFIG.SCROLL_DELAY);
-            }
-          } else if (data.type === 'keyboardHide') {
-            console.log('[BBZCloud] Native keyboard hide event received');
+          // Reset keyboard state
+          setTimeout(() => {
             isKeyboardVisible = false;
-            keyboardHeightFromNative = 0;
+            keyboardHeight = 0;
             document.body.classList.remove('bbz-keyboard-visible');
             
-            // Reset WebView height
-            resetWebViewHeight();
-          }
+            // Re-scroll focused input if exists
+            if (focusedInput) {
+              setTimeout(() => scrollInputIntoView(focusedInput), 500);
+            }
+          }, 500);
         });
-        
-        console.log('[BBZCloud] Native bridge listener setup complete');
       }
       
-      // 8. Initialize on load
+      // 6. Initialize
       function initialize() {
+        console.log('[BBZCloud] Initializing keyboard handler...');
+        
         setupViewport();
-        handleInputFocus();
-        setupNativeBridge(); // NEW: Setup native event listener
+        setupKeyboardDetection();
+        setupInputHandlers();
+        setupOrientationHandler();
         
-        // Listen for resize events (fallback if native events don't work)
-        window.addEventListener('resize', detectKeyboard, { passive: true });
-        window.addEventListener('orientationchange', () => {
-          setTimeout(() => {
-            lastHeight = window.innerHeight;
-            isKeyboardVisible = false;
-            resetWebViewHeight();
-          }, 500);
-        }, { passive: true });
-        
-        // Watch for dynamically added inputs
-        const observer = new MutationObserver((mutations) => {
-          let hasNewInputs = false;
-          for (const mutation of mutations) {
-            if (mutation.addedNodes.length > 0) {
-              for (const node of mutation.addedNodes) {
-                if (node.nodeType === 1 && 
-                    (node.matches('input, textarea, select, [contenteditable="true"]') ||
-                     node.querySelector && node.querySelector('input, textarea, select, [contenteditable="true"]'))) {
-                  hasNewInputs = true;
-                  break;
-                }
-              }
-            }
-            if (hasNewInputs) break;
-          }
-          
-          if (hasNewInputs) {
-            setTimeout(handleInputFocus, 300);
-          }
-        });
-        
-        observer.observe(document.body, {
-          childList: true,
-          subtree: true
-        });
-        
-        console.log('[BBZCloud] Keyboard fixes v3.0 initialized with native bridge');
+        console.log('[BBZCloud] Keyboard handler initialized');
       }
       
       // Run after DOM is ready
