@@ -9,13 +9,19 @@
 import React, { useMemo } from 'react';
 import { IonGrid, IonRow, IonCol } from '@ionic/react';
 import AppCard from './AppCard';
+import CustomAppsButton from './CustomAppsButton';
 import type { AppGridProps } from '../types';
 import './AppGrid.css';
 
-const AppGrid: React.FC<AppGridProps> = ({ 
+interface AppGridPropsExtended extends AppGridProps {
+  onCustomAppsPress?: () => void;
+}
+
+const AppGrid: React.FC<AppGridPropsExtended> = ({ 
   apps, 
   onAppPress, 
-  searchQuery = ''
+  searchQuery = '',
+  onCustomAppsPress
 }) => {
   /**
    * Filter apps based on search query
@@ -65,6 +71,18 @@ const AppGrid: React.FC<AppGridProps> = ({
             />
           </IonCol>
         ))}
+        
+        {/* Custom Apps Button - Only show when not searching */}
+        {!searchQuery && onCustomAppsPress && (
+          <IonCol
+            size="6"
+            sizeMd="4"
+            sizeLg="3"
+            sizeXl="2"
+          >
+            <CustomAppsButton onPress={onCustomAppsPress} />
+          </IonCol>
+        )}
       </IonRow>
     </IonGrid>
   );

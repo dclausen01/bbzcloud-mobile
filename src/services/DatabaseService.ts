@@ -8,7 +8,7 @@
 
 import { CapacitorSQLite, SQLiteConnection, SQLiteDBConnection } from '@capacitor-community/sqlite';
 import { APP_CONFIG, DATABASE_SCHEMA } from '../utils/constants';
-import type { DatabaseResult, User, BrowserHistory, DBSettings } from '../types';
+import type { DatabaseResult, User, BrowserHistory, DBSettings, CustomApp } from '../types';
 
 class DatabaseService {
   private sqlite: SQLiteConnection;
@@ -86,6 +86,7 @@ class DatabaseService {
       await this.db.execute(DATABASE_SCHEMA.USER_PROFILE);
       await this.db.execute(DATABASE_SCHEMA.APP_VISIBILITY);
       await this.db.execute(DATABASE_SCHEMA.BROWSER_HISTORY);
+      await this.db.execute(DATABASE_SCHEMA.CUSTOM_APPS);
 
       console.log('All tables created successfully');
     } catch (error) {
@@ -489,6 +490,191 @@ class DatabaseService {
       return { success: true };
     } catch (error) {
       console.error('Error clearing history:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  // ============================================================================
+  // CUSTOM APPS OPERATIONS
+  // ============================================================================
+
+  /**
+   * Get all custom apps for a user (or all if no userId provided)
+   */
+  async getCustomApps(userId?: number): Promise<DatabaseResult<CustomApp[]>> {
+    try {
+      if (!this.db) {
+        const initResult = await this.initialize();
+        if (!initResult.success) {
+          return { success: false, error: 'Database initialization failed' };
+        }
+      }
+
+      if (!this.db) {
+        return { success: false, error: 'Database not initialized' };
+      }
+
+      const query = userId
+        ? 'SELECT * FROM custom_apps WHERE user_id = ? OR user_id IS NULL ORDER BY order_index, title'
+        : 'SELECT * FROM custom_apps ORDER BY order_index, title';
+      
+      const params = userId ? [userId] : [];
+      const result = await this.db.query(query, params);
+
+      const customApps: CustomApp[] = (result.values || []).map((row: Record<string, unknown>) => ({
+        id: row.id as string,
+        title: row.title as string,
+        url: row.url as string,
+        color: row.color as string,
+        icon: (row.icon as string) || 'apps',
+        userId: row.user_id as number | undefined,
+        orderIndex: (row.order_index as number) || 0,
+        createdAt: new Date(row.created_at as string),
+        updatedAt: new Date(row.updated_at as string)
+      }));
+
+      return { success: true, data: customApps };
+    } catch (error) {
+      console.error('Error getting custom apps:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Save a new custom app
+   */
+  async saveCustomApp(app: {
+    id: string;
+    title: string;
+    url: string;
+    color: string;
+    icon: string;
+    userId?: number;
+    orderIndex: number;
+  }): Promise<DatabaseResult> {
+    try {
+      if (!this.db) {
+        const initResult = await this.initialize();
+        if (!initResult.success) {
+          return initResult;
+        }
+      }
+
+      if (!this.db) {
+        return { success: false, error: 'Database not initialized' };
+      }
+
+      await this.db.run(
+        `INSERT INTO custom_apps (id, title, url, color, icon, user_id, order_index)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [app.id, app.title, app.url, app.color, app.icon, app.userId || null, app.orderIndex]
+      );
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error saving custom app:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Update an existing custom app
+   */
+  async updateCustomApp(id: string, updates: {
+    title?: string;
+    url?: string;
+    color?: string;
+    icon?: string;
+    orderIndex?: number;
+  }): Promise<DatabaseResult> {
+    try {
+      if (!this.db) {
+        const initResult = await this.initialize();
+        if (!initResult.success) {
+          return initResult;
+        }
+      }
+
+      if (!this.db) {
+        return { success: false, error: 'Database not initialized' };
+      }
+
+      const fields: string[] = [];
+      const values: any[] = [];
+
+      if (updates.title !== undefined) {
+        fields.push('title = ?');
+        values.push(updates.title);
+      }
+      if (updates.url !== undefined) {
+        fields.push('url = ?');
+        values.push(updates.url);
+      }
+      if (updates.color !== undefined) {
+        fields.push('color = ?');
+        values.push(updates.color);
+      }
+      if (updates.icon !== undefined) {
+        fields.push('icon = ?');
+        values.push(updates.icon);
+      }
+      if (updates.orderIndex !== undefined) {
+        fields.push('order_index = ?');
+        values.push(updates.orderIndex);
+      }
+
+      if (fields.length === 0) {
+        return { success: true }; // Nothing to update
+      }
+
+      fields.push('updated_at = CURRENT_TIMESTAMP');
+      values.push(id);
+
+      await this.db.run(
+        `UPDATE custom_apps SET ${fields.join(', ')} WHERE id = ?`,
+        values
+      );
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating custom app:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Delete a custom app
+   */
+  async deleteCustomApp(id: string): Promise<DatabaseResult> {
+    try {
+      if (!this.db) {
+        const initResult = await this.initialize();
+        if (!initResult.success) {
+          return initResult;
+        }
+      }
+
+      if (!this.db) {
+        return { success: false, error: 'Database not initialized' };
+      }
+
+      await this.db.run('DELETE FROM custom_apps WHERE id = ?', [id]);
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting custom app:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
