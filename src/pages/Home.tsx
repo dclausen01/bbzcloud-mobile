@@ -53,6 +53,16 @@ const Home: React.FC = () => {
   const [editingCustomApp, setEditingCustomApp] = useState<CustomApp | undefined>(undefined);
 
   /**
+   * Load custom apps when modal opens
+   */
+  const { loadCustomApps } = useSettings();
+  React.useEffect(() => {
+    if (showCustomAppsModal) {
+      loadCustomApps();
+    }
+  }, [showCustomAppsModal, loadCustomApps]);
+
+  /**
    * Handle pull-to-refresh
    */
   const handleRefresh = async (event: CustomEvent<RefresherEventDetail>) => {
