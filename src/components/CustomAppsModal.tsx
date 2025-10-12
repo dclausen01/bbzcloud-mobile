@@ -65,18 +65,11 @@ const CustomAppsModal: React.FC<CustomAppsModalProps> = ({
       </IonHeader>
 
       <IonContent className="custom-apps-modal-content">
-        <div className="custom-apps-header">
-          <IonButton expand="block" onClick={onAddNew} color="primary">
-            <IonIcon slot="start" icon={add} />
-            + neuer Eintrag
-          </IonButton>
-        </div>
-
         {customApps.length === 0 ? (
           <div className="custom-apps-empty">
             <IonIcon icon={add} className="empty-icon" />
             <h2>Keine eigenen Apps</h2>
-            <p>Fügen Sie Ihre erste eigene App hinzu, indem Sie auf "+ neuer Eintrag" klicken.</p>
+            <p>Fügen Sie Ihre erste eigene App hinzu, indem Sie auf das "+" oben rechts klicken.</p>
           </div>
         ) : (
           <IonList>

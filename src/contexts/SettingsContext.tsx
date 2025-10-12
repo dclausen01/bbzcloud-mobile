@@ -38,8 +38,16 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
    */
   useEffect(() => {
     loadSettings();
-    loadCustomApps();
   }, []);
+
+  /**
+   * Load custom apps when user changes
+   */
+  useEffect(() => {
+    if (user) {
+      loadCustomApps();
+    }
+  }, [user]);
 
   /**
    * Update settings when user changes
