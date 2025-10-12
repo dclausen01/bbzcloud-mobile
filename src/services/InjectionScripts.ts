@@ -3,7 +3,7 @@
  * 
  * JavaScript and CSS injection scripts for specific apps that need modifications
  * 
- * @version 6.0.0 - Aggressive viewport manipulation for keyboard handling
+ * @version 7.0.0 - Minimal solution for keyboard handling
  */
 
 export interface InjectionScript {
@@ -23,48 +23,24 @@ export interface InjectionScript {
  * Fixes:
  * 1. Keyboard handling - ensures input fields are not covered by keyboard
  * 2. Uses visualViewport API for precise keyboard detection
- * 3. Direct viewport and container manipulation for keyboard space
- * 4. Visual feedback for debugging
+ * 3. Simple padding-based solution without height manipulation
+ * 4. Smooth scrolling with single delayed attempt
  * 
  * Note: Navigation bar padding is handled by enabledSafeBottomMargin: true in BrowserService
  */
 export const GLOBAL_INJECTION: InjectionScript = {
   css: `
-    /* GLOBAL KEYBOARD FIX v6.0 - Aggressive Viewport Manipulation */
+    /* GLOBAL KEYBOARD FIX v7.0 - Minimal Solution */
     
-    /* Critical: Override all height constraints when keyboard is visible */
     html {
       scroll-behavior: smooth !important;
-      height: 100% !important;
-      position: relative !important;
     }
     
     body {
-      position: relative !important;
-      transition: all 0.2s ease-out !important;
-      overflow-y: auto !important;
+      transition: padding-bottom 0.2s ease-out !important;
     }
     
-    /* When keyboard is visible, force containers to fit */
-    body.bbz-keyboard-visible {
-      /* This class is added via JavaScript when keyboard appears */
-    }
-    
-    /* Force all fixed/absolute containers to respect the keyboard */
-    body.bbz-keyboard-visible * {
-      /* Remove problematic fixed positioning during keyboard */
-      position: static !important;
-    }
-    
-    /* Except for truly essential fixed elements */
-    body.bbz-keyboard-visible header,
-    body.bbz-keyboard-visible [role="banner"],
-    body.bbz-keyboard-visible nav:first-of-type {
-      position: sticky !important;
-      top: 0 !important;
-    }
-    
-    /* Ensure all form inputs can scroll into view with padding */
+    /* Ensure all form inputs can scroll into view with adequate margin */
     input[type="text"],
     input[type="email"],
     input[type="password"],
@@ -89,51 +65,21 @@ export const GLOBAL_INJECTION: InjectionScript = {
         font-size: 16px !important;
       }
     }
-    
-    /* Visual debugging indicator */
-    body.bbz-keyboard-visible::before {
-      content: '⌨️ KEYBOARD ACTIVE' !important;
-      position: fixed !important;
-      top: 0 !important;
-      left: 50% !important;
-      transform: translateX(-50%) !important;
-      background: rgba(255, 0, 0, 0.8) !important;
-      color: white !important;
-      padding: 4px 12px !important;
-      font-size: 12px !important;
-      font-weight: bold !important;
-      z-index: 999999 !important;
-      border-radius: 0 0 8px 8px !important;
-      pointer-events: none !important;
-    }
   `,
   js: `
-    // GLOBAL KEYBOARD FIX v6.0 - Aggressive Viewport Manipulation
+    // GLOBAL KEYBOARD FIX v7.0 - Minimal Solution
     (function() {
       'use strict';
-      console.log('[BBZCloud] 🎹 Keyboard handler v6.0 - Aggressive viewport manipulation');
+      console.log('[BBZCloud] 🎹 Keyboard handler v7.0 - Minimal solution');
       
       // Configuration
       const CONFIG = {
         KEYBOARD_MIN_HEIGHT: 150,    // Minimum height change to consider as keyboard
-        SCROLL_OFFSET: 100,          // Pixels from bottom to keep input visible
-        SCALE_THRESHOLD: 0.3,        // Maximum scale reduction (30%)
+        SCROLL_DELAY: 300,           // Single delay for smooth scrolling
       };
       
-      let isKeyboardVisible = false;
-      let keyboardHeight = 0;
-      let focusedInput = null;
-      let originalStyles = new Map(); // Store original styles for restoration
-      let pageWrapper = null; // Main page container
-      
-      // Debug helper
-      function debugLog(message, data) {
-        if (data) {
-          console.log('[BBZCloud] 🎹', message, data);
-        } else {
-          console.log('[BBZCloud] 🎹', message);
-        }
-      }
+      let currentKeyboardHeight = 0;
+      let originalPaddingBottom = '';
       
       // 1. Ensure proper viewport configuration
       function setupViewport() {
@@ -142,316 +88,82 @@ export const GLOBAL_INJECTION: InjectionScript = {
           viewport = document.createElement('meta');
           viewport.name = 'viewport';
           document.head.appendChild(viewport);
-          debugLog('Created new viewport meta tag');
         }
-        const oldContent = viewport.content;
-        // Optimal viewport settings for mobile web apps
-        viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover';
-        debugLog('Viewport configured', { old: oldContent, new: viewport.content });
+        viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes';
+        console.log('[BBZCloud] 🎹 Viewport configured');
       }
       
-      // 2. Aggressive keyboard detection and page manipulation
+      // 2. Simple keyboard detection with padding adjustment
       function setupKeyboardDetection() {
         const hasVisualViewport = typeof window.visualViewport !== 'undefined';
-        debugLog('Keyboard detection method', { 
-          hasVisualViewport, 
-          windowHeight: window.innerHeight,
-          visualHeight: hasVisualViewport ? window.visualViewport.height : 'N/A'
-        });
+        console.log('[BBZCloud] 🎹 Detection method:', hasVisualViewport ? 'visualViewport (precise)' : 'window.resize (fallback)');
         
-        // Find or create page wrapper
-        pageWrapper = document.body.firstElementChild || document.body;
-        debugLog('Page wrapper identified', { 
-          tag: pageWrapper.tagName,
-          id: pageWrapper.id,
-          className: pageWrapper.className
-        });
+        // Store original padding
+        originalPaddingBottom = window.getComputedStyle(document.body).paddingBottom;
+        
+        // Check initial state (fixes Problem 1: works immediately on load)
+        function checkKeyboardState() {
+          let keyboardHeight = 0;
+          
+          if (hasVisualViewport) {
+            keyboardHeight = window.innerHeight - window.visualViewport.height;
+          }
+          
+          if (keyboardHeight > CONFIG.KEYBOARD_MIN_HEIGHT) {
+            applyKeyboardPadding(keyboardHeight);
+          } else {
+            removeKeyboardPadding();
+          }
+        }
+        
+        // Initial check
+        checkKeyboardState();
         
         if (hasVisualViewport) {
-          debugLog('✅ Using visualViewport API (precise)');
-          
-          window.visualViewport.addEventListener('resize', () => {
-            const viewportHeight = window.visualViewport.height;
-            const windowHeight = window.innerHeight;
-            const heightDiff = windowHeight - viewportHeight;
-            
-            debugLog('visualViewport resize', {
-              windowHeight,
-              viewportHeight,
-              heightDiff,
-              threshold: CONFIG.KEYBOARD_MIN_HEIGHT
-            });
-            
-            if (heightDiff > CONFIG.KEYBOARD_MIN_HEIGHT) {
-              // Keyboard is visible
-              if (!isKeyboardVisible) {
-                isKeyboardVisible = true;
-                keyboardHeight = heightDiff;
-                applyKeyboardSpace();
-              }
-            } else {
-              // Keyboard is hidden
-              if (isKeyboardVisible) {
-                isKeyboardVisible = false;
-                keyboardHeight = 0;
-                restoreOriginalLayout();
-              }
-            }
-          });
+          window.visualViewport.addEventListener('resize', checkKeyboardState);
         } else {
-          debugLog('⚠️ Using window.resize fallback');
-          
+          // Fallback for browsers without visualViewport
           let lastHeight = window.innerHeight;
           window.addEventListener('resize', () => {
             const currentHeight = window.innerHeight;
             const heightDiff = lastHeight - currentHeight;
             
-            if (heightDiff > CONFIG.KEYBOARD_MIN_HEIGHT && !isKeyboardVisible) {
-              isKeyboardVisible = true;
-              keyboardHeight = heightDiff;
-              applyKeyboardSpace();
-            } else if (heightDiff < -100 && isKeyboardVisible) {
-              isKeyboardVisible = false;
-              keyboardHeight = 0;
-              restoreOriginalLayout();
+            if (heightDiff > CONFIG.KEYBOARD_MIN_HEIGHT) {
+              applyKeyboardPadding(heightDiff);
+            } else if (currentHeight > lastHeight) {
+              removeKeyboardPadding();
               lastHeight = currentHeight;
             }
           });
         }
+        
+        console.log('[BBZCloud] 🎹 Keyboard detection active');
       }
       
-      // 3. Apply aggressive layout changes to make room for keyboard
-      function applyKeyboardSpace() {
-        document.body.classList.add('bbz-keyboard-visible');
+      // 3. Apply bottom padding (fixes Problem 2: no double reduction)
+      function applyKeyboardPadding(keyboardHeight) {
+        if (currentKeyboardHeight === keyboardHeight) return; // Already applied
         
-        debugLog('🚨 KEYBOARD SHOWN - Applying aggressive layout changes', {
-          keyboardHeight,
-          windowHeight: window.innerHeight,
-          visualHeight: window.visualViewport ? window.visualViewport.height : 'N/A'
-        });
+        currentKeyboardHeight = keyboardHeight;
+        document.body.style.paddingBottom = keyboardHeight + 'px';
         
-        // Method 1: Set explicit height on html and body
-        if (!originalStyles.has('html')) {
-          originalStyles.set('html', {
-            height: document.documentElement.style.height,
-            overflow: document.documentElement.style.overflow
-          });
-        }
-        if (!originalStyles.has('body')) {
-          originalStyles.set('body', {
-            height: document.body.style.height,
-            paddingBottom: document.body.style.paddingBottom,
-            overflow: document.body.style.overflow
-          });
-        }
-        
-        const availableHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight - keyboardHeight;
-        
-        document.documentElement.style.height = availableHeight + 'px';
-        document.documentElement.style.overflow = 'hidden';
-        document.body.style.height = availableHeight + 'px';
-        document.body.style.overflow = 'auto';
-        
-        debugLog('✅ Set fixed heights', {
-          htmlHeight: document.documentElement.style.height,
-          bodyHeight: document.body.style.height,
-          availableHeight
-        });
-        
-        // Method 2: Add bottom padding as fallback
-        document.body.style.paddingBottom = (keyboardHeight + CONFIG.SCROLL_OFFSET) + 'px';
-        
-        // Scroll focused input if exists
-        if (focusedInput) {
-          debugLog('Scrolling focused input into view');
-          setTimeout(() => scrollInputIntoView(focusedInput), 200);
-        }
+        console.log('[BBZCloud] 🎹 Keyboard visible - padding applied:', keyboardHeight + 'px');
       }
       
-      // 4. Restore original layout when keyboard hides
-      function restoreOriginalLayout() {
-        document.body.classList.remove('bbz-keyboard-visible');
+      // 4. Remove padding when keyboard hides (fixes Problem 2: clean restoration)
+      function removeKeyboardPadding() {
+        if (currentKeyboardHeight === 0) return; // Already removed
         
-        debugLog('🔄 KEYBOARD HIDDEN - Restoring original layout');
+        currentKeyboardHeight = 0;
+        document.body.style.paddingBottom = originalPaddingBottom;
         
-        // Restore HTML styles
-        if (originalStyles.has('html')) {
-          const htmlStyles = originalStyles.get('html');
-          document.documentElement.style.height = htmlStyles.height;
-          document.documentElement.style.overflow = htmlStyles.overflow;
-        }
-        
-        // Restore body styles
-        if (originalStyles.has('body')) {
-          const bodyStyles = originalStyles.get('body');
-          document.body.style.height = bodyStyles.height;
-          document.body.style.paddingBottom = bodyStyles.paddingBottom;
-          document.body.style.overflow = bodyStyles.overflow;
-        }
-        
-        debugLog('✅ Original layout restored');
+        console.log('[BBZCloud] 🎹 Keyboard hidden - padding removed');
       }
       
-      // 5. Enhanced scroll for focused inputs
-      function scrollInputIntoView(input, immediate = false) {
-        if (!input) {
-          debugLog('⚠️ scrollInputIntoView called without input');
-          return;
-        }
-        
-        try {
-          const rect = input.getBoundingClientRect();
-          const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-          const inputBottom = rect.bottom;
-          const inputTop = rect.top;
-          const visibleBottom = viewportHeight - 100; // 100px safe zone
-          
-          // Check if input is near bottom of page (might need extra help)
-          const pageHeight = Math.max(
-            document.body.scrollHeight,
-            document.body.offsetHeight,
-            document.documentElement.clientHeight,
-            document.documentElement.scrollHeight,
-            document.documentElement.offsetHeight
-          );
-          const inputPagePosition = window.pageYOffset + rect.top;
-          const isNearBottom = (inputPagePosition / pageHeight) > 0.8; // Last 20% of page
-          
-          debugLog('Input position check', {
-            immediate,
-            inputTag: input.tagName,
-            inputType: input.type,
-            inputTop,
-            inputBottom,
-            viewportHeight,
-            visibleBottom,
-            pageHeight,
-            inputPagePosition,
-            isNearBottom,
-            currentBodyHeight: document.body.style.height,
-            needsScroll: inputBottom > visibleBottom || inputTop < 100
-          });
-          
-          if (isNearBottom) {
-            debugLog('🎯 Input is near BOTTOM of page - Dynamic padding should help');
-          }
-          
-          debugLog('🔄 Scrolling input into view - Multiple methods');
-          
-          // Method 1: scrollIntoView
-          try {
-            input.scrollIntoView({
-              behavior: immediate ? 'auto' : 'smooth',
-              block: 'center',
-              inline: 'nearest'
-            });
-            debugLog('✅ Method 1: scrollIntoView executed');
-          } catch (e) {
-            debugLog('❌ Method 1 failed:', e.message);
-          }
-          
-          // Method 2: Focus the input (triggers native scroll on some browsers)
-          setTimeout(() => {
-            try {
-              if (document.activeElement !== input) {
-                input.focus();
-                debugLog('✅ Method 2: Re-focused input');
-              }
-            } catch (e) {
-              debugLog('❌ Method 2 failed:', e.message);
-            }
-          }, 50);
-          
-          // Method 3: Manual scroll with window.scrollTo
-          setTimeout(() => {
-            try {
-              const newRect = input.getBoundingClientRect();
-              const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-              const targetY = scrollTop + newRect.top - (viewportHeight * 0.3);
-              
-              debugLog('📊 Method 3: Manual scroll', { 
-                currentScrollTop: scrollTop,
-                targetY,
-                inputTop: newRect.top 
-              });
-              
-              window.scrollTo({
-                top: Math.max(0, targetY),
-                behavior: immediate ? 'auto' : 'smooth'
-              });
-              debugLog('✅ Method 3: scrollTo executed');
-            } catch (e) {
-              debugLog('❌ Method 3 failed:', e.message);
-            }
-          }, 150);
-          
-          // Method 4: Scroll parent containers
-          setTimeout(() => {
-            try {
-              let parent = input.parentElement;
-              let scrolled = false;
-              
-              while (parent && parent !== document.body && !scrolled) {
-                const parentStyle = window.getComputedStyle(parent);
-                const hasScroll = parentStyle.overflowY === 'scroll' || 
-                                  parentStyle.overflowY === 'auto' ||
-                                  parent.scrollHeight > parent.clientHeight;
-                
-                if (hasScroll) {
-                  const parentRect = parent.getBoundingClientRect();
-                  const inputRect = input.getBoundingClientRect();
-                  
-                  if (inputRect.bottom > parentRect.bottom || inputRect.top < parentRect.top) {
-                    parent.scrollTop = input.offsetTop - parent.offsetTop - (parent.clientHeight / 3);
-                    debugLog('✅ Method 4: Scrolled parent container', {
-                      parent: parent.tagName,
-                      scrollTop: parent.scrollTop
-                    });
-                    scrolled = true;
-                  }
-                }
-                parent = parent.parentElement;
-              }
-              
-              if (!scrolled) {
-                debugLog('⚠️ Method 4: No scrollable parent found');
-              }
-            } catch (e) {
-              debugLog('❌ Method 4 failed:', e.message);
-            }
-          }, 200);
-          
-          // Method 5: Force scroll with scrollBy
-          setTimeout(() => {
-            try {
-              const finalRect = input.getBoundingClientRect();
-              const finalViewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-              
-              if (finalRect.bottom > finalViewportHeight - 100 || finalRect.top < 100) {
-                const scrollAmount = finalRect.bottom - (finalViewportHeight * 0.7);
-                debugLog('📊 Method 5: Final adjustment', { scrollAmount });
-                
-                window.scrollBy({
-                  top: scrollAmount,
-                  behavior: 'smooth'
-                });
-                debugLog('✅ Method 5: scrollBy executed');
-              }
-            } catch (e) {
-              debugLog('❌ Method 5 failed:', e.message);
-            }
-          }, 300);
-          
-        } catch (error) {
-          debugLog('❌ Error in scrollInputIntoView', error.message);
-        }
-      }
-      
-      // 6. Setup input focus handlers
+      // 5. Single smooth scroll for focused inputs (fixes ruckelndes Scrolling)
       function setupInputHandlers() {
-        debugLog('Setting up AGGRESSIVE input focus handlers');
+        let scrollTimeout = null;
         
-        // Use event delegation for better performance
         document.addEventListener('focusin', (e) => {
           const target = e.target;
           
@@ -465,130 +177,62 @@ export const GLOBAL_INJECTION: InjectionScript = {
           );
           
           if (isInputElement) {
-            focusedInput = target;
-            debugLog('🎯 Input FOCUSED - AGGRESSIVE MODE', {
-              tag: target.tagName,
-              type: target.type,
-              id: target.id,
-              className: target.className,
-              contentEditable: target.isContentEditable
-            });
+            console.log('[BBZCloud] 🎹 Input focused:', target.tagName, target.type || 'N/A');
             
-            // Immediate scroll (RIGHT NOW)
-            scrollInputIntoView(target, true);
+            // Clear any pending scroll
+            if (scrollTimeout) {
+              clearTimeout(scrollTimeout);
+            }
             
-            // Second attempt at 100ms
-            setTimeout(() => {
-              if (focusedInput === target) {
-                debugLog('2nd scroll attempt (100ms)');
-                scrollInputIntoView(target, true);
+            // Single delayed scroll after keyboard animation
+            scrollTimeout = setTimeout(() => {
+              try {
+                target.scrollIntoView({
+                  behavior: 'smooth',
+                  block: 'center',
+                  inline: 'nearest'
+                });
+                console.log('[BBZCloud] 🎹 Input scrolled into view');
+              } catch (error) {
+                console.log('[BBZCloud] 🎹 Scroll error (non-critical):', error.message);
               }
-            }, 100);
-            
-            // Third attempt at 300ms (keyboard should be visible)
-            setTimeout(() => {
-              if (focusedInput === target) {
-                debugLog('3rd scroll attempt (300ms - keyboard visible)');
-                scrollInputIntoView(target, false);
-              }
-            }, 300);
-            
-            // Fourth attempt at 500ms (final)
-            setTimeout(() => {
-              if (focusedInput === target) {
-                debugLog('4th scroll attempt (500ms - final)');
-                scrollInputIntoView(target, false);
-              }
-            }, 500);
-            
-            // Fourth final attempt at 600ms (after padding is applied)
-            setTimeout(() => {
-              if (focusedInput === target) {
-                debugLog('4th scroll attempt (600ms - after padding applied)');
-                scrollInputIntoView(target, false);
-              }
-            }, 600);
-            
-          } else {
-            debugLog('Focus on non-input element', {
-              tag: target ? target.tagName : 'null',
-              type: target ? target.type : 'null'
-            });
+            }, CONFIG.SCROLL_DELAY);
           }
         }, true);
         
-        // Also listen for click events on inputs
-        document.addEventListener('click', (e) => {
-          const target = e.target;
-          const isInputElement = target && (
-            (target.tagName === 'INPUT' && !['hidden', 'submit', 'button', 'checkbox', 'radio', 'file', 'image'].includes(target.type)) ||
-            target.tagName === 'TEXTAREA' ||
-            target.tagName === 'SELECT' ||
-            target.isContentEditable ||
-            target.getAttribute('role') === 'textbox'
-          );
-          
-          if (isInputElement) {
-            debugLog('🖱️ Input CLICKED - triggering scroll');
-            setTimeout(() => {
-              scrollInputIntoView(target, true);
-            }, 50);
-            setTimeout(() => {
-              scrollInputIntoView(target, false);
-            }, 350);
-          }
-        }, true);
-        
-        document.addEventListener('focusout', (e) => {
-          if (focusedInput) {
-            debugLog('🎯 Input BLURRED', {
-              tag: focusedInput.tagName,
-              type: focusedInput.type
-            });
-          }
-          focusedInput = null;
-        }, true);
-        
-        debugLog('✅ AGGRESSIVE input handlers registered');
+        console.log('[BBZCloud] 🎹 Input handlers registered');
       }
       
-      // 7. Handle orientation changes
+      // 6. Handle orientation changes
       function setupOrientationHandler() {
         window.addEventListener('orientationchange', () => {
-          debugLog('🔄 Orientation changed');
+          console.log('[BBZCloud] 🎹 Orientation changed - resetting');
           
-          // Reset keyboard state
+          // Reset state after orientation change
           setTimeout(() => {
-            isKeyboardVisible = false;
-            keyboardHeight = 0;
-            document.body.classList.remove('bbz-keyboard-visible');
-            lastViewportHeight = window.innerHeight;
+            currentKeyboardHeight = 0;
+            document.body.style.paddingBottom = originalPaddingBottom;
             
-            debugLog('Orientation state reset', {
-              newHeight: window.innerHeight
-            });
-            
-            // Re-scroll focused input if exists
-            if (focusedInput) {
-              debugLog('Re-scrolling focused input after orientation');
-              setTimeout(() => scrollInputIntoView(focusedInput), 500);
+            // Re-check keyboard state
+            if (typeof window.visualViewport !== 'undefined') {
+              const keyboardHeight = window.innerHeight - window.visualViewport.height;
+              if (keyboardHeight > CONFIG.KEYBOARD_MIN_HEIGHT) {
+                applyKeyboardPadding(keyboardHeight);
+              }
             }
           }, 500);
         });
         
-        debugLog('✅ Orientation handler registered');
+        console.log('[BBZCloud] 🎹 Orientation handler registered');
       }
       
-      // 8. Initialize
+      // 7. Initialize
       function initialize() {
-        debugLog('🚀 Initializing keyboard handler v6.0...');
-        debugLog('Environment', {
-          userAgent: navigator.userAgent,
+        console.log('[BBZCloud] 🎹 Initializing keyboard handler v7.0...');
+        console.log('[BBZCloud] 🎹 Environment:', {
           platform: navigator.platform,
-          readyState: document.readyState,
           windowHeight: window.innerHeight,
-          visualViewport: typeof window.visualViewport !== 'undefined',
-          supportsDVH: CSS.supports('height', '100dvh')
+          visualViewport: typeof window.visualViewport !== 'undefined'
         });
         
         try {
@@ -597,37 +241,16 @@ export const GLOBAL_INJECTION: InjectionScript = {
           setupInputHandlers();
           setupOrientationHandler();
           
-          debugLog('✅ Keyboard handler v6.0 initialized successfully');
-          debugLog('Features enabled', {
-            aggressiveViewportManipulation: true,
-            fixedHeightConstraints: true,
-            visualDebugIndicator: true,
-            multiMethodScrolling: true
-          });
-          
-          // Test with a sample input if any exists
-          setTimeout(() => {
-            const inputs = document.querySelectorAll('input:not([type="hidden"]), textarea');
-            debugLog('Found inputs on page', { count: inputs.length });
-            if (inputs.length > 0) {
-              debugLog('Sample inputs', Array.from(inputs).slice(0, 3).map(i => ({
-                tag: i.tagName,
-                type: i.type,
-                id: i.id
-              })));
-            }
-          }, 1000);
+          console.log('[BBZCloud] 🎹 Keyboard handler v7.0 initialized successfully');
         } catch (error) {
-          debugLog('❌ Initialization error', error.message);
+          console.log('[BBZCloud] 🎹 Initialization error:', error.message);
         }
       }
       
       // Run after DOM is ready
       if (document.readyState === 'loading') {
-        debugLog('Waiting for DOMContentLoaded...');
         document.addEventListener('DOMContentLoaded', initialize);
       } else {
-        debugLog('DOM already loaded, initializing immediately');
         initialize();
       }
     })();
