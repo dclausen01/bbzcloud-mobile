@@ -3,7 +3,7 @@
  * 
  * JavaScript and CSS injection scripts for specific apps that need modifications
  * 
- * @version 7.0.0 - Minimal solution for keyboard handling
+ * @version 7.1.0 - Hybrid solution: v6.0 robustness with v7.0 bug fixes
  */
 
 export interface InjectionScript {
@@ -20,17 +20,17 @@ export interface InjectionScript {
 /**
  * GLOBAL INJECTION - Applied to ALL web apps
  * 
- * Fixes:
- * 1. Keyboard handling - ensures input fields are not covered by keyboard
- * 2. Uses visualViewport API for precise keyboard detection
- * 3. Simple padding-based solution without height manipulation
- * 4. Smooth scrolling with single delayed attempt
+ * v7.1 Hybrid Approach:
+ * - Uses padding-based adjustment (simpler than height manipulation)
+ * - Multiple scroll attempts for robustness (like v6.0)
+ * - Proper state management (fixes v6.0 bugs)
+ * - Less aggressive CSS (fixes white border)
  * 
  * Note: Navigation bar padding is handled by enabledSafeBottomMargin: true in BrowserService
  */
 export const GLOBAL_INJECTION: InjectionScript = {
   css: `
-    /* GLOBAL KEYBOARD FIX v7.0 - Minimal Solution */
+    /* GLOBAL KEYBOARD FIX v7.1 - Hybrid Solution */
     
     html {
       scroll-behavior: smooth !important;
@@ -55,11 +55,11 @@ export const GLOBAL_INJECTION: InjectionScript = {
     select,
     [contenteditable="true"],
     [role="textbox"] {
-      scroll-margin-bottom: 150px !important;
+      scroll-margin-bottom: 200px !important;
       scroll-margin-top: 100px !important;
     }
     
-    /* Prevent zoom on input focus on mobile (16px minimum prevents iOS zoom) */
+    /* Prevent zoom on input focus on mobile */
     @media screen and (max-width: 768px) {
       input, textarea, select {
         font-size: 16px !important;
@@ -67,22 +67,85 @@ export const GLOBAL_INJECTION: InjectionScript = {
     }
   `,
   js: `
-    // GLOBAL KEYBOARD FIX v7.0 - Minimal Solution
+    // GLOBAL KEYBOARD FIX v7.1 - Hybrid Solution
     (function() {
       'use strict';
-      console.log('[BBZCloud] 🎹 Keyboard handler v7.0 - Minimal solution');
       
-      // Configuration
       const CONFIG = {
-        KEYBOARD_MIN_HEIGHT: 150,    // Minimum height change to consider as keyboard
-        SCROLL_DELAY: 300,           // Single delay for smooth scrolling
+        KEYBOARD_MIN_HEIGHT: 150,
+        SCROLL_DELAYS: [100, 400, 700], // Multiple attempts for robustness
       };
       
       let currentKeyboardHeight = 0;
-      let originalPaddingBottom = '';
+      let originalPaddingBottom = null;
+      let focusedInput = null;
       
-      // 1. Ensure proper viewport configuration
-      function setupViewport() {
+      // Store original padding on first use
+      function ensureOriginalPadding() {
+        if (originalPaddingBottom === null) {
+          originalPaddingBottom = window.getComputedStyle(document.body).paddingBottom;
+        }
+      }
+      
+      // Apply padding
+      function applyKeyboardPadding(keyboardHeight) {
+        ensureOriginalPadding();
+        
+        if (Math.abs(currentKeyboardHeight - keyboardHeight) < 10) return; // Same height (tolerance 10px)
+        
+        currentKeyboardHeight = keyboardHeight;
+        document.body.style.paddingBottom = keyboardHeight + 'px';
+      }
+      
+      // Remove padding
+      function removeKeyboardPadding() {
+        if (currentKeyboardHeight === 0) return;
+        
+        ensureOriginalPadding();
+        currentKeyboardHeight = 0;
+        document.body.style.paddingBottom = originalPaddingBottom;
+      }
+      
+      // Check keyboard state
+      function checkKeyboardState() {
+        const hasVisualViewport = typeof window.visualViewport !== 'undefined';
+        let keyboardHeight = 0;
+        
+        if (hasVisualViewport) {
+          keyboardHeight = window.innerHeight - window.visualViewport.height;
+        }
+        
+        if (keyboardHeight > CONFIG.KEYBOARD_MIN_HEIGHT) {
+          applyKeyboardPadding(keyboardHeight);
+        } else {
+          removeKeyboardPadding();
+        }
+      }
+      
+      // Scroll input into view with multiple attempts
+      function scrollInputIntoView(input) {
+        if (!input) return;
+        
+        CONFIG.SCROLL_DELAYS.forEach(delay => {
+          setTimeout(() => {
+            if (focusedInput === input) {
+              try {
+                input.scrollIntoView({
+                  behavior: 'smooth',
+                  block: 'center',
+                  inline: 'nearest'
+                });
+              } catch (e) {
+                // Ignore scroll errors
+              }
+            }
+          }, delay);
+        });
+      }
+      
+      // Setup
+      function initialize() {
+        // Viewport config
         let viewport = document.querySelector('meta[name="viewport"]');
         if (!viewport) {
           viewport = document.createElement('meta');
@@ -90,39 +153,16 @@ export const GLOBAL_INJECTION: InjectionScript = {
           document.head.appendChild(viewport);
         }
         viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes';
-        console.log('[BBZCloud] 🎹 Viewport configured');
-      }
-      
-      // 2. Simple keyboard detection with padding adjustment
-      function setupKeyboardDetection() {
-        const hasVisualViewport = typeof window.visualViewport !== 'undefined';
-        console.log('[BBZCloud] 🎹 Detection method:', hasVisualViewport ? 'visualViewport (precise)' : 'window.resize (fallback)');
         
-        // Store original padding
-        originalPaddingBottom = window.getComputedStyle(document.body).paddingBottom;
-        
-        // Check initial state (fixes Problem 1: works immediately on load)
-        function checkKeyboardState() {
-          let keyboardHeight = 0;
-          
-          if (hasVisualViewport) {
-            keyboardHeight = window.innerHeight - window.visualViewport.height;
-          }
-          
-          if (keyboardHeight > CONFIG.KEYBOARD_MIN_HEIGHT) {
-            applyKeyboardPadding(keyboardHeight);
-          } else {
-            removeKeyboardPadding();
-          }
-        }
-        
-        // Initial check
-        checkKeyboardState();
-        
-        if (hasVisualViewport) {
+        // Keyboard detection
+        if (typeof window.visualViewport !== 'undefined') {
           window.visualViewport.addEventListener('resize', checkKeyboardState);
+          window.visualViewport.addEventListener('scroll', checkKeyboardState);
+          
+          // Initial check
+          setTimeout(checkKeyboardState, 500);
         } else {
-          // Fallback for browsers without visualViewport
+          // Fallback
           let lastHeight = window.innerHeight;
           window.addEventListener('resize', () => {
             const currentHeight = window.innerHeight;
@@ -137,37 +177,9 @@ export const GLOBAL_INJECTION: InjectionScript = {
           });
         }
         
-        console.log('[BBZCloud] 🎹 Keyboard detection active');
-      }
-      
-      // 3. Apply bottom padding (fixes Problem 2: no double reduction)
-      function applyKeyboardPadding(keyboardHeight) {
-        if (currentKeyboardHeight === keyboardHeight) return; // Already applied
-        
-        currentKeyboardHeight = keyboardHeight;
-        document.body.style.paddingBottom = keyboardHeight + 'px';
-        
-        console.log('[BBZCloud] 🎹 Keyboard visible - padding applied:', keyboardHeight + 'px');
-      }
-      
-      // 4. Remove padding when keyboard hides (fixes Problem 2: clean restoration)
-      function removeKeyboardPadding() {
-        if (currentKeyboardHeight === 0) return; // Already removed
-        
-        currentKeyboardHeight = 0;
-        document.body.style.paddingBottom = originalPaddingBottom;
-        
-        console.log('[BBZCloud] 🎹 Keyboard hidden - padding removed');
-      }
-      
-      // 5. Single smooth scroll for focused inputs (fixes ruckelndes Scrolling)
-      function setupInputHandlers() {
-        let scrollTimeout = null;
-        
+        // Input handlers
         document.addEventListener('focusin', (e) => {
           const target = e.target;
-          
-          // Check if target is an input element
           const isInputElement = target && (
             (target.tagName === 'INPUT' && !['hidden', 'submit', 'button', 'checkbox', 'radio', 'file', 'image'].includes(target.type)) ||
             target.tagName === 'TEXTAREA' ||
@@ -177,77 +189,30 @@ export const GLOBAL_INJECTION: InjectionScript = {
           );
           
           if (isInputElement) {
-            console.log('[BBZCloud] 🎹 Input focused:', target.tagName, target.type || 'N/A');
-            
-            // Clear any pending scroll
-            if (scrollTimeout) {
-              clearTimeout(scrollTimeout);
-            }
-            
-            // Single delayed scroll after keyboard animation
-            scrollTimeout = setTimeout(() => {
-              try {
-                target.scrollIntoView({
-                  behavior: 'smooth',
-                  block: 'center',
-                  inline: 'nearest'
-                });
-                console.log('[BBZCloud] 🎹 Input scrolled into view');
-              } catch (error) {
-                console.log('[BBZCloud] 🎹 Scroll error (non-critical):', error.message);
-              }
-            }, CONFIG.SCROLL_DELAY);
+            focusedInput = target;
+            scrollInputIntoView(target);
           }
         }, true);
         
-        console.log('[BBZCloud] 🎹 Input handlers registered');
-      }
-      
-      // 6. Handle orientation changes
-      function setupOrientationHandler() {
+        document.addEventListener('focusout', () => {
+          focusedInput = null;
+        }, true);
+        
+        // Orientation changes
         window.addEventListener('orientationchange', () => {
-          console.log('[BBZCloud] 🎹 Orientation changed - resetting');
-          
-          // Reset state after orientation change
           setTimeout(() => {
+            // Reset state cleanly
+            originalPaddingBottom = null;
             currentKeyboardHeight = 0;
-            document.body.style.paddingBottom = originalPaddingBottom;
+            ensureOriginalPadding();
             
-            // Re-check keyboard state
-            if (typeof window.visualViewport !== 'undefined') {
-              const keyboardHeight = window.innerHeight - window.visualViewport.height;
-              if (keyboardHeight > CONFIG.KEYBOARD_MIN_HEIGHT) {
-                applyKeyboardPadding(keyboardHeight);
-              }
-            }
-          }, 500);
+            // Re-check
+            setTimeout(checkKeyboardState, 500);
+          }, 300);
         });
-        
-        console.log('[BBZCloud] 🎹 Orientation handler registered');
       }
       
-      // 7. Initialize
-      function initialize() {
-        console.log('[BBZCloud] 🎹 Initializing keyboard handler v7.0...');
-        console.log('[BBZCloud] 🎹 Environment:', {
-          platform: navigator.platform,
-          windowHeight: window.innerHeight,
-          visualViewport: typeof window.visualViewport !== 'undefined'
-        });
-        
-        try {
-          setupViewport();
-          setupKeyboardDetection();
-          setupInputHandlers();
-          setupOrientationHandler();
-          
-          console.log('[BBZCloud] 🎹 Keyboard handler v7.0 initialized successfully');
-        } catch (error) {
-          console.log('[BBZCloud] 🎹 Initialization error:', error.message);
-        }
-      }
-      
-      // Run after DOM is ready
+      // Start
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initialize);
       } else {
@@ -256,20 +221,14 @@ export const GLOBAL_INJECTION: InjectionScript = {
     })();
   `,
   delay: 500,
-  description: 'Global keyboard handling and navigation bar padding for all apps'
+  description: 'Global keyboard handling - hybrid v7.1 solution'
 };
 
 /**
  * schul.cloud - Production scroll fix
- * 
- * Problem: Channel list and chat windows are not scrollable by finger touch
- * Solution: Targeted CSS fixes for overflow:hidden containers
  */
 export const SCHULCLOUD_INJECTION: InjectionScript = {
   css: `
-    /* TARGETED CSS FIX - Production version */
-    /* Fix overflow:hidden on scrollable containers */
-    
     /* schul.cloud specific containers that need scrolling */
     [class*="outer-scroller"],
     [class*="navigation-item-wrapper"],
@@ -288,17 +247,12 @@ export const SCHULCLOUD_INJECTION: InjectionScript = {
       touch-action: pan-y !important;
     }
     
-    /* Ensure parent containers allow scrolling */
     [class*="wrapper"][class*="ng-tns"] {
       overflow-y: auto !important;
     }
   `,
   js: `
-    // Production scroll fix - minimal JavaScript
     (function() {
-      console.log('[BBZCloud] schul.cloud scroll fix active');
-      
-      // Apply minimal fixes to ensure scrolling works
       function applyScrollFixes() {
         const scrollableSelectors = [
           '[class*="outer-scroller"]',
@@ -309,11 +263,8 @@ export const SCHULCLOUD_INJECTION: InjectionScript = {
         scrollableSelectors.forEach(selector => {
           const elements = document.querySelectorAll(selector);
           elements.forEach(element => {
-            // Only apply if element has content to scroll
             if (element.scrollHeight > element.clientHeight) {
               element.style.webkitOverflowScrolling = 'touch';
-              
-              // Fix touch-action if it's blocking scroll
               const touchAction = window.getComputedStyle(element).touchAction;
               if (touchAction === 'none') {
                 element.style.touchAction = 'pan-y';
@@ -323,11 +274,9 @@ export const SCHULCLOUD_INJECTION: InjectionScript = {
         });
       }
       
-      // Apply fixes on load and when new content is added
       setTimeout(applyScrollFixes, 1000);
       setInterval(applyScrollFixes, 5000);
       
-      // Watch for DOM changes
       const observer = new MutationObserver(function(mutations) {
         let shouldReapply = false;
         mutations.forEach(function(mutation) {
@@ -344,8 +293,6 @@ export const SCHULCLOUD_INJECTION: InjectionScript = {
         childList: true,
         subtree: true
       });
-      
-      console.log('[BBZCloud] Scroll fix initialized');
     })();
   `,
   delay: 1500,
@@ -354,53 +301,36 @@ export const SCHULCLOUD_INJECTION: InjectionScript = {
 
 /**
  * WebUntis - Auto-close warning and banner messages
- * 
- * Problem: 
- * 1. Initial warning with "Im Browser öffnen" link that needs to be clicked
- * 2. After login, banner overlay with X button (top right) that needs to be closed
- * 
- * Solution: Automatically detect and close these elements
  */
 export const WEBUNTIS_INJECTION: InjectionScript = {
   js: `
-    // Auto-close WebUntis dialogs and banners
     (function() {
-      console.log('[BBZCloud] Initializing WebUntis auto-close');
-      
       let attemptCount = 0;
-      const maxAttempts = 30; // Try for 15 seconds (30 * 500ms)
+      const maxAttempts = 30;
       
       function closeElements() {
         attemptCount++;
         let foundAndClicked = false;
         
-        // Step 1: Look for "Im Browser öffnen" link (initial warning)
         const links = document.querySelectorAll('a, button');
         for (const link of links) {
           if (link.textContent && link.textContent.includes('Im Browser öffnen') && link.offsetParent !== null) {
-            console.log('[BBZCloud] Clicking "Im Browser öffnen" link');
             link.click();
             foundAndClicked = true;
             break;
           }
         }
         
-        // Step 2: Look for X button on banner overlay (after login)
-        // Try multiple selectors for the close button
         const closeSelectors = [
-          // Look for buttons/elements in top right
           '[class*="banner"] [class*="close"]',
           '[class*="overlay"] [class*="close"]',
           '[class*="notification"] [class*="close"]',
-          // Generic close buttons
           'button[aria-label*="close" i]',
           'button[aria-label*="schließen" i]',
           'button[title*="close" i]',
           'button[title*="schließen" i]',
-          // X buttons (common patterns)
           'button:has(svg[class*="close"])',
           'button:has([class*="close"])',
-          // Position-based (top right)
           '[style*="position: absolute"][style*="right"][style*="top"] button',
           '[style*="position: fixed"][style*="right"][style*="top"] button'
         ];
@@ -410,7 +340,6 @@ export const WEBUNTIS_INJECTION: InjectionScript = {
             const buttons = document.querySelectorAll(selector);
             for (const button of buttons) {
               if (button && button.offsetParent !== null) {
-                // Check if it's likely a close button (has X or close icon)
                 const hasCloseIcon = 
                   button.textContent.includes('×') || 
                   button.textContent.includes('✕') ||
@@ -418,7 +347,6 @@ export const WEBUNTIS_INJECTION: InjectionScript = {
                   button.className.includes('close');
                 
                 if (hasCloseIcon) {
-                  console.log('[BBZCloud] Clicking close button on overlay:', selector);
                   button.click();
                   foundAndClicked = true;
                   break;
@@ -427,28 +355,21 @@ export const WEBUNTIS_INJECTION: InjectionScript = {
             }
             if (foundAndClicked) break;
           } catch (e) {
-            // Some selectors might not be valid, skip them
             continue;
           }
         }
         
-        // Continue checking if we haven't exceeded max attempts
         if (attemptCount < maxAttempts) {
           setTimeout(closeElements, 500);
-        } else {
-          console.log('[BBZCloud] WebUntis auto-close completed. Attempts:', attemptCount);
         }
       }
       
-      // Start attempting to close elements
       setTimeout(closeElements, 500);
       
-      // Set up MutationObserver for dynamically appearing elements
       const observer = new MutationObserver(function(mutations) {
         mutations.forEach(function(mutation) {
           mutation.addedNodes.forEach(function(node) {
-            if (node.nodeType === 1) { // ELEMENT_NODE
-              // Check if added node contains "Im Browser öffnen" or close buttons
+            if (node.nodeType === 1) {
               const text = node.textContent || '';
               if (text.includes('Im Browser öffnen') || 
                   node.querySelector && (
@@ -456,7 +377,6 @@ export const WEBUNTIS_INJECTION: InjectionScript = {
                     node.querySelector('[class*="overlay"]') ||
                     node.querySelector('[class*="notification"]')
                   )) {
-                console.log('[BBZCloud] New element detected, attempting to close');
                 setTimeout(closeElements, 300);
               }
             }
@@ -464,13 +384,10 @@ export const WEBUNTIS_INJECTION: InjectionScript = {
         });
       });
       
-      // Start observing
       observer.observe(document.body, {
         childList: true,
         subtree: true
       });
-      
-      console.log('[BBZCloud] WebUntis auto-close initialized');
     })();
   `,
   delay: 1000,
