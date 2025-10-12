@@ -60,10 +60,13 @@ const CustomAppFormModal: React.FC<CustomAppFormModalProps> = ({
     if (!url.trim()) {
       newErrors.url = 'URL ist erforderlich';
     } else {
-      // Basic URL validation
-      const urlPattern = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/;
-      if (!urlPattern.test(url.trim())) {
-        newErrors.url = 'Bitte geben Sie eine gültige URL ein';
+      // Basic URL validation - just check if it looks like a valid URL
+      const urlTrimmed = url.trim();
+      const hasProtocol = /^https?:\/\//i.test(urlTrimmed);
+      const hasDomain = /^(https?:\/\/)?[\w.-]+\.[a-z]{2,}(\/|$)/i.test(urlTrimmed);
+      
+      if (!hasProtocol && !hasDomain) {
+        newErrors.url = 'Bitte geben Sie eine gültige URL ein (z.B. example.com oder https://example.com)';
       }
     }
 
