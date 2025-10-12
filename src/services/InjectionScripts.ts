@@ -3,7 +3,7 @@
  * 
  * JavaScript and CSS injection scripts for specific apps that need modifications
  * 
- * @version 5.0.0 - Enhanced keyboard handling with dynamic bottom padding
+ * @version 6.0.0 - Aggressive viewport manipulation for keyboard handling
  */
 
 export interface InjectionScript {
@@ -23,28 +23,45 @@ export interface InjectionScript {
  * Fixes:
  * 1. Keyboard handling - ensures input fields are not covered by keyboard
  * 2. Uses visualViewport API for precise keyboard detection
- * 3. Dynamic bottom padding for bottom-of-page inputs
- * 4. Viewport height adjustments for keyboard-aware containers
+ * 3. Direct viewport and container manipulation for keyboard space
+ * 4. Visual feedback for debugging
  * 
  * Note: Navigation bar padding is handled by enabledSafeBottomMargin: true in BrowserService
  */
 export const GLOBAL_INJECTION: InjectionScript = {
   css: `
-    /* GLOBAL KEYBOARD FIX v5.0 - Dynamic Padding & Viewport Height */
+    /* GLOBAL KEYBOARD FIX v6.0 - Aggressive Viewport Manipulation */
     
-    /* Use dynamic viewport height units for keyboard-aware containers */
+    /* Critical: Override all height constraints when keyboard is visible */
     html {
-      /* Use dvh (dynamic viewport height) which respects keyboard */
-      min-height: 100dvh !important;
-      min-height: -webkit-fill-available !important;
       scroll-behavior: smooth !important;
+      height: 100% !important;
+      position: relative !important;
     }
     
     body {
-      /* Allow body to grow with dynamic padding */
-      min-height: 100dvh !important;
-      min-height: -webkit-fill-available !important;
-      transition: padding-bottom 0.2s ease-out !important;
+      position: relative !important;
+      transition: all 0.2s ease-out !important;
+      overflow-y: auto !important;
+    }
+    
+    /* When keyboard is visible, force containers to fit */
+    body.bbz-keyboard-visible {
+      /* This class is added via JavaScript when keyboard appears */
+    }
+    
+    /* Force all fixed/absolute containers to respect the keyboard */
+    body.bbz-keyboard-visible * {
+      /* Remove problematic fixed positioning during keyboard */
+      position: static !important;
+    }
+    
+    /* Except for truly essential fixed elements */
+    body.bbz-keyboard-visible header,
+    body.bbz-keyboard-visible [role="banner"],
+    body.bbz-keyboard-visible nav:first-of-type {
+      position: sticky !important;
+      top: 0 !important;
     }
     
     /* Ensure all form inputs can scroll into view with padding */
@@ -73,37 +90,41 @@ export const GLOBAL_INJECTION: InjectionScript = {
       }
     }
     
-    /* Visual indicator when keyboard is visible */
-    body.bbz-keyboard-visible {
-      /* Dynamic bottom padding will be added via JavaScript */
-    }
-    
-    /* Make containers respect the visual viewport when keyboard is visible */
-    body.bbz-keyboard-visible [style*="height: 100vh"],
-    body.bbz-keyboard-visible [style*="height:100vh"] {
-      height: 100dvh !important;
+    /* Visual debugging indicator */
+    body.bbz-keyboard-visible::before {
+      content: '⌨️ KEYBOARD ACTIVE' !important;
+      position: fixed !important;
+      top: 0 !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+      background: rgba(255, 0, 0, 0.8) !important;
+      color: white !important;
+      padding: 4px 12px !important;
+      font-size: 12px !important;
+      font-weight: bold !important;
+      z-index: 999999 !important;
+      border-radius: 0 0 8px 8px !important;
+      pointer-events: none !important;
     }
   `,
   js: `
-    // GLOBAL KEYBOARD FIX v5.0 - Dynamic Bottom Padding
+    // GLOBAL KEYBOARD FIX v6.0 - Aggressive Viewport Manipulation
     (function() {
       'use strict';
-      console.log('[BBZCloud] 🎹 Keyboard handler v5.0 - Dynamic padding & viewport');
+      console.log('[BBZCloud] 🎹 Keyboard handler v6.0 - Aggressive viewport manipulation');
       
       // Configuration
       const CONFIG = {
-        SCROLL_DELAY: 300,           // Delay before scrolling input (wait for keyboard)
-        IMMEDIATE_SCROLL_DELAY: 100, // Immediate scroll attempt
-        DEBOUNCE_DELAY: 100,         // Debounce for resize events
         KEYBOARD_MIN_HEIGHT: 150,    // Minimum height change to consider as keyboard
-        BOTTOM_PADDING_EXTRA: 50,    // Extra padding beyond keyboard height for comfort
+        SCROLL_OFFSET: 100,          // Pixels from bottom to keep input visible
+        SCALE_THRESHOLD: 0.3,        // Maximum scale reduction (30%)
       };
       
       let isKeyboardVisible = false;
       let keyboardHeight = 0;
       let focusedInput = null;
-      let lastViewportHeight = window.innerHeight;
-      let originalBodyPaddingBottom = null; // Store original padding
+      let originalStyles = new Map(); // Store original styles for restoration
+      let pageWrapper = null; // Main page container
       
       // Debug helper
       function debugLog(message, data) {
@@ -129,7 +150,7 @@ export const GLOBAL_INJECTION: InjectionScript = {
         debugLog('Viewport configured', { old: oldContent, new: viewport.content });
       }
       
-      // 2. Precise keyboard detection with dynamic bottom padding
+      // 2. Aggressive keyboard detection and page manipulation
       function setupKeyboardDetection() {
         const hasVisualViewport = typeof window.visualViewport !== 'undefined';
         debugLog('Keyboard detection method', { 
@@ -138,17 +159,17 @@ export const GLOBAL_INJECTION: InjectionScript = {
           visualHeight: hasVisualViewport ? window.visualViewport.height : 'N/A'
         });
         
-        // Store original body padding once
-        if (originalBodyPaddingBottom === null) {
-          const computedStyle = window.getComputedStyle(document.body);
-          originalBodyPaddingBottom = computedStyle.paddingBottom;
-          debugLog('Stored original body padding', { originalBodyPaddingBottom });
-        }
+        // Find or create page wrapper
+        pageWrapper = document.body.firstElementChild || document.body;
+        debugLog('Page wrapper identified', { 
+          tag: pageWrapper.tagName,
+          id: pageWrapper.id,
+          className: pageWrapper.className
+        });
         
         if (hasVisualViewport) {
           debugLog('✅ Using visualViewport API (precise)');
           
-          // visualViewport provides precise measurements
           window.visualViewport.addEventListener('resize', () => {
             const viewportHeight = window.visualViewport.height;
             const windowHeight = window.innerHeight;
@@ -166,102 +187,112 @@ export const GLOBAL_INJECTION: InjectionScript = {
               if (!isKeyboardVisible) {
                 isKeyboardVisible = true;
                 keyboardHeight = heightDiff;
-                document.body.classList.add('bbz-keyboard-visible');
-                
-                // Apply dynamic bottom padding to body
-                const paddingValue = keyboardHeight + CONFIG.BOTTOM_PADDING_EXTRA;
-                document.body.style.paddingBottom = paddingValue + 'px';
-                
-                debugLog('✅ Keyboard SHOWN - Applied bottom padding', { 
-                  keyboardHeight,
-                  paddingValue,
-                  totalPadding: document.body.style.paddingBottom
-                });
-                
-                // Scroll focused input if exists
-                if (focusedInput) {
-                  debugLog('Scrolling focused input from keyboard detection');
-                  // Delay to allow padding to take effect
-                  setTimeout(() => scrollInputIntoView(focusedInput), 150);
-                }
+                applyKeyboardSpace();
               }
             } else {
               // Keyboard is hidden
               if (isKeyboardVisible) {
                 isKeyboardVisible = false;
                 keyboardHeight = 0;
-                document.body.classList.remove('bbz-keyboard-visible');
-                
-                // Restore original padding
-                document.body.style.paddingBottom = originalBodyPaddingBottom || '';
-                
-                debugLog('❌ Keyboard HIDDEN - Restored padding', {
-                  restoredPadding: originalBodyPaddingBottom
-                });
+                restoreOriginalLayout();
               }
             }
           });
         } else {
-          debugLog('⚠️ Using window.resize fallback (less precise)');
+          debugLog('⚠️ Using window.resize fallback');
           
-          // Fallback: Use window.resize (less precise)
           let lastHeight = window.innerHeight;
-          let resizeTimeout;
-          
           window.addEventListener('resize', () => {
-            clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(() => {
-              const currentHeight = window.innerHeight;
-              const heightDiff = lastHeight - currentHeight;
-              
-              debugLog('window resize', {
-                lastHeight,
-                currentHeight,
-                heightDiff,
-                threshold: CONFIG.KEYBOARD_MIN_HEIGHT
-              });
-              
-              if (heightDiff > CONFIG.KEYBOARD_MIN_HEIGHT) {
-                // Keyboard appeared
-                if (!isKeyboardVisible) {
-                  isKeyboardVisible = true;
-                  keyboardHeight = heightDiff;
-                  document.body.classList.add('bbz-keyboard-visible');
-                  
-                  // Apply dynamic bottom padding
-                  const paddingValue = keyboardHeight + CONFIG.BOTTOM_PADDING_EXTRA;
-                  document.body.style.paddingBottom = paddingValue + 'px';
-                  
-                  debugLog('✅ Keyboard SHOWN (fallback) - Applied padding', { 
-                    keyboardHeight,
-                    paddingValue
-                  });
-                  
-                  if (focusedInput) {
-                    debugLog('Scrolling focused input from fallback detection');
-                    setTimeout(() => scrollInputIntoView(focusedInput), 150);
-                  }
-                }
-              } else if (heightDiff < -100) {
-                // Keyboard disappeared
-                if (isKeyboardVisible) {
-                  isKeyboardVisible = false;
-                  keyboardHeight = 0;
-                  document.body.classList.remove('bbz-keyboard-visible');
-                  
-                  // Restore original padding
-                  document.body.style.paddingBottom = originalBodyPaddingBottom || '';
-                  
-                  debugLog('❌ Keyboard HIDDEN (fallback) - Restored padding');
-                  lastHeight = currentHeight;
-                }
-              }
-            }, CONFIG.DEBOUNCE_DELAY);
+            const currentHeight = window.innerHeight;
+            const heightDiff = lastHeight - currentHeight;
+            
+            if (heightDiff > CONFIG.KEYBOARD_MIN_HEIGHT && !isKeyboardVisible) {
+              isKeyboardVisible = true;
+              keyboardHeight = heightDiff;
+              applyKeyboardSpace();
+            } else if (heightDiff < -100 && isKeyboardVisible) {
+              isKeyboardVisible = false;
+              keyboardHeight = 0;
+              restoreOriginalLayout();
+              lastHeight = currentHeight;
+            }
           });
         }
       }
       
-      // 3. Enhanced scroll for focused inputs - Works with dynamic padding
+      // 3. Apply aggressive layout changes to make room for keyboard
+      function applyKeyboardSpace() {
+        document.body.classList.add('bbz-keyboard-visible');
+        
+        debugLog('🚨 KEYBOARD SHOWN - Applying aggressive layout changes', {
+          keyboardHeight,
+          windowHeight: window.innerHeight,
+          visualHeight: window.visualViewport ? window.visualViewport.height : 'N/A'
+        });
+        
+        // Method 1: Set explicit height on html and body
+        if (!originalStyles.has('html')) {
+          originalStyles.set('html', {
+            height: document.documentElement.style.height,
+            overflow: document.documentElement.style.overflow
+          });
+        }
+        if (!originalStyles.has('body')) {
+          originalStyles.set('body', {
+            height: document.body.style.height,
+            paddingBottom: document.body.style.paddingBottom,
+            overflow: document.body.style.overflow
+          });
+        }
+        
+        const availableHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight - keyboardHeight;
+        
+        document.documentElement.style.height = availableHeight + 'px';
+        document.documentElement.style.overflow = 'hidden';
+        document.body.style.height = availableHeight + 'px';
+        document.body.style.overflow = 'auto';
+        
+        debugLog('✅ Set fixed heights', {
+          htmlHeight: document.documentElement.style.height,
+          bodyHeight: document.body.style.height,
+          availableHeight
+        });
+        
+        // Method 2: Add bottom padding as fallback
+        document.body.style.paddingBottom = (keyboardHeight + CONFIG.SCROLL_OFFSET) + 'px';
+        
+        // Scroll focused input if exists
+        if (focusedInput) {
+          debugLog('Scrolling focused input into view');
+          setTimeout(() => scrollInputIntoView(focusedInput), 200);
+        }
+      }
+      
+      // 4. Restore original layout when keyboard hides
+      function restoreOriginalLayout() {
+        document.body.classList.remove('bbz-keyboard-visible');
+        
+        debugLog('🔄 KEYBOARD HIDDEN - Restoring original layout');
+        
+        // Restore HTML styles
+        if (originalStyles.has('html')) {
+          const htmlStyles = originalStyles.get('html');
+          document.documentElement.style.height = htmlStyles.height;
+          document.documentElement.style.overflow = htmlStyles.overflow;
+        }
+        
+        // Restore body styles
+        if (originalStyles.has('body')) {
+          const bodyStyles = originalStyles.get('body');
+          document.body.style.height = bodyStyles.height;
+          document.body.style.paddingBottom = bodyStyles.paddingBottom;
+          document.body.style.overflow = bodyStyles.overflow;
+        }
+        
+        debugLog('✅ Original layout restored');
+      }
+      
+      // 5. Enhanced scroll for focused inputs
       function scrollInputIntoView(input, immediate = false) {
         if (!input) {
           debugLog('⚠️ scrollInputIntoView called without input');
@@ -297,7 +328,7 @@ export const GLOBAL_INJECTION: InjectionScript = {
             pageHeight,
             inputPagePosition,
             isNearBottom,
-            hasBottomPadding: document.body.style.paddingBottom !== originalBodyPaddingBottom,
+            currentBodyHeight: document.body.style.height,
             needsScroll: inputBottom > visibleBottom || inputTop < 100
           });
           
@@ -416,7 +447,7 @@ export const GLOBAL_INJECTION: InjectionScript = {
         }
       }
       
-      // 4. Setup input focus handlers with AGGRESSIVE scrolling
+      // 6. Setup input focus handlers
       function setupInputHandlers() {
         debugLog('Setting up AGGRESSIVE input focus handlers');
         
@@ -521,7 +552,7 @@ export const GLOBAL_INJECTION: InjectionScript = {
         debugLog('✅ AGGRESSIVE input handlers registered');
       }
       
-      // 5. Handle orientation changes
+      // 7. Handle orientation changes
       function setupOrientationHandler() {
         window.addEventListener('orientationchange', () => {
           debugLog('🔄 Orientation changed');
@@ -548,9 +579,9 @@ export const GLOBAL_INJECTION: InjectionScript = {
         debugLog('✅ Orientation handler registered');
       }
       
-      // 6. Initialize
+      // 8. Initialize
       function initialize() {
-        debugLog('🚀 Initializing keyboard handler v5.0...');
+        debugLog('🚀 Initializing keyboard handler v6.0...');
         debugLog('Environment', {
           userAgent: navigator.userAgent,
           platform: navigator.platform,
@@ -566,11 +597,12 @@ export const GLOBAL_INJECTION: InjectionScript = {
           setupInputHandlers();
           setupOrientationHandler();
           
-          debugLog('✅ Keyboard handler v5.0 initialized successfully');
+          debugLog('✅ Keyboard handler v6.0 initialized successfully');
           debugLog('Features enabled', {
-            dynamicBottomPadding: true,
-            viewportHeightAdjustment: true,
-            aggressiveScrollMethods: true
+            aggressiveViewportManipulation: true,
+            fixedHeightConstraints: true,
+            visualDebugIndicator: true,
+            multiMethodScrolling: true
           });
           
           // Test with a sample input if any exists
