@@ -1,0 +1,74 @@
+/**
+ * BBZCloud Mobile - Custom App Form Modal Styles
+ * 
+ * Styling for the custom app creation/edit form
+ * 
+ * @version 1.0.0
+ */
+
+.custom-app-form-content {
+  --padding-top: 0;
+  --padding-bottom: 20px;
+}
+
+.custom-app-form-content .error-text {
+  padding: 0 16px;
+  margin-top: -8px;
+  margin-bottom: 8px;
+}
+
+.custom-app-form-content .error-text p {
+  margin: 4px 0;
+  font-size: 12px;
+}
+
+.color-picker {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding: 16px;
+}
+
+.color-option {
+  width: 100%;
+  aspect-ratio: 1;
+  border: 3px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.color-option:hover {
+  transform: scale(1.05);
+}
+
+.color-option:active {
+  transform: scale(0.95);
+}
+
+.color-option.selected {
+  border-color: var(--ion-color-primary);
+  box-shadow: 0 0 0 2px rgba(var(--ion-color-primary-rgb), 0.2);
+}
+
+.color-checkmark {
+  color: white;
+  font-size: 24px;
+  font-weight: bold;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.form-actions {
+  padding: 16px;
+}
+
+/* Responsive adjustments */
+@media (min-width: 768px) {
+  .color-picker {
+    grid-template-columns: repeat(8, 1fr);
+  }
+}

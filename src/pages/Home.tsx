@@ -27,17 +27,19 @@ import { useHistory } from 'react-router-dom';
 import AppGrid from '../components/AppGrid';
 import WelcomeModal from '../components/WelcomeModal';
 import AppInstallModal from '../components/AppInstallModal';
+import CustomAppsModal from '../components/CustomAppsModal';
+import CustomAppFormModal from '../components/CustomAppFormModal';
 import { useSettings } from '../contexts/SettingsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppSwitcher } from '../contexts/AppSwitcherContext';
 import BrowserService from '../services/BrowserService';
 import { ERROR_MESSAGES, NAVIGATION_APPS } from '../utils/constants';
-import type { App } from '../types';
+import type { App, CustomApp } from '../types';
 import './Home.css';
 
 const Home: React.FC = () => {
   const history = useHistory();
-  const { settings, isLoading: settingsLoading } = useSettings();
+  const { settings, isLoading: settingsLoading, customApps, addCustomApp, updateCustomApp, deleteCustomApp } = useSettings();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { openApp } = useAppSwitcher();
   const [presentToast] = useIonToast();
@@ -46,6 +48,9 @@ const Home: React.FC = () => {
   const [showWelcome, setShowWelcome] = useState(!isAuthenticated && !authLoading);
   const [loadingAppId, setLoadingAppId] = useState<string | null>(null);
   const [installModalApp, setInstallModalApp] = useState<App | null>(null);
+  const [showCustomAppsModal, setShowCustomAppsModal] = useState(false);
+  const [showCustomAppFormModal, setShowCustomAppFormModal] = useState(false);
+  const [editingCustomApp, setEditingCustomApp] = useState<CustomApp | undefined>(undefined);
 
   /**
    * Handle pull-to-refresh
@@ -180,6 +185,104 @@ const Home: React.FC = () => {
     setShowWelcome(false);
   };
 
+  /**
+   * Handle custom apps button press
+   */
+  const handleCustomAppsPress = () => {
+    setShowCustomAppsModal(true);
+  };
+
+  /**
+   * Handle add new custom app
+   */
+  const handleAddNewCustomApp = () => {
+    setEditingCustomApp(undefined);
+    setShowCustomAppFormModal(true);
+  };
+
+  /**
+   * Handle edit custom app
+   */
+  const handleEditCustomApp = (app: CustomApp) => {
+    setEditingCustomApp(app);
+    setShowCustomAppFormModal(true);
+  };
+
+  /**
+   * Handle save custom app (add or update)
+   */
+  const handleSaveCustomApp = async (app: Omit<CustomApp, 'id' | 'orderIndex' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      if (editingCustomApp) {
+        await updateCustomApp(editingCustomApp.id, app);
+        presentToast({
+          message: 'App aktualisiert',
+          duration: 2000,
+          color: 'success',
+          position: 'bottom'
+        });
+      } else {
+        await addCustomApp(app);
+        presentToast({
+          message: 'App hinzugefügt',
+          duration: 2000,
+          color: 'success',
+          position: 'bottom'
+        });
+      }
+      setShowCustomAppFormModal(false);
+      setEditingCustomApp(undefined);
+    } catch (error) {
+      presentToast({
+        message: 'Fehler beim Speichern der App',
+        duration: 3000,
+        color: 'danger',
+        position: 'bottom'
+      });
+    }
+  };
+
+  /**
+   * Handle delete custom app
+   */
+  const handleDeleteCustomApp = async (appId: string) => {
+    try {
+      await deleteCustomApp(appId);
+      presentToast({
+        message: 'App gelöscht',
+        duration: 2000,
+        color: 'success',
+        position: 'bottom'
+      });
+    } catch (error) {
+      presentToast({
+        message: 'Fehler beim Löschen der App',
+        duration: 3000,
+        color: 'danger',
+        position: 'bottom'
+      });
+    }
+  };
+
+  /**
+   * Handle custom app press - open in browser
+   */
+  const handleCustomAppPress = async (app: App) => {
+    try {
+      // Close the custom apps modal first
+      setShowCustomAppsModal(false);
+      // Open the custom app
+      await openApp(app);
+    } catch (error) {
+      presentToast({
+        message: ERROR_MESSAGES.BROWSER_OPEN_FAILED,
+        duration: 3000,
+        color: 'danger',
+        position: 'bottom'
+      });
+    }
+  };
+
   return (
     <IonPage>
       <IonHeader>
@@ -239,6 +342,7 @@ const Home: React.FC = () => {
               }))}
               onAppPress={handleAppPress}
               searchQuery={searchQuery}
+              onCustomAppsPress={handleCustomAppsPress}
             />
           </>
         )}
@@ -258,6 +362,28 @@ const Home: React.FC = () => {
           onDontShowAgain={handleDontShowAgain}
         />
       )}
+
+      {/* Custom Apps Modal */}
+      <CustomAppsModal
+        isOpen={showCustomAppsModal}
+        customApps={customApps}
+        onDismiss={() => setShowCustomAppsModal(false)}
+        onAppPress={handleCustomAppPress}
+        onAddNew={handleAddNewCustomApp}
+        onEdit={handleEditCustomApp}
+        onDelete={handleDeleteCustomApp}
+      />
+
+      {/* Custom App Form Modal */}
+      <CustomAppFormModal
+        isOpen={showCustomAppFormModal}
+        onDismiss={() => {
+          setShowCustomAppFormModal(false);
+          setEditingCustomApp(undefined);
+        }}
+        onSave={handleSaveCustomApp}
+        editApp={editingCustomApp}
+      />
     </IonPage>
   );
 };

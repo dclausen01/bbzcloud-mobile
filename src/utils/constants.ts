@@ -334,4 +334,28 @@ export const DATABASE_SCHEMA = {
       visited_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `,
+  CUSTOM_APPS: `
+    CREATE TABLE IF NOT EXISTS custom_apps (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      url TEXT NOT NULL,
+      color TEXT NOT NULL,
+      icon TEXT DEFAULT 'apps',
+      user_id INTEGER,
+      order_index INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `,
 };
+
+// ============================================================================
+// CUSTOM APP COLORS
+// ============================================================================
+
+export const CUSTOM_APP_COLORS = [
+  '#E91E63', '#9C27B0', '#673AB7', '#3F51B5',
+  '#00BCD4', '#009688', '#4CAF50', '#8BC34A',
+  '#CDDC39', '#FFC107', '#FF9800', '#FF5722',
+  '#795548', '#607D8B', '#9E9E9E', '#F44336'
+];

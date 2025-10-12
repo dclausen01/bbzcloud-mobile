@@ -11,7 +11,7 @@ import { Preferences } from '@capacitor/preferences';
 import { NAVIGATION_APPS, STUDENT_ALLOWED_APPS, STORAGE_KEYS } from '../utils/constants';
 import DatabaseService from '../services/DatabaseService';
 import { useAuth } from './AuthContext';
-import type { SettingsContextType, SettingsState, App, AppSettings } from '../types';
+import type { SettingsContextType, SettingsState, App, AppSettings, CustomApp } from '../types';
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
@@ -30,7 +30,22 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
     availableApps: []
   });
 
+  const [customApps, setCustomApps] = useState<CustomApp[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  /**
+   * Load custom apps from database
+   */
+  const loadCustomApps = useCallback(async (): Promise<void> => {
+    try {
+      const result = await DatabaseService.getCustomApps(user?.id);
+      if (result.success && result.data) {
+        setCustomApps(result.data);
+      }
+    } catch (error) {
+      console.error('Error loading custom apps:', error);
+    }
+  }, [user?.id]);
 
   /**
    * Initialize settings on mount
@@ -38,6 +53,15 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
   useEffect(() => {
     loadSettings();
   }, []);
+
+  /**
+   * Load custom apps when user changes
+   */
+  useEffect(() => {
+    if (user) {
+      loadCustomApps();
+    }
+  }, [user, loadCustomApps]);
 
   /**
    * Update settings when user changes
@@ -243,12 +267,78 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
     }
   };
 
+  /**
+   * Add a new custom app
+   */
+  const addCustomApp = async (app: Omit<CustomApp, 'id' | 'orderIndex' | 'createdAt' | 'updatedAt'>): Promise<void> => {
+    try {
+      const newApp = {
+        id: `custom_${Date.now()}`,
+        ...app,
+        userId: user?.id,
+        orderIndex: customApps.length,
+      };
+
+      const result = await DatabaseService.saveCustomApp(newApp);
+      if (result.success) {
+        await loadCustomApps();
+      } else {
+        throw new Error(result.error || 'Failed to add custom app');
+      }
+    } catch (error) {
+      console.error('Error adding custom app:', error);
+      throw error;
+    }
+  };
+
+  /**
+   * Update an existing custom app
+   */
+  const updateCustomApp = async (
+    id: string,
+    app: Omit<CustomApp, 'id' | 'orderIndex' | 'createdAt' | 'updatedAt'>
+  ): Promise<void> => {
+    try {
+      const result = await DatabaseService.updateCustomApp(id, app);
+      if (result.success) {
+        await loadCustomApps();
+      } else {
+        throw new Error(result.error || 'Failed to update custom app');
+      }
+    } catch (error) {
+      console.error('Error updating custom app:', error);
+      throw error;
+    }
+  };
+
+  /**
+   * Delete a custom app
+   */
+  const deleteCustomApp = async (id: string): Promise<void> => {
+    try {
+      const result = await DatabaseService.deleteCustomApp(id);
+      if (result.success) {
+        await loadCustomApps();
+      } else {
+        throw new Error(result.error || 'Failed to delete custom app');
+      }
+    } catch (error) {
+      console.error('Error deleting custom app:', error);
+      throw error;
+    }
+  };
+
   const value: SettingsContextType = {
     settings,
+    customApps,
     updateSettings,
     toggleAppVisibility,
     setTheme,
     loadSettings,
+    loadCustomApps,
+    addCustomApp,
+    updateCustomApp,
+    deleteCustomApp,
     isLoading
   };
 

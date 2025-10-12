@@ -44,6 +44,19 @@ export interface App {
   isVisible?: boolean;
   isLoading?: boolean;
   order?: number;
+  isCustom?: boolean;
+}
+
+export interface CustomApp {
+  id: string;
+  title: string;
+  url: string;
+  color: string;
+  icon: string;
+  userId?: number;
+  orderIndex: number;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface AppVisibility {
@@ -133,10 +146,15 @@ export interface DatabaseResult<T = unknown> {
 
 export interface SettingsContextType {
   settings: SettingsState;
+  customApps: CustomApp[];
   updateSettings: (settings: Partial<AppSettings>) => Promise<void>;
   toggleAppVisibility: (appId: string) => Promise<void>;
   setTheme: (theme: 'light' | 'dark' | 'system') => Promise<void>;
   loadSettings: () => Promise<void>;
+  loadCustomApps: () => Promise<void>;
+  addCustomApp: (app: Omit<CustomApp, 'id' | 'orderIndex' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateCustomApp: (id: string, app: Omit<CustomApp, 'id' | 'orderIndex' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  deleteCustomApp: (id: string) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -200,6 +218,23 @@ export interface AppInstallModalProps {
   onOpenInBrowser: () => void;
   onDismiss: () => void;
   onDontShowAgain: () => void;
+}
+
+export interface CustomAppsModalProps {
+  isOpen: boolean;
+  customApps: CustomApp[];
+  onDismiss: () => void;
+  onAppPress: (app: App) => void;
+  onAddNew: () => void;
+  onEdit: (app: CustomApp) => void;
+  onDelete: (appId: string) => void;
+}
+
+export interface CustomAppFormModalProps {
+  isOpen: boolean;
+  onDismiss: () => void;
+  onSave: (app: Omit<CustomApp, 'id' | 'orderIndex' | 'createdAt' | 'updatedAt'>) => void;
+  editApp?: CustomApp;
 }
 
 // ============================================================================

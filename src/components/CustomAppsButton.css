@@ -1,0 +1,84 @@
+/**
+ * BBZCloud Mobile - Custom Apps Button Styles
+ * 
+ * Special button styling with gradient background
+ * 
+ * @version 1.0.0
+ */
+
+.custom-apps-button {
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.custom-apps-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.custom-apps-button:active {
+  transform: translateY(0);
+}
+
+.custom-apps-button-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 1rem;
+  min-height: 120px;
+}
+
+.custom-apps-button-icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 0.5rem;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+}
+
+.custom-apps-button-icon {
+  font-size: 32px;
+  color: #ffffff;
+}
+
+.custom-apps-button-title {
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+  .custom-apps-button-content {
+    min-height: 100px;
+    padding: 0.75rem;
+  }
+
+  .custom-apps-button-icon-container {
+    width: 40px;
+    height: 40px;
+  }
+
+  .custom-apps-button-icon {
+    font-size: 24px;
+  }
+
+  .custom-apps-button-title {
+    font-size: 12px;
+  }
+}
