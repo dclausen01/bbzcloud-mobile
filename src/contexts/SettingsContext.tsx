@@ -34,6 +34,20 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   /**
+   * Load custom apps from database
+   */
+  const loadCustomApps = useCallback(async (): Promise<void> => {
+    try {
+      const result = await DatabaseService.getCustomApps(user?.id);
+      if (result.success && result.data) {
+        setCustomApps(result.data);
+      }
+    } catch (error) {
+      console.error('Error loading custom apps:', error);
+    }
+  }, [user?.id]);
+
+  /**
    * Initialize settings on mount
    */
   useEffect(() => {
@@ -47,7 +61,7 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
     if (user) {
       loadCustomApps();
     }
-  }, [user]);
+  }, [user, loadCustomApps]);
 
   /**
    * Update settings when user changes
@@ -250,20 +264,6 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
     } catch (error) {
       console.error('Error setting theme:', error);
       throw error;
-    }
-  };
-
-  /**
-   * Load custom apps from database
-   */
-  const loadCustomApps = async (): Promise<void> => {
-    try {
-      const result = await DatabaseService.getCustomApps(user?.id);
-      if (result.success && result.data) {
-        setCustomApps(result.data);
-      }
-    } catch (error) {
-      console.error('Error loading custom apps:', error);
     }
   };
 
