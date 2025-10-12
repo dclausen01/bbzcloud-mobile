@@ -3,7 +3,7 @@
  * 
  * JavaScript and CSS injection scripts for specific apps that need modifications
  * 
- * @version 7.1.0 - Hybrid solution: v6.0 robustness with v7.0 bug fixes
+ * @version 7.2.0 - Fixed: Navigation bar detection, no false positives
  */
 
 export interface InjectionScript {
@@ -20,17 +20,15 @@ export interface InjectionScript {
 /**
  * GLOBAL INJECTION - Applied to ALL web apps
  * 
- * v7.1 Hybrid Approach:
- * - Uses padding-based adjustment (simpler than height manipulation)
- * - Multiple scroll attempts for robustness (like v6.0)
- * - Proper state management (fixes v6.0 bugs)
- * - Less aggressive CSS (fixes white border)
- * 
- * Note: Navigation bar padding is handled by enabledSafeBottomMargin: true in BrowserService
+ * v7.2 Fixes:
+ * - NO initial check (only react to actual keyboard events)
+ * - NO scroll listener (causes false positives)
+ * - Hysteresis to avoid Navigation Bar being detected as keyboard
+ * - FORCE reset on orientation change
  */
 export const GLOBAL_INJECTION: InjectionScript = {
   css: `
-    /* GLOBAL KEYBOARD FIX v7.1 - Hybrid Solution */
+    /* GLOBAL KEYBOARD FIX v7.2 */
     
     html {
       scroll-behavior: smooth !important;
@@ -67,37 +65,37 @@ export const GLOBAL_INJECTION: InjectionScript = {
     }
   `,
   js: `
-    // GLOBAL KEYBOARD FIX v7.1 - Hybrid Solution
+    // GLOBAL KEYBOARD FIX v7.2
     (function() {
       'use strict';
       
       const CONFIG = {
-        KEYBOARD_MIN_HEIGHT: 150,
-        SCROLL_DELAYS: [100, 400, 700], // Multiple attempts for robustness
+        KEYBOARD_MIN_HEIGHT: 200,      // Higher threshold to avoid false positives
+        KEYBOARD_CLOSE_THRESHOLD: 100, // Hysteresis: only remove if below this
+        SCROLL_DELAYS: [150, 450, 750],
       };
       
       let currentKeyboardHeight = 0;
       let originalPaddingBottom = null;
       let focusedInput = null;
       
-      // Store original padding on first use
       function ensureOriginalPadding() {
         if (originalPaddingBottom === null) {
-          originalPaddingBottom = window.getComputedStyle(document.body).paddingBottom;
+          const computed = window.getComputedStyle(document.body).paddingBottom;
+          originalPaddingBottom = computed === '0px' ? '' : computed;
         }
       }
       
-      // Apply padding
       function applyKeyboardPadding(keyboardHeight) {
         ensureOriginalPadding();
         
-        if (Math.abs(currentKeyboardHeight - keyboardHeight) < 10) return; // Same height (tolerance 10px)
+        // Ignore if same height (with small tolerance)
+        if (Math.abs(currentKeyboardHeight - keyboardHeight) < 20) return;
         
         currentKeyboardHeight = keyboardHeight;
         document.body.style.paddingBottom = keyboardHeight + 'px';
       }
       
-      // Remove padding
       function removeKeyboardPadding() {
         if (currentKeyboardHeight === 0) return;
         
@@ -106,23 +104,23 @@ export const GLOBAL_INJECTION: InjectionScript = {
         document.body.style.paddingBottom = originalPaddingBottom;
       }
       
-      // Check keyboard state
       function checkKeyboardState() {
-        const hasVisualViewport = typeof window.visualViewport !== 'undefined';
-        let keyboardHeight = 0;
+        if (typeof window.visualViewport === 'undefined') return;
         
-        if (hasVisualViewport) {
-          keyboardHeight = window.innerHeight - window.visualViewport.height;
-        }
+        const heightDiff = window.innerHeight - window.visualViewport.height;
         
-        if (keyboardHeight > CONFIG.KEYBOARD_MIN_HEIGHT) {
-          applyKeyboardPadding(keyboardHeight);
-        } else {
+        // Apply padding only if SIGNIFICANTLY above threshold (keyboard is visible)
+        if (heightDiff > CONFIG.KEYBOARD_MIN_HEIGHT) {
+          applyKeyboardPadding(heightDiff);
+        } 
+        // Remove padding only if SIGNIFICANTLY below threshold (keyboard is hidden)
+        // This hysteresis prevents flickering from Navigation Bar
+        else if (heightDiff < CONFIG.KEYBOARD_CLOSE_THRESHOLD) {
           removeKeyboardPadding();
         }
+        // In between: do nothing (avoid false positives/negatives)
       }
       
-      // Scroll input into view with multiple attempts
       function scrollInputIntoView(input) {
         if (!input) return;
         
@@ -136,16 +134,15 @@ export const GLOBAL_INJECTION: InjectionScript = {
                   inline: 'nearest'
                 });
               } catch (e) {
-                // Ignore scroll errors
+                // Ignore
               }
             }
           }, delay);
         });
       }
       
-      // Setup
       function initialize() {
-        // Viewport config
+        // Viewport
         let viewport = document.querySelector('meta[name="viewport"]');
         if (!viewport) {
           viewport = document.createElement('meta');
@@ -154,15 +151,11 @@ export const GLOBAL_INJECTION: InjectionScript = {
         }
         viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes';
         
-        // Keyboard detection
+        // Keyboard detection - ONLY resize event, NO scroll, NO initial check
         if (typeof window.visualViewport !== 'undefined') {
           window.visualViewport.addEventListener('resize', checkKeyboardState);
-          window.visualViewport.addEventListener('scroll', checkKeyboardState);
-          
-          // Initial check
-          setTimeout(checkKeyboardState, 500);
         } else {
-          // Fallback
+          // Fallback for old browsers
           let lastHeight = window.innerHeight;
           window.addEventListener('resize', () => {
             const currentHeight = window.innerHeight;
@@ -170,14 +163,14 @@ export const GLOBAL_INJECTION: InjectionScript = {
             
             if (heightDiff > CONFIG.KEYBOARD_MIN_HEIGHT) {
               applyKeyboardPadding(heightDiff);
-            } else if (currentHeight > lastHeight) {
+            } else if (heightDiff < -CONFIG.KEYBOARD_CLOSE_THRESHOLD) {
               removeKeyboardPadding();
               lastHeight = currentHeight;
             }
           });
         }
         
-        // Input handlers
+        // Input focus
         document.addEventListener('focusin', (e) => {
           const target = e.target;
           const isInputElement = target && (
@@ -191,6 +184,10 @@ export const GLOBAL_INJECTION: InjectionScript = {
           if (isInputElement) {
             focusedInput = target;
             scrollInputIntoView(target);
+            
+            // Check keyboard state after input focus (delayed to let keyboard appear)
+            setTimeout(checkKeyboardState, 300);
+            setTimeout(checkKeyboardState, 600);
           }
         }, true);
         
@@ -198,21 +195,17 @@ export const GLOBAL_INJECTION: InjectionScript = {
           focusedInput = null;
         }, true);
         
-        // Orientation changes
+        // Orientation: FORCE complete reset
         window.addEventListener('orientationchange', () => {
           setTimeout(() => {
-            // Reset state cleanly
+            // Force clear everything
+            document.body.style.paddingBottom = '';
             originalPaddingBottom = null;
             currentKeyboardHeight = 0;
-            ensureOriginalPadding();
-            
-            // Re-check
-            setTimeout(checkKeyboardState, 500);
           }, 300);
         });
       }
       
-      // Start
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initialize);
       } else {
@@ -221,7 +214,7 @@ export const GLOBAL_INJECTION: InjectionScript = {
     })();
   `,
   delay: 500,
-  description: 'Global keyboard handling - hybrid v7.1 solution'
+  description: 'Global keyboard handling v7.2 - no false positives'
 };
 
 /**
@@ -229,7 +222,6 @@ export const GLOBAL_INJECTION: InjectionScript = {
  */
 export const SCHULCLOUD_INJECTION: InjectionScript = {
   css: `
-    /* schul.cloud specific containers that need scrolling */
     [class*="outer-scroller"],
     [class*="navigation-item-wrapper"],
     [class*="channel-list"],
@@ -296,11 +288,11 @@ export const SCHULCLOUD_INJECTION: InjectionScript = {
     })();
   `,
   delay: 1500,
-  description: 'Production scroll fix for touch scrolling'
+  description: 'Production scroll fix'
 };
 
 /**
- * WebUntis - Auto-close warning and banner messages
+ * WebUntis - Auto-close dialogs
  */
 export const WEBUNTIS_INJECTION: InjectionScript = {
   js: `
@@ -391,7 +383,7 @@ export const WEBUNTIS_INJECTION: InjectionScript = {
     })();
   `,
   delay: 1000,
-  description: 'Auto-click "Im Browser öffnen" and close banner overlay'
+  description: 'Auto-click dialogs'
 };
 
 /**
