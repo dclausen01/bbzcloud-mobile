@@ -81,6 +81,18 @@ const Home: React.FC = () => {
     try {
       setLoadingAppId(app.id);
 
+      // Check if app should use iframe
+      if (BrowserService.shouldUseIframe(app.id)) {
+        console.log(`[Home] Opening ${app.title} in iframe`);
+        history.push('/app-viewer', {
+          url: app.url,
+          appName: app.title,
+          toolbarColor: app.color
+        });
+        setLoadingAppId(null);
+        return;
+      }
+
       const appConfig = NAVIGATION_APPS[app.id];
       if (!appConfig) {
         console.error('App config not found:', app.id);

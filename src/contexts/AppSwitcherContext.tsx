@@ -82,29 +82,11 @@ export const AppSwitcherProvider: React.FC<AppSwitcherProviderProps> = ({ childr
 
   /**
    * Open a new app or switch to existing loaded app
+   * NOTE: iframe apps (like schulcloud) should be handled in the calling component
+   * with direct navigation to /app-viewer
    */
   const openApp = useCallback(async (app: App): Promise<void> => {
     try {
-      // Check if this app should use iframe
-      if (BrowserService.shouldUseIframe(app.id)) {
-        console.log(`[AppSwitcher] Opening ${app.title} in iframe`);
-        
-        // Navigate to AppViewer page with app details
-        const state = {
-          url: app.url,
-          appName: app.title,
-          toolbarColor: app.color
-        };
-        
-        // Use window.location for navigation (works without router context)
-        window.history.pushState(state, '', '/app-viewer');
-        
-        // Dispatch popstate event to trigger router update
-        window.dispatchEvent(new PopStateEvent('popstate', { state }));
-        
-        return;
-      }
-
       // Check if app is already loaded
       const existingApp = loadedApps.find(loaded => loaded.appId === app.id);
 
