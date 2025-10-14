@@ -10,14 +10,16 @@ import {
   IonContent,
   IonLoading
 } from '@ionic/react';
-import { close, arrowBack, refresh } from 'ionicons/icons';
+import { close, refresh } from 'ionicons/icons';
 import { useHistory, useLocation } from 'react-router-dom';
+import { SCHULCLOUD_INJECTION } from '../services/InjectionScripts';
 import './AppViewer.css';
 
 interface AppViewerLocationState {
   url: string;
   appName: string;
   toolbarColor?: string;
+  appId?: string;
 }
 
 const AppViewer: React.FC = () => {
@@ -26,7 +28,7 @@ const AppViewer: React.FC = () => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const { url, appName, toolbarColor } = location.state || {};
+  const { url, appName, toolbarColor, appId } = location.state || {};
 
   useEffect(() => {
     if (!url) {
@@ -36,7 +38,7 @@ const AppViewer: React.FC = () => {
   }, [url, history]);
 
   const handleClose = () => {
-    history.goBack();
+    history.push('/home');
   };
 
   const handleRefresh = () => {
@@ -49,6 +51,31 @@ const AppViewer: React.FC = () => {
 
   const handleIframeLoad = () => {
     setIsLoading(false);
+    
+    // Inject CSS for schul.cloud
+    if (appId === 'schulcloud' && iframeRef.current?.contentWindow) {
+      try {
+        const iframeDoc = iframeRef.current.contentWindow.document;
+        
+        // Inject CSS
+        if (SCHULCLOUD_INJECTION.css) {
+          const style = iframeDoc.createElement('style');
+          style.textContent = SCHULCLOUD_INJECTION.css;
+          iframeDoc.head.appendChild(style);
+          console.log('[AppViewer] schul.cloud CSS injected');
+        }
+        
+        // Inject JS
+        if (SCHULCLOUD_INJECTION.js) {
+          const script = iframeDoc.createElement('script');
+          script.textContent = SCHULCLOUD_INJECTION.js;
+          iframeDoc.body.appendChild(script);
+          console.log('[AppViewer] schul.cloud JS injected');
+        }
+      } catch (error) {
+        console.warn('[AppViewer] Could not inject scripts (CORS):', error);
+      }
+    }
   };
 
   return (
@@ -57,16 +84,13 @@ const AppViewer: React.FC = () => {
         <IonToolbar style={{ '--background': toolbarColor || '#3880ff' }}>
           <IonButtons slot="start">
             <IonButton onClick={handleClose}>
-              <IonIcon icon={arrowBack} slot="icon-only" />
+              <IonIcon icon={close} slot="icon-only" />
             </IonButton>
           </IonButtons>
           <IonTitle>{appName || 'App'}</IonTitle>
           <IonButtons slot="end">
             <IonButton onClick={handleRefresh}>
               <IonIcon icon={refresh} slot="icon-only" />
-            </IonButton>
-            <IonButton onClick={handleClose}>
-              <IonIcon icon={close} slot="icon-only" />
             </IonButton>
           </IonButtons>
         </IonToolbar>

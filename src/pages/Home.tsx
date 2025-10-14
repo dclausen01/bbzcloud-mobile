@@ -41,7 +41,7 @@ const Home: React.FC = () => {
   const history = useHistory();
   const { settings, isLoading: settingsLoading, customApps, addCustomApp, updateCustomApp, deleteCustomApp } = useSettings();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
-  const { openApp } = useAppSwitcher();
+  const { openApp, registerIframeApp } = useAppSwitcher();
   const [presentToast] = useIonToast();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -84,10 +84,16 @@ const Home: React.FC = () => {
       // Check if app should use iframe
       if (BrowserService.shouldUseIframe(app.id)) {
         console.log(`[Home] Opening ${app.title} in iframe`);
+        
+        // Register in App Drawer
+        registerIframeApp(app);
+        
+        // Navigate to iframe viewer
         history.push('/app-viewer', {
           url: app.url,
           appName: app.title,
-          toolbarColor: app.color
+          toolbarColor: app.color,
+          appId: app.id
         });
         setLoadingAppId(null);
         return;
