@@ -164,7 +164,6 @@ export interface AppSwitcherContextType {
   isDrawerOpen: boolean;
   maxLoadedApps: number;
   openApp: (app: App) => Promise<void>;
-  registerIframeApp: (app: App) => void;
   switchToApp: (appId: string) => void;
   closeApp: (appId: string) => void;
   closeAllApps: () => void;

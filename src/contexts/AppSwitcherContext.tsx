@@ -81,49 +81,7 @@ export const AppSwitcherProvider: React.FC<AppSwitcherProviderProps> = ({ childr
   }, [loadedApps]);
 
   /**
-   * Register an iframe-based app (like schulcloud) as active
-   * This allows it to appear in the app drawer even though it's not in InAppBrowser
-   */
-  const registerIframeApp = useCallback((app: App): void => {
-    // Check if already registered
-    const existingApp = loadedApps.find(loaded => loaded.appId === app.id);
-    if (existingApp) {
-      // Just mark as active
-      setLoadedApps(prev => prev.map(a => ({
-        ...a,
-        isActive: a.appId === app.id
-      })));
-      setActiveAppId(app.id);
-      return;
-    }
-
-    // Create new entry
-    const newLoadedApp: LoadedApp = {
-      appId: app.id,
-      url: app.url,
-      title: app.title,
-      color: app.color,
-      icon: app.icon,
-      isActive: true,
-      webViewId: 'iframe', // Special marker for iframe apps
-      lastAccessed: new Date(),
-      memoryUsage: 50 // iframe apps use less memory
-    };
-
-    // Deactivate others and add new
-    setLoadedApps(prev => [
-      ...prev.map(a => ({ ...a, isActive: false })),
-      newLoadedApp
-    ]);
-
-    setActiveAppId(app.id);
-    console.log(`[AppSwitcher] Registered iframe app: ${app.title}`);
-  }, [loadedApps]);
-
-  /**
    * Open a new app or switch to existing loaded app
-   * NOTE: iframe apps (like schulcloud) should be handled in the calling component
-   * with direct navigation to /app-viewer and registerIframeApp
    */
   const openApp = useCallback(async (app: App): Promise<void> => {
     try {
@@ -297,7 +255,6 @@ export const AppSwitcherProvider: React.FC<AppSwitcherProviderProps> = ({ childr
     isDrawerOpen,
     maxLoadedApps: MAX_LOADED_APPS,
     openApp,
-    registerIframeApp,
     switchToApp,
     closeApp,
     closeAllApps,
