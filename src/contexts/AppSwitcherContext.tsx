@@ -85,6 +85,26 @@ export const AppSwitcherProvider: React.FC<AppSwitcherProviderProps> = ({ childr
    */
   const openApp = useCallback(async (app: App): Promise<void> => {
     try {
+      // Check if this app should use iframe
+      if (BrowserService.shouldUseIframe(app.id)) {
+        console.log(`[AppSwitcher] Opening ${app.title} in iframe`);
+        
+        // Navigate to AppViewer page with app details
+        const state = {
+          url: app.url,
+          appName: app.title,
+          toolbarColor: app.color
+        };
+        
+        // Use window.location for navigation (works without router context)
+        window.history.pushState(state, '', '/app-viewer');
+        
+        // Dispatch popstate event to trigger router update
+        window.dispatchEvent(new PopStateEvent('popstate', { state }));
+        
+        return;
+      }
+
       // Check if app is already loaded
       const existingApp = loadedApps.find(loaded => loaded.appId === app.id);
 

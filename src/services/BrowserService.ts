@@ -22,7 +22,17 @@ class BrowserService {
   private pageLoadedListener: PluginListenerHandle | null = null;
 
   /**
+   * Check if an app should use iframe instead of InAppBrowser
+   */
+  shouldUseIframe(appId: string): boolean {
+    // schul.cloud requires iframe for touch device compatibility
+    return appId === 'schulcloud';
+  }
+
+  /**
    * Open a URL in the InAppBrowser with optional JavaScript injection
+   * Note: For apps that should use iframe (like schulcloud), the caller
+   * should check shouldUseIframe() first and navigate to /app-viewer instead
    */
   async openUrl(url: string, appId?: string, options?: Partial<BrowserOptions>): Promise<ApiResponse> {
     try {
@@ -33,6 +43,15 @@ class BrowserService {
 
         // Add to browser history
         await DatabaseService.addToHistory(appId, url);
+      }
+
+      // Check if this app should use iframe instead
+      if (appId && this.shouldUseIframe(appId)) {
+        console.log(`[BrowserService] App ${appId} should use iframe, caller should navigate to /app-viewer`);
+        return {
+          success: false,
+          error: 'This app should use iframe viewer'
+        };
       }
 
       // Check if this app needs JavaScript injection
