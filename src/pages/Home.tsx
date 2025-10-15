@@ -41,7 +41,7 @@ const Home: React.FC = () => {
   const history = useHistory();
   const { settings, isLoading: settingsLoading, customApps, addCustomApp, updateCustomApp, deleteCustomApp } = useSettings();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
-  const { openApp, registerIframeApp } = useAppSwitcher();
+  const { openApp } = useAppSwitcher();
   const [presentToast] = useIonToast();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -81,24 +81,6 @@ const Home: React.FC = () => {
   const handleAppPress = async (app: App) => {
     try {
       setLoadingAppId(app.id);
-
-      // Check if app should use iframe
-      if (BrowserService.shouldUseIframe(app.id)) {
-        console.log(`[Home] Opening ${app.title} in iframe`);
-        
-        // Register in App Drawer
-        registerIframeApp(app);
-        
-        // Navigate to iframe viewer
-        history.push('/app-viewer', {
-          url: app.url,
-          appName: app.title,
-          toolbarColor: app.color,
-          appId: app.id
-        });
-        setLoadingAppId(null);
-        return;
-      }
 
       const appConfig = NAVIGATION_APPS[app.id];
       if (!appConfig) {
@@ -261,7 +243,7 @@ const Home: React.FC = () => {
       }
       setShowCustomAppFormModal(false);
       setEditingCustomApp(undefined);
-    } catch (error) {
+    } catch {
       presentToast({
         message: 'Fehler beim Speichern der App',
         duration: 3000,
@@ -283,7 +265,7 @@ const Home: React.FC = () => {
         color: 'success',
         position: 'bottom'
       });
-    } catch (error) {
+    } catch {
       presentToast({
         message: 'Fehler beim Löschen der App',
         duration: 3000,
