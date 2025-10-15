@@ -39,34 +39,30 @@ const AppGrid: React.FC<AppGridPropsExtended> = ({
   /**
    * Handle drag start
    */
-  const handleDragStart = (index: number) => (e: React.DragEvent) => {
+  const handleDragStart = (app: App) => (e: React.DragEvent) => {
     if (!isEditMode) return;
-    setDraggedIndex(index);
     e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('application/json', JSON.stringify(app));
+    setDraggedIndex(localApps.findIndex(a => a.id === app.id));
   };
 
   /**
    * Handle drag over
    */
-  const handleDragOver = (index: number) => (e: React.DragEvent) => {
+  const handleDragOver = (targetApp: App) => (e: React.DragEvent) => {
     if (!isEditMode || draggedIndex === null) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
 
-    if (index !== draggedIndex) {
-      // Get the actual indices in localApps
-      const fromAppId = filteredApps[draggedIndex].id;
-      const toAppId = filteredApps[index].id;
-      
-      const fromIndex = localApps.findIndex(app => app.id === fromAppId);
-      const toIndex = localApps.findIndex(app => app.id === toAppId);
-      
+    const targetIndex = localApps.findIndex(a => a.id === targetApp.id);
+    
+    if (targetIndex !== draggedIndex) {
       const newApps = [...localApps];
-      const draggedApp = newApps[fromIndex];
-      newApps.splice(fromIndex, 1);
-      newApps.splice(toIndex, 0, draggedApp);
+      const draggedApp = newApps[draggedIndex];
+      newApps.splice(draggedIndex, 1);
+      newApps.splice(targetIndex, 0, draggedApp);
       setLocalApps(newApps);
-      setDraggedIndex(index);
+      setDraggedIndex(targetIndex);
     }
   };
 
@@ -127,37 +123,40 @@ const AppGrid: React.FC<AppGridPropsExtended> = ({
   return (
     <IonGrid className="app-grid">
       <IonRow>
-        {filteredApps.map((app, index) => (
-          <IonCol
-            key={app.id}
-            size="6"
-            sizeMd="4"
-            sizeLg="3"
-            sizeXl="2"
-            style={{
-              opacity: draggedIndex === index ? 0.5 : 1
-            }}
-          >
-            <div
-              draggable={isEditMode}
-              onDragStart={handleDragStart(index)}
-              onDragOver={handleDragOver(index)}
-              onDrop={handleDrop}
-              onDragEnd={handleDragEnd}
+        {filteredApps.map((app) => {
+          const appIndex = localApps.findIndex(a => a.id === app.id);
+          return (
+            <IonCol
+              key={app.id}
+              size="6"
+              sizeMd="4"
+              sizeLg="3"
+              sizeXl="2"
               style={{
-                cursor: isEditMode ? 'move' : 'default'
+                opacity: draggedIndex === appIndex ? 0.5 : 1
               }}
             >
-              <AppCard 
-                app={app} 
-                onPress={onAppPress} 
-                isLoading={app.isLoading}
-                isEditMode={isEditMode}
-                onToggleVisibility={onToggleVisibility}
-              />
-            </div>
-          </IonCol>
-        ))}
+              <div
+                draggable={isEditMode}
+                onDragStart={handleDragStart(app)}
+                onDragOver={handleDragOver(app)}
+                onDrop={handleDrop}
+                onDragEnd={handleDragEnd}
+                style={{
+                  cursor: isEditMode ? 'move' : 'default'
+                }}
+              >
+                <AppCard 
+                  app={app} 
+                  onPress={onAppPress} 
+                  isLoading={app.isLoading}
+                  isEditMode={isEditMode}
+                  onToggleVisibility={onToggleVisibility}
+                />
+              </div>
+            </IonCol>
+          );
+        })}
         
         {/* Custom Apps Button - Only show when not searching and not in edit mode */}
         {!searchQuery && !isEditMode && onCustomAppsPress && (
