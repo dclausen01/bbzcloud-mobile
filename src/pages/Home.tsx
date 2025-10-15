@@ -315,7 +315,7 @@ const Home: React.FC = () => {
   /**
    * Handle app reorder
    */
-  const { reorderApps, toggleAppVisibility } = useSettings();
+  const { reorderApps } = useSettings();
   
   const handleReorder = async (apps: App[]) => {
     try {
@@ -323,22 +323,6 @@ const Home: React.FC = () => {
     } catch {
       presentToast({
         message: 'Fehler beim Speichern der Reihenfolge',
-        duration: 3000,
-        color: 'danger',
-        position: 'bottom'
-      });
-    }
-  };
-
-  /**
-   * Handle visibility toggle
-   */
-  const handleToggleVisibility = async (appId: string) => {
-    try {
-      await toggleAppVisibility(appId);
-    } catch {
-      presentToast({
-        message: 'Fehler beim Ändern der Sichtbarkeit',
         duration: 3000,
         color: 'danger',
         position: 'bottom'
@@ -414,7 +398,6 @@ const Home: React.FC = () => {
               onCustomAppsPress={handleCustomAppsPress}
               isEditMode={isEditMode}
               onReorder={handleReorder}
-              onToggleVisibility={handleToggleVisibility}
             />
           </>
         )}
