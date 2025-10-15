@@ -290,16 +290,24 @@ class DatabaseService {
         return { success: false, error: 'Database not initialized' };
       }
 
-      const result = await this.db.run(
+      // Insert or update user profile
+      await this.db.run(
         `INSERT INTO user_profile (email, role) VALUES (?, ?)
-         ON CONFLICT(email) DO UPDATE SET role = ?, updated_at = CURRENT_TIMESTAMP
-         RETURNING id`,
+         ON CONFLICT(email) DO UPDATE SET role = ?, updated_at = CURRENT_TIMESTAMP`,
         [user.email, user.role, user.role]
       );
 
+      // Get the user ID
+      const result = await this.db.query(
+        'SELECT id FROM user_profile WHERE email = ?',
+        [user.email]
+      );
+
+      const userId = result.values && result.values.length > 0 ? result.values[0].id : 0;
+
       return {
         success: true,
-        data: result.changes?.lastId || 0
+        data: userId
       };
     } catch (error) {
       console.error('Error saving user profile:', error);
