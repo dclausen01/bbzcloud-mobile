@@ -245,19 +245,25 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
       const currentVisibility = settings.appVisibility[appId] ?? true;
       const newVisibility = !currentVisibility;
 
+      // Save to database
       await DatabaseService.setAppVisibility(user.id, appId, newVisibility);
+
+      // Update visibility in state
+      const newAppVisibility = {
+        ...settings.appVisibility,
+        [appId]: newVisibility
+      };
+
+      // Update apps in place to maintain order
+      const updatedApps = settings.availableApps.map(app =>
+        app.id === appId ? { ...app, isVisible: newVisibility } : app
+      );
 
       setSettings(prev => ({
         ...prev,
-        appVisibility: {
-          ...prev.appVisibility,
-          [appId]: newVisibility
-        }
+        appVisibility: newAppVisibility,
+        availableApps: updatedApps
       }));
-
-      // Reload available apps to reflect changes
-      const availableApps = await getAvailableApps();
-      setSettings(prev => ({ ...prev, availableApps }));
     } catch (error) {
       console.error('Error toggling app visibility:', error);
       throw error;

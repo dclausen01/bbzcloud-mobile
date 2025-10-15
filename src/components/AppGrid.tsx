@@ -27,11 +27,57 @@ const AppGrid: React.FC<AppGridPropsExtended> = ({
   onToggleVisibility
 }) => {
   const [localApps, setLocalApps] = useState<App[]>(apps);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   // Update local apps when props change
   React.useEffect(() => {
     setLocalApps(apps);
   }, [apps]);
+
+  /**
+   * Handle drag start
+   */
+  const handleDragStart = (index: number) => (e: React.DragEvent) => {
+    if (!isEditMode) return;
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  /**
+   * Handle drag over
+   */
+  const handleDragOver = (index: number) => (e: React.DragEvent) => {
+    if (!isEditMode || draggedIndex === null) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+
+    if (index !== draggedIndex) {
+      const newApps = [...localApps];
+      const draggedApp = newApps[draggedIndex];
+      newApps.splice(draggedIndex, 1);
+      newApps.splice(index, 0, draggedApp);
+      setLocalApps(newApps);
+      setDraggedIndex(index);
+    }
+  };
+
+  /**
+   * Handle drop
+   */
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (draggedIndex !== null && onReorder) {
+      onReorder(localApps);
+    }
+    setDraggedIndex(null);
+  };
+
+  /**
+   * Handle drag end
+   */
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+  };
   /**
    * Filter apps based on search query
    * In edit mode, show all apps including hidden ones
@@ -68,13 +114,22 @@ const AppGrid: React.FC<AppGridPropsExtended> = ({
   return (
     <IonGrid className="app-grid">
       <IonRow>
-        {filteredApps.map((app) => (
+        {filteredApps.map((app, index) => (
           <IonCol
             key={app.id}
             size="6"
             sizeMd="4"
             sizeLg="3"
             sizeXl="2"
+            draggable={isEditMode}
+            onDragStart={handleDragStart(index)}
+            onDragOver={handleDragOver(index)}
+            onDrop={handleDrop}
+            onDragEnd={handleDragEnd}
+            style={{
+              opacity: draggedIndex === index ? 0.5 : 1,
+              cursor: isEditMode ? 'move' : 'default'
+            }}
           >
             <AppCard 
               app={app} 
