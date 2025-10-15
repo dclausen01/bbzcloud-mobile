@@ -2,6 +2,12 @@
  * BBZCloud Mobile - App Card Styles
  */
 
+.app-card-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
 .app-card {
   margin: 8px;
   border-radius: 16px;
@@ -130,6 +136,20 @@
 
 .app-card.edit-mode:hover {
   transform: none;
+}
+
+/* Visibility Toggle Button */
+.app-card-toggle-button {
+  margin-top: 8px;
+  height: 32px;
+  font-size: 12px;
+  --padding-start: 8px;
+  --padding-end: 8px;
+}
+
+.app-card-toggle-button ion-icon {
+  font-size: 16px;
+  margin-right: 4px;
 }
 
 .app-card-loading-overlay ion-spinner {

@@ -23,7 +23,8 @@ const AppGrid: React.FC<AppGridPropsExtended> = ({
   searchQuery = '',
   onCustomAppsPress,
   isEditMode = false,
-  onReorder
+  onReorder,
+  onToggleVisibility
 }) => {
   const [localApps, setLocalApps] = useState<App[]>(apps);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -86,10 +87,16 @@ const AppGrid: React.FC<AppGridPropsExtended> = ({
     setDraggedIndex(null);
   };
   /**
-   * Filter apps based on search query
+   * Filter apps based on search query and visibility
    */
   const filteredApps = useMemo(() => {
     let filtered = localApps;
+
+    // In normal mode, only show visible apps
+    // In edit mode, show all apps (including hidden ones)
+    if (!isEditMode) {
+      filtered = filtered.filter(app => app.isVisible !== false);
+    }
 
     // Filter by search query
     if (searchQuery) {
@@ -101,7 +108,7 @@ const AppGrid: React.FC<AppGridPropsExtended> = ({
     }
 
     return filtered;
-  }, [localApps, searchQuery]);
+  }, [localApps, searchQuery, isEditMode]);
 
   if (filteredApps.length === 0) {
     return (
@@ -144,6 +151,7 @@ const AppGrid: React.FC<AppGridPropsExtended> = ({
                 onPress={onAppPress} 
                 isLoading={app.isLoading}
                 isEditMode={isEditMode}
+                onToggleVisibility={onToggleVisibility}
               />
             </div>
           </IonCol>
