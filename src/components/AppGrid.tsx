@@ -6,11 +6,11 @@
  * @version 1.0.0
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { IonGrid, IonRow, IonCol } from '@ionic/react';
 import AppCard from './AppCard';
 import CustomAppsButton from './CustomAppsButton';
-import type { AppGridProps } from '../types';
+import type { AppGridProps, App } from '../types';
 import './AppGrid.css';
 
 interface AppGridPropsExtended extends AppGridProps {
@@ -21,13 +21,84 @@ const AppGrid: React.FC<AppGridPropsExtended> = ({
   apps, 
   onAppPress, 
   searchQuery = '',
-  onCustomAppsPress
+  onCustomAppsPress,
+  isEditMode = false,
+  onReorder,
+  onToggleVisibility
 }) => {
+  const [localApps, setLocalApps] = useState<App[]>(apps);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+  // Update local apps when props change, but only if not currently dragging
+  React.useEffect(() => {
+    if (draggedIndex === null) {
+      setLocalApps(apps);
+    }
+  }, [apps, draggedIndex]);
+
   /**
-   * Filter apps based on search query
+   * Handle drag start
+   */
+  const handleDragStart = (index: number) => (e: React.DragEvent) => {
+    if (!isEditMode) return;
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  /**
+   * Handle drag over
+   */
+  const handleDragOver = (index: number) => (e: React.DragEvent) => {
+    if (!isEditMode || draggedIndex === null) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+
+    if (index !== draggedIndex) {
+      // Get the actual indices in localApps
+      const fromAppId = filteredApps[draggedIndex].id;
+      const toAppId = filteredApps[index].id;
+      
+      const fromIndex = localApps.findIndex(app => app.id === fromAppId);
+      const toIndex = localApps.findIndex(app => app.id === toAppId);
+      
+      const newApps = [...localApps];
+      const draggedApp = newApps[fromIndex];
+      newApps.splice(fromIndex, 1);
+      newApps.splice(toIndex, 0, draggedApp);
+      setLocalApps(newApps);
+      setDraggedIndex(index);
+    }
+  };
+
+  /**
+   * Handle drop
+   */
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (draggedIndex !== null && onReorder) {
+      // Save the reordered apps
+      onReorder(localApps);
+    }
+    setDraggedIndex(null);
+  };
+
+  /**
+   * Handle drag end
+   */
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+  };
+  /**
+   * Filter apps based on search query and visibility
    */
   const filteredApps = useMemo(() => {
-    let filtered = apps.filter(app => app.isVisible !== false);
+    let filtered = localApps;
+
+    // In normal mode, only show visible apps
+    // In edit mode, show all apps (including hidden ones)
+    if (!isEditMode) {
+      filtered = filtered.filter(app => app.isVisible !== false);
+    }
 
     // Filter by search query
     if (searchQuery) {
@@ -39,7 +110,7 @@ const AppGrid: React.FC<AppGridPropsExtended> = ({
     }
 
     return filtered;
-  }, [apps, searchQuery]);
+  }, [localApps, searchQuery, isEditMode]);
 
   if (filteredApps.length === 0) {
     return (
@@ -56,24 +127,40 @@ const AppGrid: React.FC<AppGridPropsExtended> = ({
   return (
     <IonGrid className="app-grid">
       <IonRow>
-        {filteredApps.map(app => (
+        {filteredApps.map((app, index) => (
           <IonCol
             key={app.id}
             size="6"
             sizeMd="4"
             sizeLg="3"
             sizeXl="2"
+            style={{
+              opacity: draggedIndex === index ? 0.5 : 1
+            }}
           >
-            <AppCard 
-              app={app} 
-              onPress={onAppPress} 
-              isLoading={app.isLoading}
-            />
+            <div
+              draggable={isEditMode}
+              onDragStart={handleDragStart(index)}
+              onDragOver={handleDragOver(index)}
+              onDrop={handleDrop}
+              onDragEnd={handleDragEnd}
+              style={{
+                cursor: isEditMode ? 'move' : 'default'
+              }}
+            >
+              <AppCard 
+                app={app} 
+                onPress={onAppPress} 
+                isLoading={app.isLoading}
+                isEditMode={isEditMode}
+                onToggleVisibility={onToggleVisibility}
+              />
+            </div>
           </IonCol>
         ))}
         
-        {/* Custom Apps Button - Only show when not searching */}
-        {!searchQuery && onCustomAppsPress && (
+        {/* Custom Apps Button - Only show when not searching and not in edit mode */}
+        {!searchQuery && !isEditMode && onCustomAppsPress && (
           <IonCol
             size="6"
             sizeMd="4"

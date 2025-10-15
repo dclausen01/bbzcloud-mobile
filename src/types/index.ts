@@ -66,6 +66,13 @@ export interface AppVisibility {
   isVisible: boolean;
 }
 
+export interface AppOrder {
+  id?: number;
+  appId: string;
+  userId: number;
+  orderIndex: number;
+}
+
 // ============================================================================
 // BROWSER TYPES
 // ============================================================================
@@ -155,6 +162,7 @@ export interface SettingsContextType {
   addCustomApp: (app: Omit<CustomApp, 'id' | 'orderIndex' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateCustomApp: (id: string, app: Omit<CustomApp, 'id' | 'orderIndex' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   deleteCustomApp: (id: string) => Promise<void>;
+  reorderApps: (apps: App[]) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -193,6 +201,8 @@ export interface AppCardProps {
   onPress: (app: App) => void;
   onLongPress?: (app: App) => void;
   isLoading?: boolean;
+  isEditMode?: boolean;
+  onToggleVisibility?: (appId: string) => void;
 }
 
 export interface AppGridProps {
@@ -200,6 +210,9 @@ export interface AppGridProps {
   onAppPress: (app: App) => void;
   searchQuery?: string;
   showFavoritesOnly?: boolean;
+  isEditMode?: boolean;
+  onReorder?: (apps: App[]) => void;
+  onToggleVisibility?: (appId: string) => void;
 }
 
 export interface WelcomeModalProps {

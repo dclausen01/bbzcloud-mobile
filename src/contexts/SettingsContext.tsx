@@ -140,7 +140,7 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
   }, []);
 
   /**
-   * Load user-specific settings (app visibility)
+   * Load user-specific settings (app visibility and order)
    */
   const loadUserSpecificSettings = async () => {
     if (!user?.id) return;
@@ -149,10 +149,17 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
       // Load app visibility
       const visibility = await DatabaseService.getAppVisibility(user.id);
 
+      // Load app order
+      const appOrder = await DatabaseService.getAppOrder(user.id);
+
       setSettings(prev => ({
         ...prev,
         appVisibility: visibility
       }));
+
+      // Reload available apps with order applied
+      const availableApps = await getAvailableApps(appOrder);
+      setSettings(prev => ({ ...prev, availableApps }));
     } catch (error) {
       console.error('Error loading user-specific settings:', error);
     }
@@ -161,13 +168,16 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
   /**
    * Get available apps based on user role
    */
-  const getAvailableApps = async (): Promise<App[]> => {
+  const getAvailableApps = async (appOrder?: Record<string, number>): Promise<App[]> => {
     const allApps = Object.values(NAVIGATION_APPS);
 
     // If not authenticated, return all apps
-    if (!user) {
+    if (!user?.id) {
       return allApps;
     }
+
+    // Load visibility from database directly to ensure we have fresh data
+    const visibility = await DatabaseService.getAppVisibility(user.id);
 
     // Filter apps based on user role
     const filteredApps = allApps.filter(app => {
@@ -184,15 +194,22 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
       return true;
     });
 
-    // Load visibility for each app
+    // Load visibility for each app and apply custom order
     const appsWithStatus = filteredApps.map(app => {
-      const visibility = settings.appVisibility[app.id] ?? true;
+      const appVisibility = visibility[app.id] ?? true;
+      const order = appOrder?.[app.id];
 
       return {
         ...app,
-        isVisible: visibility
+        isVisible: appVisibility,
+        order: order !== undefined ? order : 999 // Default high number for unordered apps
       };
     });
+
+    // Sort by order if appOrder is provided
+    if (appOrder) {
+      appsWithStatus.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+    }
 
     return appsWithStatus;
   };
@@ -231,19 +248,25 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
       const currentVisibility = settings.appVisibility[appId] ?? true;
       const newVisibility = !currentVisibility;
 
+      // Save to database
       await DatabaseService.setAppVisibility(user.id, appId, newVisibility);
+
+      // Update visibility in state
+      const newAppVisibility = {
+        ...settings.appVisibility,
+        [appId]: newVisibility
+      };
+
+      // Update apps in place to maintain order
+      const updatedApps = settings.availableApps.map(app =>
+        app.id === appId ? { ...app, isVisible: newVisibility } : app
+      );
 
       setSettings(prev => ({
         ...prev,
-        appVisibility: {
-          ...prev.appVisibility,
-          [appId]: newVisibility
-        }
+        appVisibility: newAppVisibility,
+        availableApps: updatedApps
       }));
-
-      // Reload available apps to reflect changes
-      const availableApps = await getAvailableApps();
-      setSettings(prev => ({ ...prev, availableApps }));
     } catch (error) {
       console.error('Error toggling app visibility:', error);
       throw error;
@@ -328,6 +351,36 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
     }
   };
 
+  /**
+   * Reorder apps and save to database
+   */
+  const reorderApps = async (apps: App[]): Promise<void> => {
+    if (!user?.id) return;
+
+    try {
+      // Create orders array
+      const orders = apps.map((app, index) => ({
+        appId: app.id,
+        orderIndex: index
+      }));
+
+      // Save to database
+      const result = await DatabaseService.saveAppOrders(user.id, orders);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to save app order');
+      }
+
+      // Update local state
+      setSettings(prev => ({
+        ...prev,
+        availableApps: apps
+      }));
+    } catch (error) {
+      console.error('Error reordering apps:', error);
+      throw error;
+    }
+  };
+
   const value: SettingsContextType = {
     settings,
     customApps,
@@ -339,6 +392,7 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
     addCustomApp,
     updateCustomApp,
     deleteCustomApp,
+    reorderApps,
     isLoading
   };
 

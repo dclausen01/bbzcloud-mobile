@@ -22,7 +22,7 @@ import {
   RefresherEventDetail,
   useIonToast
 } from '@ionic/react';
-import { settingsOutline, listOutline } from 'ionicons/icons';
+import { settingsOutline, listOutline, createOutline } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import AppGrid from '../components/AppGrid';
 import WelcomeModal from '../components/WelcomeModal';
@@ -51,6 +51,7 @@ const Home: React.FC = () => {
   const [showCustomAppsModal, setShowCustomAppsModal] = useState(false);
   const [showCustomAppFormModal, setShowCustomAppFormModal] = useState(false);
   const [editingCustomApp, setEditingCustomApp] = useState<CustomApp | undefined>(undefined);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   /**
    * Load custom apps when modal opens
@@ -242,7 +243,7 @@ const Home: React.FC = () => {
       }
       setShowCustomAppFormModal(false);
       setEditingCustomApp(undefined);
-    } catch (error) {
+    } catch {
       presentToast({
         message: 'Fehler beim Speichern der App',
         duration: 3000,
@@ -264,7 +265,7 @@ const Home: React.FC = () => {
         color: 'success',
         position: 'bottom'
       });
-    } catch (error) {
+    } catch {
       presentToast({
         message: 'Fehler beim Löschen der App',
         duration: 3000,
@@ -283,9 +284,43 @@ const Home: React.FC = () => {
       setShowCustomAppsModal(false);
       // Open the custom app
       await openApp(app);
-    } catch (error) {
+    } catch {
       presentToast({
         message: ERROR_MESSAGES.BROWSER_OPEN_FAILED,
+        duration: 3000,
+        color: 'danger',
+        position: 'bottom'
+      });
+    }
+  };
+
+  /**
+   * Handle app reorder
+   */
+  const { reorderApps, toggleAppVisibility } = useSettings();
+  
+  const handleReorder = async (apps: App[]) => {
+    try {
+      await reorderApps(apps);
+    } catch {
+      presentToast({
+        message: 'Fehler beim Speichern der Reihenfolge',
+        duration: 3000,
+        color: 'danger',
+        position: 'bottom'
+      });
+    }
+  };
+
+  /**
+   * Handle visibility toggle
+   */
+  const handleToggleVisibility = async (appId: string) => {
+    try {
+      await toggleAppVisibility(appId);
+    } catch {
+      presentToast({
+        message: 'Fehler beim Ändern der Sichtbarkeit',
         duration: 3000,
         color: 'danger',
         position: 'bottom'
@@ -299,6 +334,12 @@ const Home: React.FC = () => {
         <IonToolbar>
           <IonTitle>BBZCloud Mobile</IonTitle>
           <IonButtons slot="end">
+            <IonButton 
+              onClick={() => setIsEditMode(!isEditMode)}
+              color={isEditMode ? 'primary' : undefined}
+            >
+              <IonIcon slot="icon-only" icon={createOutline} />
+            </IonButton>
             <IonButton onClick={() => history.push('/todos')}>
               <IonIcon slot="icon-only" icon={listOutline} />
             </IonButton>
@@ -353,6 +394,9 @@ const Home: React.FC = () => {
               onAppPress={handleAppPress}
               searchQuery={searchQuery}
               onCustomAppsPress={handleCustomAppsPress}
+              isEditMode={isEditMode}
+              onReorder={handleReorder}
+              onToggleVisibility={handleToggleVisibility}
             />
           </>
         )}

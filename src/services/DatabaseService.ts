@@ -87,6 +87,7 @@ class DatabaseService {
       await this.db.execute(DATABASE_SCHEMA.APP_VISIBILITY);
       await this.db.execute(DATABASE_SCHEMA.BROWSER_HISTORY);
       await this.db.execute(DATABASE_SCHEMA.CUSTOM_APPS);
+      await this.db.execute(DATABASE_SCHEMA.APP_ORDER);
 
       console.log('All tables created successfully');
     } catch (error) {
@@ -609,7 +610,7 @@ class DatabaseService {
       }
 
       const fields: string[] = [];
-      const values: any[] = [];
+      const values: (string | number)[] = [];
 
       if (updates.title !== undefined) {
         fields.push('title = ?');
@@ -675,6 +676,128 @@ class DatabaseService {
       return { success: true };
     } catch (error) {
       console.error('Error deleting custom app:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  // ============================================================================
+  // APP ORDER OPERATIONS
+  // ============================================================================
+
+  /**
+   * Get app order for a user
+   */
+  async getAppOrder(userId: number): Promise<Record<string, number>> {
+    try {
+      if (!this.db) {
+        const initResult = await this.initialize();
+        if (!initResult.success) {
+          throw new Error('Database initialization failed');
+        }
+      }
+
+      if (!this.db) {
+        throw new Error('Database not initialized');
+      }
+
+      const result = await this.db.query(
+        'SELECT app_id, order_index FROM app_order WHERE user_id = ?',
+        [userId]
+      );
+
+      const order: Record<string, number> = {};
+      
+      if (result.values) {
+        for (const row of result.values) {
+          order[row.app_id] = row.order_index;
+        }
+      }
+
+      return order;
+    } catch (error) {
+      console.error('Error getting app order:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Set app order for a user
+   */
+  async setAppOrder(
+    userId: number,
+    appId: string,
+    orderIndex: number
+  ): Promise<DatabaseResult> {
+    try {
+      if (!this.db) {
+        const initResult = await this.initialize();
+        if (!initResult.success) {
+          return initResult;
+        }
+      }
+
+      if (!this.db) {
+        return { success: false, error: 'Database not initialized' };
+      }
+
+      await this.db.run(
+        `INSERT INTO app_order (app_id, user_id, order_index) VALUES (?, ?, ?)
+         ON CONFLICT(app_id, user_id) DO UPDATE SET order_index = ?`,
+        [appId, userId, orderIndex, orderIndex]
+      );
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error setting app order:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Save multiple app orders in a single transaction
+   */
+  async saveAppOrders(
+    userId: number,
+    orders: Array<{ appId: string; orderIndex: number }>
+  ): Promise<DatabaseResult> {
+    try {
+      if (!this.db) {
+        const initResult = await this.initialize();
+        if (!initResult.success) {
+          return initResult;
+        }
+      }
+
+      if (!this.db) {
+        return { success: false, error: 'Database not initialized' };
+      }
+
+      // Begin transaction
+      await this.db.execute('BEGIN TRANSACTION');
+
+      try {
+        for (const order of orders) {
+          await this.db.run(
+            `INSERT INTO app_order (app_id, user_id, order_index) VALUES (?, ?, ?)
+             ON CONFLICT(app_id, user_id) DO UPDATE SET order_index = ?`,
+            [order.appId, userId, order.orderIndex, order.orderIndex]
+          );
+        }
+
+        await this.db.execute('COMMIT');
+        return { success: true };
+      } catch (error) {
+        await this.db.execute('ROLLBACK');
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error saving app orders:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
