@@ -146,6 +146,11 @@
   transform: none;
 }
 
+.app-card.hidden {
+  opacity: 0.5;
+  filter: grayscale(0.5);
+}
+
 .app-card-loading-overlay ion-spinner {
   --color: white;
   width: 32px;

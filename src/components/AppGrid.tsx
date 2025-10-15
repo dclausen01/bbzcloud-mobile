@@ -7,7 +7,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { IonGrid, IonRow, IonCol, IonReorderGroup, IonReorder, ItemReorderEventDetail } from '@ionic/react';
+import { IonGrid, IonRow, IonCol } from '@ionic/react';
 import AppCard from './AppCard';
 import CustomAppsButton from './CustomAppsButton';
 import type { AppGridProps, App } from '../types';
@@ -34,9 +34,12 @@ const AppGrid: React.FC<AppGridPropsExtended> = ({
   }, [apps]);
   /**
    * Filter apps based on search query
+   * In edit mode, show all apps including hidden ones
    */
   const filteredApps = useMemo(() => {
-    let filtered = localApps.filter(app => app.isVisible !== false);
+    // In edit mode, show all apps (including hidden ones)
+    // Otherwise, only show visible apps
+    let filtered = isEditMode ? localApps : localApps.filter(app => app.isVisible !== false);
 
     // Filter by search query
     if (searchQuery) {
@@ -48,30 +51,7 @@ const AppGrid: React.FC<AppGridPropsExtended> = ({
     }
 
     return filtered;
-  }, [localApps, searchQuery]);
-
-  /**
-   * Handle reorder event
-   */
-  const handleReorder = (event: CustomEvent<ItemReorderEventDetail>) => {
-    const fromIndex = event.detail.from;
-    const toIndex = event.detail.to;
-
-    // Create new array with reordered items
-    const reorderedApps = [...localApps];
-    const [movedApp] = reorderedApps.splice(fromIndex, 1);
-    reorderedApps.splice(toIndex, 0, movedApp);
-
-    setLocalApps(reorderedApps);
-    
-    // Notify parent component
-    if (onReorder) {
-      onReorder(reorderedApps);
-    }
-
-    // Complete the reorder
-    event.detail.complete();
-  };
+  }, [localApps, searchQuery, isEditMode]);
 
   if (filteredApps.length === 0) {
     return (
@@ -87,63 +67,37 @@ const AppGrid: React.FC<AppGridPropsExtended> = ({
 
   return (
     <IonGrid className="app-grid">
-      {isEditMode ? (
-        <IonReorderGroup disabled={false} onIonItemReorder={handleReorder}>
-          <IonRow>
-            {filteredApps.map(app => (
-              <IonCol
-                key={app.id}
-                size="6"
-                sizeMd="4"
-                sizeLg="3"
-                sizeXl="2"
-              >
-                <IonReorder>
-                  <AppCard 
-                    app={app} 
-                    onPress={onAppPress} 
-                    isLoading={app.isLoading}
-                    isEditMode={isEditMode}
-                    onToggleVisibility={onToggleVisibility}
-                  />
-                </IonReorder>
-              </IonCol>
-            ))}
-          </IonRow>
-        </IonReorderGroup>
-      ) : (
-        <IonRow>
-          {filteredApps.map(app => (
-            <IonCol
-              key={app.id}
-              size="6"
-              sizeMd="4"
-              sizeLg="3"
-              sizeXl="2"
-            >
-              <AppCard 
-                app={app} 
-                onPress={onAppPress} 
-                isLoading={app.isLoading}
-                isEditMode={isEditMode}
-                onToggleVisibility={onToggleVisibility}
-              />
-            </IonCol>
-          ))}
-          
-          {/* Custom Apps Button - Only show when not searching */}
-          {!searchQuery && onCustomAppsPress && (
-            <IonCol
-              size="6"
-              sizeMd="4"
-              sizeLg="3"
-              sizeXl="2"
-            >
-              <CustomAppsButton onPress={onCustomAppsPress} />
-            </IonCol>
-          )}
-        </IonRow>
-      )}
+      <IonRow>
+        {filteredApps.map((app) => (
+          <IonCol
+            key={app.id}
+            size="6"
+            sizeMd="4"
+            sizeLg="3"
+            sizeXl="2"
+          >
+            <AppCard 
+              app={app} 
+              onPress={onAppPress} 
+              isLoading={app.isLoading}
+              isEditMode={isEditMode}
+              onToggleVisibility={onToggleVisibility}
+            />
+          </IonCol>
+        ))}
+        
+        {/* Custom Apps Button - Only show when not searching and not in edit mode */}
+        {!searchQuery && !isEditMode && onCustomAppsPress && (
+          <IonCol
+            size="6"
+            sizeMd="4"
+            sizeLg="3"
+            sizeXl="2"
+          >
+            <CustomAppsButton onPress={onCustomAppsPress} />
+          </IonCol>
+        )}
+      </IonRow>
     </IonGrid>
   );
 };

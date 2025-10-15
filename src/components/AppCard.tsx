@@ -39,7 +39,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, onPress, onLongPress, isLoading,
 
   return (
     <IonCard
-      className={`app-card ion-activatable ${isEditMode ? 'edit-mode' : ''}`}
+      className={`app-card ion-activatable ${isEditMode ? 'edit-mode' : ''} ${app.isVisible === false ? 'hidden' : ''}`}
       button={!isEditMode}
       onClick={handleClick}
       onContextMenu={handleContextMenu}
