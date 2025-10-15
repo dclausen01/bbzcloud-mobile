@@ -6,8 +6,8 @@
  * @version 1.0.0
  */
 
-import React from 'react';
-import { IonCard, IonCardContent, IonIcon, IonRippleEffect, IonSpinner, IonBadge } from '@ionic/react';
+import React, { useRef } from 'react';
+import { IonCard, IonCardContent, IonIcon, IonRippleEffect, IonSpinner, useIonAlert } from '@ionic/react';
 import * as icons from 'ionicons/icons';
 import type { AppCardProps } from '../types';
 import './AppCard.css';
@@ -15,14 +15,11 @@ import './AppCard.css';
 const AppCard: React.FC<AppCardProps> = ({ app, onPress, onLongPress, isLoading, isEditMode = false, onToggleVisibility }) => {
   const iconName = app.icon as keyof typeof icons;
   const icon = icons[iconName] || icons.apps;
+  const [presentAlert] = useIonAlert();
+  const pressTimer = useRef<NodeJS.Timeout | null>(null);
 
-  const handleClick = (e: React.MouseEvent) => {
-    // Don't handle click if it's on the visibility badge
-    if ((e.target as HTMLElement).closest('.app-card-visibility-badge-container')) {
-      return;
-    }
-    
-    // In edit mode, don't open the app
+  const handleClick = () => {
+    // In edit mode, don't open the app (unless it's a short press)
     if (!isEditMode) {
       onPress(app);
     }
@@ -35,12 +32,44 @@ const AppCard: React.FC<AppCardProps> = ({ app, onPress, onLongPress, isLoading,
     }
   };
 
-  const handleVisibilityToggle = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    console.log('Toggle visibility for:', app.id, 'current:', app.isVisible);
-    if (onToggleVisibility) {
-      onToggleVisibility(app.id);
+  /**
+   * Handle press start (mouse or touch)
+   */
+  const handlePressStart = () => {
+    if (!isEditMode) return;
+
+    pressTimer.current = setTimeout(() => {
+      // Long press detected - show visibility toggle dialog
+      presentAlert({
+        header: app.title,
+        message: app.isVisible !== false 
+          ? 'Möchten Sie diese App ausblenden?' 
+          : 'Möchten Sie diese App wieder einblenden?',
+        buttons: [
+          {
+            text: 'Abbrechen',
+            role: 'cancel'
+          },
+          {
+            text: 'Ja',
+            handler: () => {
+              if (onToggleVisibility) {
+                onToggleVisibility(app.id);
+              }
+            }
+          }
+        ]
+      });
+    }, 500); // 500ms for long press
+  };
+
+  /**
+   * Handle press end (mouse or touch)
+   */
+  const handlePressEnd = () => {
+    if (pressTimer.current) {
+      clearTimeout(pressTimer.current);
+      pressTimer.current = null;
     }
   };
 
@@ -50,6 +79,11 @@ const AppCard: React.FC<AppCardProps> = ({ app, onPress, onLongPress, isLoading,
       button={!isEditMode}
       onClick={handleClick}
       onContextMenu={handleContextMenu}
+      onMouseDown={handlePressStart}
+      onMouseUp={handlePressEnd}
+      onMouseLeave={handlePressEnd}
+      onTouchStart={handlePressStart}
+      onTouchEnd={handlePressEnd}
       style={{
         '--card-background': app.color,
         '--card-color': '#ffffff',
@@ -59,29 +93,6 @@ const AppCard: React.FC<AppCardProps> = ({ app, onPress, onLongPress, isLoading,
       {isLoading && (
         <div className="app-card-loading-overlay">
           <IonSpinner name="crescent" />
-        </div>
-      )}
-      {isEditMode && (
-        <div
-          className="app-card-visibility-badge-container"
-          onClick={handleVisibilityToggle}
-          style={{
-            position: 'absolute',
-            top: '8px',
-            right: '8px',
-            zIndex: 20,
-            cursor: 'pointer'
-          }}
-        >
-          <IonBadge 
-            className="app-card-visibility-badge"
-            color={app.isVisible !== false ? 'success' : 'medium'}
-          >
-            <IonIcon 
-              icon={app.isVisible !== false ? icons.eye : icons.eyeOff} 
-              style={{ fontSize: '16px', pointerEvents: 'none' }}
-            />
-          </IonBadge>
         </div>
       )}
       <IonCardContent className="app-card-content">

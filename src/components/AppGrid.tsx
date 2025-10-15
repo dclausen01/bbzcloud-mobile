@@ -29,10 +29,10 @@ const AppGrid: React.FC<AppGridPropsExtended> = ({
   const [localApps, setLocalApps] = useState<App[]>(apps);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
-  // Update local apps when props change
+  // Initialize local apps only once to prevent losing drag & drop changes
   React.useEffect(() => {
     setLocalApps(apps);
-  }, [apps]);
+  }, []); // Empty dependency array - only run on mount
 
   /**
    * Handle drag start
