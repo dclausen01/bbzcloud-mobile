@@ -32,6 +32,8 @@ const AppCard: React.FC<AppCardProps> = ({ app, onPress, onLongPress, isLoading,
 
   const handleVisibilityToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
+    console.log('Toggle visibility for:', app.id, 'current:', app.isVisible);
     if (onToggleVisibility) {
       onToggleVisibility(app.id);
     }
@@ -55,16 +57,27 @@ const AppCard: React.FC<AppCardProps> = ({ app, onPress, onLongPress, isLoading,
         </div>
       )}
       {isEditMode && (
-        <IonBadge 
-          className="app-card-visibility-badge"
-          color={app.isVisible !== false ? 'success' : 'medium'}
+        <div
+          className="app-card-visibility-badge-container"
           onClick={handleVisibilityToggle}
+          style={{
+            position: 'absolute',
+            top: '8px',
+            right: '8px',
+            zIndex: 20,
+            cursor: 'pointer'
+          }}
         >
-          <IonIcon 
-            icon={app.isVisible !== false ? icons.eye : icons.eyeOff} 
-            style={{ fontSize: '16px' }}
-          />
-        </IonBadge>
+          <IonBadge 
+            className="app-card-visibility-badge"
+            color={app.isVisible !== false ? 'success' : 'medium'}
+          >
+            <IonIcon 
+              icon={app.isVisible !== false ? icons.eye : icons.eyeOff} 
+              style={{ fontSize: '16px', pointerEvents: 'none' }}
+            />
+          </IonBadge>
+        </div>
       )}
       <IonCardContent className="app-card-content">
         <div className="app-card-icon-container">

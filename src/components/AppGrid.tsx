@@ -52,10 +52,17 @@ const AppGrid: React.FC<AppGridPropsExtended> = ({
     e.dataTransfer.dropEffect = 'move';
 
     if (index !== draggedIndex) {
+      // Get the actual indices in localApps
+      const fromAppId = filteredApps[draggedIndex].id;
+      const toAppId = filteredApps[index].id;
+      
+      const fromIndex = localApps.findIndex(app => app.id === fromAppId);
+      const toIndex = localApps.findIndex(app => app.id === toAppId);
+      
       const newApps = [...localApps];
-      const draggedApp = newApps[draggedIndex];
-      newApps.splice(draggedIndex, 1);
-      newApps.splice(index, 0, draggedApp);
+      const draggedApp = newApps[fromIndex];
+      newApps.splice(fromIndex, 1);
+      newApps.splice(toIndex, 0, draggedApp);
       setLocalApps(newApps);
       setDraggedIndex(index);
     }
@@ -67,6 +74,7 @@ const AppGrid: React.FC<AppGridPropsExtended> = ({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     if (draggedIndex !== null && onReorder) {
+      // Save the reordered apps
       onReorder(localApps);
     }
     setDraggedIndex(null);
