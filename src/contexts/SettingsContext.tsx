@@ -172,9 +172,12 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
     const allApps = Object.values(NAVIGATION_APPS);
 
     // If not authenticated, return all apps
-    if (!user) {
+    if (!user?.id) {
       return allApps;
     }
+
+    // Load visibility from database directly to ensure we have fresh data
+    const visibility = await DatabaseService.getAppVisibility(user.id);
 
     // Filter apps based on user role
     const filteredApps = allApps.filter(app => {
@@ -193,12 +196,12 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
 
     // Load visibility for each app and apply custom order
     const appsWithStatus = filteredApps.map(app => {
-      const visibility = settings.appVisibility[app.id] ?? true;
+      const appVisibility = visibility[app.id] ?? true;
       const order = appOrder?.[app.id];
 
       return {
         ...app,
-        isVisible: visibility,
+        isVisible: appVisibility,
         order: order !== undefined ? order : 999 // Default high number for unordered apps
       };
     });
