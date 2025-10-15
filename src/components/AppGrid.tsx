@@ -129,23 +129,28 @@ const AppGrid: React.FC<AppGridPropsExtended> = ({
             sizeMd="4"
             sizeLg="3"
             sizeXl="2"
-            draggable={isEditMode}
-            onDragStart={handleDragStart(index)}
-            onDragOver={handleDragOver(index)}
-            onDrop={handleDrop}
-            onDragEnd={handleDragEnd}
             style={{
-              opacity: draggedIndex === index ? 0.5 : 1,
-              cursor: isEditMode ? 'move' : 'default'
+              opacity: draggedIndex === index ? 0.5 : 1
             }}
           >
-            <AppCard 
-              app={app} 
-              onPress={onAppPress} 
-              isLoading={app.isLoading}
-              isEditMode={isEditMode}
-              onToggleVisibility={onToggleVisibility}
-            />
+            <div
+              draggable={isEditMode}
+              onDragStart={handleDragStart(index)}
+              onDragOver={handleDragOver(index)}
+              onDrop={handleDrop}
+              onDragEnd={handleDragEnd}
+              style={{
+                cursor: isEditMode ? 'move' : 'default'
+              }}
+            >
+              <AppCard 
+                app={app} 
+                onPress={onAppPress} 
+                isLoading={app.isLoading}
+                isEditMode={isEditMode}
+                onToggleVisibility={onToggleVisibility}
+              />
+            </div>
           </IonCol>
         ))}
         

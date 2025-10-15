@@ -16,7 +16,12 @@ const AppCard: React.FC<AppCardProps> = ({ app, onPress, onLongPress, isLoading,
   const iconName = app.icon as keyof typeof icons;
   const icon = icons[iconName] || icons.apps;
 
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent) => {
+    // Don't handle click if it's on the visibility badge
+    if ((e.target as HTMLElement).closest('.app-card-visibility-badge-container')) {
+      return;
+    }
+    
     // In edit mode, don't open the app
     if (!isEditMode) {
       onPress(app);
