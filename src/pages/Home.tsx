@@ -40,18 +40,30 @@ import './Home.css';
 const Home: React.FC = () => {
   const history = useHistory();
   const { settings, isLoading: settingsLoading, customApps, addCustomApp, updateCustomApp, deleteCustomApp } = useSettings();
-  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { openApp } = useAppSwitcher();
   const [presentToast] = useIonToast();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [showWelcome, setShowWelcome] = useState(!isAuthenticated && !authLoading);
+  const [showWelcome, setShowWelcome] = useState(false);
   const [loadingAppId, setLoadingAppId] = useState<string | null>(null);
   const [installModalApp, setInstallModalApp] = useState<App | null>(null);
   const [showCustomAppsModal, setShowCustomAppsModal] = useState(false);
   const [showCustomAppFormModal, setShowCustomAppFormModal] = useState(false);
   const [editingCustomApp, setEditingCustomApp] = useState<CustomApp | undefined>(undefined);
   const [isEditMode, setIsEditMode] = useState(false);
+
+  /**
+   * Check if we need to show welcome modal
+   */
+  React.useEffect(() => {
+    // Show welcome modal if not loading and no user
+    if (!authLoading && !user) {
+      setShowWelcome(true);
+    } else {
+      setShowWelcome(false);
+    }
+  }, [authLoading, user]);
 
   /**
    * Load custom apps when modal opens
