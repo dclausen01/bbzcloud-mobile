@@ -768,7 +768,7 @@ class DatabaseService {
   }
 
   /**
-   * Save multiple app orders in a single transaction
+   * Save multiple app orders
    */
   async saveAppOrders(
     userId: number,
@@ -786,24 +786,16 @@ class DatabaseService {
         return { success: false, error: 'Database not initialized' };
       }
 
-      // Begin transaction
-      await this.db.execute('BEGIN TRANSACTION');
-
-      try {
-        for (const order of orders) {
-          await this.db.run(
-            `INSERT INTO app_order (app_id, user_id, order_index) VALUES (?, ?, ?)
-             ON CONFLICT(app_id, user_id) DO UPDATE SET order_index = ?`,
-            [order.appId, userId, order.orderIndex, order.orderIndex]
-          );
-        }
-
-        await this.db.execute('COMMIT');
-        return { success: true };
-      } catch (error) {
-        await this.db.execute('ROLLBACK');
-        throw error;
+      // Save each order individually
+      for (const order of orders) {
+        await this.db.run(
+          `INSERT INTO app_order (app_id, user_id, order_index) VALUES (?, ?, ?)
+           ON CONFLICT(app_id, user_id) DO UPDATE SET order_index = ?`,
+          [order.appId, userId, order.orderIndex, order.orderIndex]
+        );
       }
+
+      return { success: true };
     } catch (error) {
       console.error('Error saving app orders:', error);
       return {
