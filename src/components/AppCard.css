@@ -116,12 +116,34 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100;
-  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  z-index: 10;
+}
+
+.app-card-visibility-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 15;
+  padding: 4px 6px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.app-card-visibility-badge:hover {
+  transform: scale(1.1);
+}
+
+.app-card.edit-mode {
+  cursor: default;
+}
+
+.app-card.edit-mode:hover {
+  transform: none;
 }
 
 .app-card-loading-overlay ion-spinner {

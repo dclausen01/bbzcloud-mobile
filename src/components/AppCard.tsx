@@ -7,17 +7,20 @@
  */
 
 import React from 'react';
-import { IonCard, IonCardContent, IonIcon, IonRippleEffect, IonSpinner } from '@ionic/react';
+import { IonCard, IonCardContent, IonIcon, IonRippleEffect, IonSpinner, IonBadge } from '@ionic/react';
 import * as icons from 'ionicons/icons';
 import type { AppCardProps } from '../types';
 import './AppCard.css';
 
-const AppCard: React.FC<AppCardProps> = ({ app, onPress, onLongPress, isLoading }) => {
+const AppCard: React.FC<AppCardProps> = ({ app, onPress, onLongPress, isLoading, isEditMode = false, onToggleVisibility }) => {
   const iconName = app.icon as keyof typeof icons;
   const icon = icons[iconName] || icons.apps;
 
   const handleClick = () => {
-    onPress(app);
+    // In edit mode, don't open the app
+    if (!isEditMode) {
+      onPress(app);
+    }
   };
 
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -27,10 +30,17 @@ const AppCard: React.FC<AppCardProps> = ({ app, onPress, onLongPress, isLoading 
     }
   };
 
+  const handleVisibilityToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onToggleVisibility) {
+      onToggleVisibility(app.id);
+    }
+  };
+
   return (
     <IonCard
-      className="app-card ion-activatable"
-      button
+      className={`app-card ion-activatable ${isEditMode ? 'edit-mode' : ''}`}
+      button={!isEditMode}
       onClick={handleClick}
       onContextMenu={handleContextMenu}
       style={{
@@ -43,6 +53,18 @@ const AppCard: React.FC<AppCardProps> = ({ app, onPress, onLongPress, isLoading 
         <div className="app-card-loading-overlay">
           <IonSpinner name="crescent" />
         </div>
+      )}
+      {isEditMode && (
+        <IonBadge 
+          className="app-card-visibility-badge"
+          color={app.isVisible !== false ? 'success' : 'medium'}
+          onClick={handleVisibilityToggle}
+        >
+          <IonIcon 
+            icon={app.isVisible !== false ? icons.eye : icons.eyeOff} 
+            style={{ fontSize: '16px' }}
+          />
+        </IonBadge>
       )}
       <IonCardContent className="app-card-content">
         <div className="app-card-icon-container">

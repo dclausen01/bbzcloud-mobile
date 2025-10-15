@@ -347,6 +347,16 @@ export const DATABASE_SCHEMA = {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `,
+  APP_ORDER: `
+    CREATE TABLE IF NOT EXISTS app_order (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      app_id TEXT NOT NULL,
+      user_id INTEGER NOT NULL,
+      order_index INTEGER NOT NULL,
+      UNIQUE(app_id, user_id),
+      FOREIGN KEY (user_id) REFERENCES user_profile(id)
+    )
+  `,
 };
 
 // ============================================================================
