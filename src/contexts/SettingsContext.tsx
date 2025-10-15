@@ -242,14 +242,25 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
    * Toggle app visibility
    */
   const toggleAppVisibility = async (appId: string): Promise<void> => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      console.warn('[SettingsContext] No user ID, cannot toggle visibility');
+      return;
+    }
 
     try {
-      const currentVisibility = settings.appVisibility[appId] ?? true;
+      console.log('[SettingsContext] Toggle visibility for app:', appId);
+      console.log('[SettingsContext] Current appVisibility state:', settings.appVisibility);
+      
+      // Get current visibility from the app object itself
+      const currentApp = settings.availableApps.find(app => app.id === appId);
+      const currentVisibility = currentApp?.isVisible ?? true;
       const newVisibility = !currentVisibility;
+
+      console.log('[SettingsContext] Current visibility:', currentVisibility, '-> New:', newVisibility);
 
       // Save to database
       await DatabaseService.setAppVisibility(user.id, appId, newVisibility);
+      console.log('[SettingsContext] Saved to DB successfully');
 
       // Update visibility in state
       const newAppVisibility = {
@@ -261,6 +272,8 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
       const updatedApps = settings.availableApps.map(app =>
         app.id === appId ? { ...app, isVisible: newVisibility } : app
       );
+
+      console.log('[SettingsContext] Updated apps:', updatedApps.map(a => ({ id: a.id, isVisible: a.isVisible })));
 
       setSettings(prev => ({
         ...prev,
