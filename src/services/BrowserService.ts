@@ -15,11 +15,13 @@ import { isSmartphone, isIOS, isAndroid, canOpenNativeApps } from '../utils/devi
 import type { BrowserOptions, ApiResponse, NativeAppResult } from '../types';
 import DatabaseService from './DatabaseService';
 import { getInjectionScript, GLOBAL_INJECTION, type InjectionScript } from './InjectionScripts';
+import DownloadService from './DownloadService';
 
 class BrowserService {
   private currentAppId: string | null = null;
   private currentUrl: string | null = null;
   private pageLoadedListener: PluginListenerHandle | null = null;
+  private downloadListener: PluginListenerHandle | null = null;
 
   /**
    * Open a URL in the InAppBrowser with optional JavaScript injection
@@ -60,6 +62,32 @@ class BrowserService {
 
 
   /**
+   * Initialize download listener
+   */
+  private async initializeDownloadListener(): Promise<void> {
+    // Remove existing listener if any
+    if (this.downloadListener) {
+      this.downloadListener.remove();
+      this.downloadListener = null;
+    }
+
+    // Set up download message listener
+    this.downloadListener = await InAppBrowser.addListener('messageFromWebview', async (event) => {
+      if (event.detail && event.detail.type === 'download') {
+        console.log('[BrowserService] Download request received:', event.detail);
+        
+        // Process download
+        await DownloadService.downloadFile({
+          url: event.detail.url,
+          filename: event.detail.filename,
+          headers: event.detail.headers,
+          mimeType: event.detail.mimeType,
+        });
+      }
+    });
+  }
+
+  /**
    * Open WebView with JavaScript injection support
    */
   private async openWebViewWithInjection(
@@ -70,9 +98,12 @@ class BrowserService {
   ): Promise<void> {
     // Cleanup existing listeners to prevent memory leaks
     if (this.pageLoadedListener) {
-      await InAppBrowser.removeAllListeners();
+      this.pageLoadedListener.remove();
       this.pageLoadedListener = null;
     }
+
+    // Initialize download listener
+    await this.initializeDownloadListener();
 
     // Set up page loaded listener for injection
     this.pageLoadedListener = await InAppBrowser.addListener('browserPageLoaded', async () => {
@@ -287,9 +318,15 @@ class BrowserService {
     try {
       await InAppBrowser.close();
 
+      // Clean up listeners
       if (this.pageLoadedListener) {
-        await InAppBrowser.removeAllListeners();
+        this.pageLoadedListener.remove();
         this.pageLoadedListener = null;
+      }
+
+      if (this.downloadListener) {
+        this.downloadListener.remove();
+        this.downloadListener = null;
       }
 
       this.currentAppId = null;
@@ -344,8 +381,15 @@ class BrowserService {
    * Remove all event listeners
    */
   removeAllListeners(): void {
-    InAppBrowser.removeAllListeners();
-    this.pageLoadedListener = null;
+    if (this.pageLoadedListener) {
+      this.pageLoadedListener.remove();
+      this.pageLoadedListener = null;
+    }
+    
+    if (this.downloadListener) {
+      this.downloadListener.remove();
+      this.downloadListener = null;
+    }
   }
 
   /**

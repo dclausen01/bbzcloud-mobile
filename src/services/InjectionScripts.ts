@@ -209,6 +209,192 @@ export const GLOBAL_INJECTION: InjectionScript = {
         initialize();
       }
     })();
+    
+    // DOWNLOAD INTERCEPTION v1.0
+    (function() {
+      'use strict';
+      
+      console.log('[BBZCloud] Download interception initialized');
+      
+      /**
+       * Extract filename from various sources
+       */
+      function extractFilename(url, link) {
+        // Try to get from download attribute
+        if (link && link.hasAttribute('download')) {
+          const downloadAttr = link.getAttribute('download');
+          if (downloadAttr && downloadAttr.trim()) {
+            return downloadAttr.trim();
+          }
+        }
+        
+        // Try to extract from URL
+        try {
+          const urlObj = new URL(url, window.location.href);
+          const pathname = urlObj.pathname;
+          const filename = pathname.substring(pathname.lastIndexOf('/') + 1);
+          if (filename && filename.length > 2) {
+            return decodeURIComponent(filename);
+          }
+        } catch (e) {
+          console.warn('[BBZCloud] Failed to parse download URL:', e);
+        }
+        
+        return null;
+      }
+      
+      /**
+       * Get authentication headers from cookies/localStorage
+       */
+      function getAuthHeaders() {
+        const headers = {};
+        
+        // Try to get common auth tokens
+        try {
+          // Bearer token from localStorage
+          const token = localStorage.getItem('token') || 
+                       localStorage.getItem('authToken') ||
+                       localStorage.getItem('access_token');
+          if (token) {
+            headers['Authorization'] = 'Bearer ' + token;
+          }
+          
+          // CSRF token from meta tag
+          const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+          if (csrfMeta) {
+            headers['X-CSRF-Token'] = csrfMeta.getAttribute('content');
+          }
+        } catch (e) {
+          console.warn('[BBZCloud] Failed to extract auth headers:', e);
+        }
+        
+        return headers;
+      }
+      
+      /**
+       * Check if URL is a download link
+       */
+      function isDownloadUrl(url) {
+        if (!url) return false;
+        
+        const downloadPatterns = [
+          /[?&]download([=&]|$)/i,
+          /\/download\//i,
+          /\/api\/.*\/download/i,
+          /\/files?\//i,
+          /attachment/i,
+          /export/i
+        ];
+        
+        return downloadPatterns.some(pattern => pattern.test(url));
+      }
+      
+      /**
+       * Check if element or URL indicates a download
+       */
+      function isDownloadLink(element) {
+        if (!element) return false;
+        
+        // Check for download attribute
+        if (element.hasAttribute('download')) return true;
+        
+        // Check href
+        const href = element.getAttribute('href');
+        if (href && isDownloadUrl(href)) return true;
+        
+        // Check text content
+        const text = element.textContent || '';
+        const downloadKeywords = ['download', 'herunterladen', 'export', 'exportieren'];
+        if (downloadKeywords.some(keyword => text.toLowerCase().includes(keyword))) {
+          return true;
+        }
+        
+        // Check file extensions
+        const fileExtensions = [
+          '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+          '.zip', '.rar', '.tar', '.gz', '.7z',
+          '.jpg', '.jpeg', '.png', '.gif', '.svg',
+          '.mp3', '.mp4', '.avi', '.mov',
+          '.txt', '.csv', '.json', '.xml'
+        ];
+        
+        if (href && fileExtensions.some(ext => href.toLowerCase().includes(ext))) {
+          return true;
+        }
+        
+        return false;
+      }
+      
+      /**
+       * Handle download request
+       */
+      function handleDownload(url, filename, headers) {
+        console.log('[BBZCloud] Intercepting download:', url);
+        
+        // Send download request to native app
+        if (window.mobileApp && window.mobileApp.postMessage) {
+          window.mobileApp.postMessage({
+            detail: {
+              type: 'download',
+              url: url,
+              filename: filename,
+              headers: headers
+            }
+          });
+        } else {
+          console.error('[BBZCloud] mobileApp.postMessage not available');
+        }
+      }
+      
+      /**
+       * Click event listener for download links
+       */
+      document.addEventListener('click', function(event) {
+        const link = event.target.closest('a');
+        
+        if (!link) return;
+        
+        const href = link.getAttribute('href');
+        if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+        
+        // Check if this is a download link
+        if (isDownloadLink(link)) {
+          event.preventDefault();
+          event.stopPropagation();
+          
+          // Get absolute URL
+          const absoluteUrl = new URL(href, window.location.href).href;
+          
+          // Extract filename
+          const filename = extractFilename(absoluteUrl, link);
+          
+          // Get auth headers
+          const headers = getAuthHeaders();
+          
+          // Handle download
+          handleDownload(absoluteUrl, filename, headers);
+          
+          return false;
+        }
+      }, true);
+      
+      /**
+       * Intercept form submissions that might be downloads
+       */
+      document.addEventListener('submit', function(event) {
+        const form = event.target;
+        if (!form) return;
+        
+        const action = form.getAttribute('action');
+        if (action && isDownloadUrl(action)) {
+          console.log('[BBZCloud] Download form detected, but allowing normal submission');
+          // For now, we let forms submit normally as they might need POST data
+          // This could be enhanced in the future to intercept POST downloads
+        }
+      }, true);
+      
+      console.log('[BBZCloud] Download interception ready');
+    })();
   `,
   delay: 500,
   description: 'Global keyboard handling v7.6 with adjustResize'
