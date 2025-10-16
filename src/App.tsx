@@ -15,7 +15,6 @@ import type { PluginListenerHandle } from '@capacitor/core';
 import Home from './pages/Home';
 import Settings from './pages/Settings';
 import Todos from './pages/Todos';
-import AppViewer from './pages/AppViewer';
 import AppSwitcher from './components/AppSwitcher';
 import GlobalFAB from './components/GlobalFAB';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -112,9 +111,6 @@ const AppContent: React.FC = () => {
           </Route>
           <Route exact path="/todos">
             <Todos />
-          </Route>
-          <Route exact path="/app-viewer">
-            <AppViewer />
           </Route>
           <Route exact path="/">
             <Redirect to="/home" />
