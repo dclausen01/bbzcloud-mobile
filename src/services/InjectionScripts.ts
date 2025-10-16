@@ -277,24 +277,33 @@ export const GLOBAL_INJECTION: InjectionScript = {
       function isDownloadUrl(url) {
         if (!url) return false;
         
-        const downloadPatterns = [
-          /[?&]download([=&]|$)/i,
-          /\/download\//i,
-          /\/api\/.*\/download/i,
-          /\/files?\//i,
-          /attachment/i,
-          /export/i,
+        // Use string patterns and create RegExp objects
+        const patterns = [
+          '[?&]download([=&]|$)',
+          '/download/',
+          '/api/.*/download',
+          '/files?/',
+          'attachment',
+          'export',
           // Moodle patterns
-          /\/mod\/resource\/view\.php/i,
-          /\/mod\/folder\/view\.php/i,
-          /\/pluginfile\.php\//i,
+          '/mod/resource/view\\.php',
+          '/mod/folder/view\\.php',
+          '/pluginfile\\.php/',
           // Nextcloud patterns
-          /\/download\?/i,
-          /\/index\.php\/s\//i,
-          /\/index\.php\/f\//i
+          '/download\\?',
+          '/index\\.php/s/',
+          '/index\\.php/f/'
         ];
         
-        return downloadPatterns.some(pattern => pattern.test(url));
+        return patterns.some(pattern => {
+          try {
+            const regex = new RegExp(pattern, 'i');
+            return regex.test(url);
+          } catch (e) {
+            console.warn('[BBZCloud] Invalid pattern:', pattern, e);
+            return false;
+          }
+        });
       }
       
       /**
