@@ -360,46 +360,104 @@ export const GLOBAL_INJECTION: InjectionScript = {
       document.addEventListener('click', function(event) {
         console.log('[BBZCloud] Click detected on:', event.target);
         
+        // Try to find a link (works for traditional links)
         const link = event.target.closest('a');
         
-        if (!link) {
-          console.log('[BBZCloud] No link found');
-          return;
+        if (link) {
+          const href = link.getAttribute('href');
+          console.log('[BBZCloud] Link href:', href);
+          
+          if (href && !href.startsWith('#') && !href.startsWith('javascript:')) {
+            // Check if this is a download link
+            const isDownload = isDownloadLink(link);
+            console.log('[BBZCloud] Is download link?', isDownload);
+            
+            if (isDownload) {
+              console.log('[BBZCloud] Preventing default and intercepting download');
+              event.preventDefault();
+              event.stopPropagation();
+              event.stopImmediatePropagation();
+              
+              // Get absolute URL
+              const absoluteUrl = new URL(href, window.location.href).href;
+              
+              // Extract filename
+              const filename = extractFilename(absoluteUrl, link);
+              
+              // Get auth headers
+              const headers = getAuthHeaders();
+              
+              // Handle download
+              handleDownload(absoluteUrl, filename, headers);
+              
+              return false;
+            }
+          }
         }
         
-        const href = link.getAttribute('href');
-        console.log('[BBZCloud] Link href:', href);
+        // For SPAs like schul.cloud: Check if clicked element is a file/download item
+        // Look for elements with file indicators
+        const clickedElement = event.target;
+        const fileElement = clickedElement.closest('[class*="file"], [class*="attachment"], [class*="download"], [data-type="file"]');
         
-        if (!href || href.startsWith('#') || href.startsWith('javascript:')) {
-          console.log('[BBZCloud] Ignoring link (hash or javascript)');
-          return;
+        if (fileElement) {
+          console.log('[BBZCloud] Potential file element clicked:', fileElement);
+          
+          // Try to find download info from the element
+          const fileInfo = extractFileInfoFromElement(fileElement);
+          
+          if (fileInfo && fileInfo.url) {
+            console.log('[BBZCloud] File info extracted:', fileInfo);
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            
+            handleDownload(fileInfo.url, fileInfo.filename, getAuthHeaders());
+            return false;
+          }
         }
         
-        // Check if this is a download link
-        const isDownload = isDownloadLink(link);
-        console.log('[BBZCloud] Is download link?', isDownload);
-        
-        if (isDownload) {
-          console.log('[BBZCloud] Preventing default and intercepting download');
-          event.preventDefault();
-          event.stopPropagation();
-          event.stopImmediatePropagation();
-          
-          // Get absolute URL
-          const absoluteUrl = new URL(href, window.location.href).href;
-          
-          // Extract filename
-          const filename = extractFilename(absoluteUrl, link);
-          
-          // Get auth headers
-          const headers = getAuthHeaders();
-          
-          // Handle download
-          handleDownload(absoluteUrl, filename, headers);
-          
-          return false;
-        }
+        console.log('[BBZCloud] No download action needed');
       }, { capture: true, passive: false });
+      
+      /**
+       * Extract file information from SPA elements (like schul.cloud)
+       */
+      function extractFileInfoFromElement(element) {
+        // Try to find URL from various attributes
+        let url = element.getAttribute('href') ||
+                 element.getAttribute('data-url') ||
+                 element.getAttribute('data-file-url') ||
+                 element.getAttribute('data-download-url');
+        
+        // Try to find URL in onclick or ng-click attributes
+        const onclick = element.getAttribute('onclick') || element.getAttribute('ng-click');
+        if (!url && onclick) {
+          const urlMatch = onclick.match(/https?:[\\/]{2}[^\\s'"]+/);
+          if (urlMatch) {
+            url = urlMatch[0];
+          }
+        }
+        
+        // Try to find filename from text content or attributes
+        let filename = element.getAttribute('data-filename') ||
+                      element.getAttribute('title') ||
+                      element.textContent?.trim();
+        
+        // Look for filename in child elements
+        if (!filename || filename.length > 100) {
+          const filenameElement = element.querySelector('[class*="filename"], [class*="name"], .title');
+          if (filenameElement) {
+            filename = filenameElement.textContent?.trim();
+          }
+        }
+        
+        if (url) {
+          return { url, filename };
+        }
+        
+        return null;
+      }
       
       /**
        * Intercept form submissions that might be downloads
