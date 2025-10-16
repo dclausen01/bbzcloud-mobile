@@ -283,7 +283,15 @@ export const GLOBAL_INJECTION: InjectionScript = {
           /\/api\/.*\/download/i,
           /\/files?\//i,
           /attachment/i,
-          /export/i
+          /export/i,
+          // Moodle patterns
+          /\/mod\/resource\/view\.php/i,
+          /\/mod\/folder\/view\.php/i,
+          /\/pluginfile\.php\//i,
+          // Nextcloud patterns
+          /\/download\?/i,
+          /\/index\.php\/s\//i,
+          /\/index\.php\/f\//i
         ];
         
         return downloadPatterns.some(pattern => pattern.test(url));
