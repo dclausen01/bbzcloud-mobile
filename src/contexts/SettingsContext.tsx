@@ -11,6 +11,7 @@ import { Preferences } from '@capacitor/preferences';
 import { NAVIGATION_APPS, STUDENT_ALLOWED_APPS, STORAGE_KEYS } from '../utils/constants';
 import DatabaseService from '../services/DatabaseService';
 import { useAuth } from './AuthContext';
+import { isSmartphone } from '../utils/deviceUtils';
 import type { SettingsContextType, SettingsState, App, AppSettings, CustomApp } from '../types';
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -196,7 +197,17 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
 
     // Load visibility for each app and apply custom order
     const appsWithStatus = filteredApps.map(app => {
-      const appVisibility = visibility[app.id] ?? true;
+      // Get default visibility based on app and device type
+      const getDefaultVisibility = (appId: string): boolean => {
+        // schul.cloud should be invisible by default on smartphones (not tablets)
+        if (appId === 'schulcloud' && isSmartphone()) {
+          return false;
+        }
+        return true;
+      };
+      
+      // Use saved visibility or default
+      const appVisibility = visibility[app.id] ?? getDefaultVisibility(app.id);
       const order = appOrder?.[app.id];
 
       return {
