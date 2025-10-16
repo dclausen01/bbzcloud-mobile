@@ -350,17 +350,32 @@ export const GLOBAL_INJECTION: InjectionScript = {
        * Click event listener for download links
        */
       document.addEventListener('click', function(event) {
+        console.log('[BBZCloud] Click detected on:', event.target);
+        
         const link = event.target.closest('a');
         
-        if (!link) return;
+        if (!link) {
+          console.log('[BBZCloud] No link found');
+          return;
+        }
         
         const href = link.getAttribute('href');
-        if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+        console.log('[BBZCloud] Link href:', href);
+        
+        if (!href || href.startsWith('#') || href.startsWith('javascript:')) {
+          console.log('[BBZCloud] Ignoring link (hash or javascript)');
+          return;
+        }
         
         // Check if this is a download link
-        if (isDownloadLink(link)) {
+        const isDownload = isDownloadLink(link);
+        console.log('[BBZCloud] Is download link?', isDownload);
+        
+        if (isDownload) {
+          console.log('[BBZCloud] Preventing default and intercepting download');
           event.preventDefault();
           event.stopPropagation();
+          event.stopImmediatePropagation();
           
           // Get absolute URL
           const absoluteUrl = new URL(href, window.location.href).href;
@@ -376,7 +391,7 @@ export const GLOBAL_INJECTION: InjectionScript = {
           
           return false;
         }
-      }, true);
+      }, { capture: true, passive: false });
       
       /**
        * Intercept form submissions that might be downloads
