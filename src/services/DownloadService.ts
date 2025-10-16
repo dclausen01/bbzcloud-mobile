@@ -33,16 +33,18 @@ class DownloadService {
    * Download a file from URL and save to device
    */
   async downloadFile(request: DownloadRequest): Promise<ApiResponse> {
-    const filename = request.filename || this.extractFilenameFromUrl(request.url);
+    let filename = request.filename || this.extractFilenameFromUrl(request.url);
     
     try {
-      console.log('[DownloadService] Starting download:', filename);
+      console.log('[DownloadService] Starting download from URL:', request.url);
+      console.log('[DownloadService] Initial filename:', filename);
 
       // Create abort controller for this download
       const abortController = new AbortController();
       this.activeDownloads.set(filename, abortController);
 
       // Perform download with fetch in native context
+      // fetch automatically follows redirects
       const response = await fetch(request.url, {
         method: 'GET',
         headers: request.headers || {},
@@ -53,8 +55,38 @@ class DownloadService {
         throw new Error(`Download failed: ${response.status} ${response.statusText}`);
       }
 
+      // Try to extract filename from Content-Disposition header
+      const contentDisposition = response.headers.get('Content-Disposition');
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+          let extractedFilename = filenameMatch[1].replace(/['"]/g, '');
+          // Handle UTF-8 encoded filenames (filename*=UTF-8''...)
+          if (extractedFilename.includes('UTF-8')) {
+            const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;\n]*)/);
+            if (utf8Match && utf8Match[1]) {
+              extractedFilename = decodeURIComponent(utf8Match[1]);
+            }
+          }
+          filename = extractedFilename;
+          console.log('[DownloadService] Filename from Content-Disposition:', filename);
+        }
+      }
+
+      // Fallback: Try to get filename from final URL after redirects
+      if (!filename || filename === 'view.php' || filename.includes('?')) {
+        const finalUrl = response.url; // This is the URL after redirects
+        filename = this.extractFilenameFromUrl(finalUrl);
+        console.log('[DownloadService] Filename from final URL:', filename);
+      }
+
       // Get file content as blob
       const blob = await response.blob();
+      
+      // Validate that we have actual file content (not HTML error page)
+      if (blob.type.includes('text/html') && blob.size < 10000) {
+        throw new Error('Der Link führt zu einer HTML-Seite, nicht zu einer Datei. Bitte versuchen Sie es mit einem direkten Download-Link.');
+      }
       
       // Convert blob to base64 for Filesystem API
       const base64Data = await this.blobToBase64(blob);
