@@ -277,33 +277,24 @@ export const GLOBAL_INJECTION: InjectionScript = {
       function isDownloadUrl(url) {
         if (!url) return false;
         
-        // Use string patterns and create RegExp objects
+        const urlLower = url.toLowerCase();
+        
+        // Simple string matching - much more reliable than regex in injected code
         const patterns = [
-          '[?&]download([=&]|$)',
-          '/download/',
-          '/api/.*/download',
-          '/files?/',
+          'download',
           'attachment',
           'export',
           // Moodle patterns
-          '/mod/resource/view\\.php',
-          '/mod/folder/view\\.php',
-          '/pluginfile\\.php/',
+          '/mod/resource/view.php',
+          '/mod/folder/view.php',
+          '/pluginfile.php',
           // Nextcloud patterns
-          '/download\\?',
-          '/index\\.php/s/',
-          '/index\\.php/f/'
+          '/index.php/s/',
+          '/index.php/f/',
+          '/files/'
         ];
         
-        return patterns.some(pattern => {
-          try {
-            const regex = new RegExp(pattern, 'i');
-            return regex.test(url);
-          } catch (e) {
-            console.warn('[BBZCloud] Invalid pattern:', pattern, e);
-            return false;
-          }
-        });
+        return patterns.some(pattern => urlLower.includes(pattern.toLowerCase()));
       }
       
       /**
