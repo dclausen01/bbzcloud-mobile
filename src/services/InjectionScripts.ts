@@ -468,11 +468,58 @@ export const GLOBAL_INJECTION: InjectionScript = {
         
         const action = form.getAttribute('action');
         if (action && isDownloadUrl(action)) {
-          console.log('[BBZCloud] Download form detected, but allowing normal submission');
-          // For now, we let forms submit normally as they might need POST data
-          // This could be enhanced in the future to intercept POST downloads
+          console.log('[BBZCloud] Download form detected, intercepting POST download');
+          
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+          
+          // Extract form data
+          const formData = new FormData(form);
+          const formDataObj = {};
+          formData.forEach((value, key) => {
+            formDataObj[key] = value;
+          });
+          
+          // Get absolute URL
+          const absoluteUrl = new URL(action, window.location.href).href;
+          
+          // Get filename from form if available
+          const filenameInput = form.querySelector('input[name="filename"]');
+          const filename = filenameInput ? filenameInput.value : null;
+          
+          // Get auth headers
+          const headers = getAuthHeaders();
+          
+          // Send POST download request to native
+          handlePostDownload(absoluteUrl, formDataObj, filename, headers);
+          
+          return false;
         }
       }, true);
+      
+      /**
+       * Handle POST download request
+       */
+      function handlePostDownload(url, formData, filename, headers) {
+        console.log('[BBZCloud] Intercepting POST download:', url);
+        
+        // Send download request to native app with POST data
+        if (window.mobileApp && window.mobileApp.postMessage) {
+          window.mobileApp.postMessage({
+            detail: {
+              type: 'download',
+              method: 'POST',
+              url: url,
+              filename: filename,
+              headers: headers,
+              formData: formData
+            }
+          });
+        } else {
+          console.error('[BBZCloud] mobileApp.postMessage not available');
+        }
+      }
       
       console.log('[BBZCloud] Download interception ready');
     })();

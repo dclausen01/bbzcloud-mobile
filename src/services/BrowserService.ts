@@ -76,13 +76,22 @@ class BrowserService {
       if (event.detail && event.detail.type === 'download') {
         console.log('[BrowserService] Download request received:', event.detail);
         
-        // Process download
-        await DownloadService.downloadFile({
-          url: event.detail.url,
-          filename: event.detail.filename,
-          headers: event.detail.headers,
-          mimeType: event.detail.mimeType,
-        });
+        // Process download with progress tracking
+        await DownloadService.downloadFile(
+          {
+            url: event.detail.url,
+            filename: event.detail.filename,
+            headers: event.detail.headers,
+            mimeType: event.detail.mimeType,
+          },
+          {
+            showInNotification: true, // Show progress in notification
+          },
+          (progress) => {
+            // Log progress for debugging
+            console.log(`[BrowserService] Download progress: ${progress.percentage}%`);
+          }
+        );
       }
     });
   }

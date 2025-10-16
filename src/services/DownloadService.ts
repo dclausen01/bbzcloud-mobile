@@ -17,6 +17,8 @@ export interface DownloadRequest {
   filename?: string;
   headers?: Record<string, string>;
   mimeType?: string;
+  method?: 'GET' | 'POST';
+  formData?: Record<string, string | number | boolean>;
 }
 
 export interface DownloadProgress {
@@ -26,33 +28,88 @@ export interface DownloadProgress {
   percentage: number;
 }
 
+export interface DownloadOptions {
+  showInNotification?: boolean; // Show progress in notification
+  directory?: Directory; // Allow custom directory
+}
+
 class DownloadService {
   private activeDownloads: Map<string, AbortController> = new Map();
 
   /**
    * Download a file from URL and save to device
    */
-  async downloadFile(request: DownloadRequest): Promise<ApiResponse> {
+  async downloadFile(
+    request: DownloadRequest, 
+    options?: DownloadOptions,
+    onProgress?: (progress: DownloadProgress) => void
+  ): Promise<ApiResponse> {
     let filename = request.filename || this.extractFilenameFromUrl(request.url);
+    const targetDirectory = options?.directory || Directory.Documents;
     
     try {
       console.log('[DownloadService] Starting download from URL:', request.url);
       console.log('[DownloadService] Initial filename:', filename);
+      console.log('[DownloadService] Target directory:', targetDirectory);
+
+      // Show directory selection dialog if needed
+      if (!options?.directory) {
+        const selectedDir = await this.showDirectorySelectionDialog();
+        if (selectedDir) {
+          // User cancelled
+          return { success: false, error: 'Download cancelled by user' };
+        }
+      }
 
       // Create abort controller for this download
       const abortController = new AbortController();
       this.activeDownloads.set(filename, abortController);
 
-      // Perform download with fetch in native context
-      // fetch automatically follows redirects
-      const response = await fetch(request.url, {
-        method: 'GET',
+      // Prepare fetch options
+      const fetchOptions: RequestInit = {
+        method: request.method || 'GET',
         headers: request.headers || {},
         signal: abortController.signal,
-      });
+      };
+
+      // Add body for POST requests
+      if (request.method === 'POST' && request.formData) {
+        // Convert formData object to URLSearchParams for application/x-www-form-urlencoded
+        const formBody = new URLSearchParams();
+        Object.keys(request.formData).forEach(key => {
+          formBody.append(key, String(request.formData![key]));
+        });
+        
+        fetchOptions.body = formBody;
+        
+        // Set content type if not already set
+        if (!fetchOptions.headers) {
+          fetchOptions.headers = {};
+        }
+        if (!(fetchOptions.headers as Record<string, string>)['Content-Type']) {
+          (fetchOptions.headers as Record<string, string>)['Content-Type'] = 'application/x-www-form-urlencoded';
+        }
+        
+        console.log('[DownloadService] POST request with form data:', Object.keys(request.formData));
+      }
+
+      // Perform download with fetch in native context
+      // fetch automatically follows redirects
+      const response = await fetch(request.url, fetchOptions);
 
       if (!response.ok) {
         throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+      }
+
+      // Validate final URL after redirects
+      const finalUrl = response.url;
+      if (finalUrl !== request.url) {
+        console.log('[DownloadService] URL redirected from', request.url, 'to', finalUrl);
+        
+        // Check if redirect is to a login page or error page
+        if (this.isInvalidRedirect(finalUrl)) {
+          throw new Error('Download wurde zu einer ungültigen Seite weitergeleitet. Möglicherweise ist eine Anmeldung erforderlich.');
+        }
       }
 
       // Try to extract filename from Content-Disposition header
@@ -75,13 +132,67 @@ class DownloadService {
 
       // Fallback: Try to get filename from final URL after redirects
       if (!filename || filename === 'view.php' || filename.includes('?')) {
-        const finalUrl = response.url; // This is the URL after redirects
         filename = this.extractFilenameFromUrl(finalUrl);
         console.log('[DownloadService] Filename from final URL:', filename);
       }
 
-      // Get file content as blob
-      const blob = await response.blob();
+      // Get content length for progress tracking
+      const contentLength = parseInt(response.headers.get('Content-Length') || '0', 10);
+      console.log('[DownloadService] Content-Length:', contentLength);
+
+      // Download with progress tracking
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('Response body is not readable');
+      }
+
+      const chunks: Uint8Array[] = [];
+      let receivedLength = 0;
+
+      // Read data in chunks and track progress
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) break;
+        
+        chunks.push(value);
+        receivedLength += value.length;
+        
+        // Calculate and report progress
+        const percentage = contentLength > 0 
+          ? Math.round((receivedLength / contentLength) * 100)
+          : -1; // Unknown size
+        
+        const progress: DownloadProgress = {
+          filename,
+          loaded: receivedLength,
+          total: contentLength,
+          percentage,
+        };
+        
+        // Call progress callback if provided
+        if (onProgress) {
+          onProgress(progress);
+        }
+        
+        // Update notification if enabled
+        if (options?.showInNotification && percentage >= 0) {
+          await this.updateDownloadNotification(filename, percentage);
+        }
+        
+        console.log(`[DownloadService] Progress: ${percentage}% (${receivedLength}/${contentLength})`);
+      }
+
+      // Concatenate chunks into single Uint8Array
+      const allChunks = new Uint8Array(receivedLength);
+      let position = 0;
+      for (const chunk of chunks) {
+        allChunks.set(chunk, position);
+        position += chunk.length;
+      }
+
+      // Create blob from downloaded data
+      const blob = new Blob([allChunks]);
       
       // Validate that we have actual file content (not HTML error page)
       if (blob.type.includes('text/html') && blob.size < 10000) {
@@ -95,7 +206,7 @@ class DownloadService {
       const result = await Filesystem.writeFile({
         path: filename,
         data: base64Data,
-        directory: Directory.Documents,
+        directory: targetDirectory,
         recursive: true,
       });
 
@@ -107,10 +218,11 @@ class DownloadService {
       // Show success notification
       await this.showDownloadNotification(filename, true);
 
-      // Show success dialog
+      // Show success dialog with directory info
+      const directoryName = this.getDirectoryDisplayName(targetDirectory);
       await Dialog.alert({
         title: 'Download erfolgreich',
-        message: `Die Datei "${filename}" wurde heruntergeladen und im Ordner "Dokumente" gespeichert.`,
+        message: `Die Datei "${filename}" wurde heruntergeladen und im Ordner "${directoryName}" gespeichert.`,
       });
 
       return {
@@ -225,6 +337,36 @@ class DownloadService {
   }
 
   /**
+   * Update download progress notification
+   */
+  private async updateDownloadNotification(filename: string, percentage: number): Promise<void> {
+    try {
+      const permission = await LocalNotifications.requestPermissions();
+      
+      if (permission.display !== 'granted') {
+        return;
+      }
+
+      // Use a consistent ID for the same download to update the same notification
+      const notificationId = this.getNotificationId(filename);
+
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            title: 'Download läuft',
+            body: `"${filename}" - ${percentage}%`,
+            id: notificationId,
+            schedule: { at: new Date(Date.now() + 100) },
+            ongoing: true, // Keep notification visible during download
+          },
+        ],
+      });
+    } catch (error) {
+      console.warn('[DownloadService] Failed to update notification:', error);
+    }
+  }
+
+  /**
    * Show download notification
    */
   private async showDownloadNotification(filename: string, success: boolean): Promise<void> {
@@ -278,13 +420,90 @@ class DownloadService {
   }
 
   /**
+   * Show directory selection dialog
+   */
+  private async showDirectorySelectionDialog(): Promise<Directory | null> {
+    try {
+      const result = await Dialog.confirm({
+        title: 'Speicherort wählen',
+        message: 'Wo möchten Sie die Datei speichern?',
+        okButtonTitle: 'Dokumente',
+        cancelButtonTitle: 'Downloads',
+      });
+
+      // okButton = Documents, cancelButton = Downloads
+      return result.value ? Directory.Documents : Directory.Documents;
+      // Note: Capacitor Filesystem doesn't have a Downloads directory on all platforms
+      // Using Documents for both for now
+    } catch (error) {
+      console.error('[DownloadService] Error showing directory dialog:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get display name for directory
+   */
+  private getDirectoryDisplayName(directory: Directory): string {
+    switch (directory) {
+      case Directory.Documents:
+        return 'Dokumente';
+      case Directory.Data:
+        return 'App-Daten';
+      case Directory.Cache:
+        return 'Cache';
+      case Directory.External:
+        return 'Externer Speicher';
+      case Directory.ExternalStorage:
+        return 'Externer Speicher';
+      default:
+        return 'Unbekannt';
+    }
+  }
+
+  /**
+   * Get consistent notification ID for a filename
+   */
+  private getNotificationId(filename: string): number {
+    // Create a simple hash of the filename to get a consistent ID
+    let hash = 0;
+    for (let i = 0; i < filename.length; i++) {
+      const char = filename.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash);
+  }
+
+  /**
+   * Check if redirected URL is invalid (login page, error page, etc.)
+   */
+  private isInvalidRedirect(url: string): boolean {
+    const urlLower = url.toLowerCase();
+    
+    // Check for common login/error indicators
+    const invalidPatterns = [
+      '/login',
+      '/signin',
+      '/auth',
+      '/error',
+      '/404',
+      '/403',
+      '/401',
+      'denied',
+    ];
+    
+    return invalidPatterns.some(pattern => urlLower.includes(pattern));
+  }
+
+  /**
    * Delete a downloaded file
    */
-  async deleteFile(filename: string): Promise<ApiResponse> {
+  async deleteFile(filename: string, directory: Directory = Directory.Documents): Promise<ApiResponse> {
     try {
       await Filesystem.deleteFile({
         path: filename,
-        directory: Directory.Documents,
+        directory,
       });
 
       return { success: true };
@@ -300,11 +519,11 @@ class DownloadService {
   /**
    * Get file info
    */
-  async getFileInfo(filename: string): Promise<ApiResponse> {
+  async getFileInfo(filename: string, directory: Directory = Directory.Documents): Promise<ApiResponse> {
     try {
       const result = await Filesystem.stat({
         path: filename,
-        directory: Directory.Documents,
+        directory,
       });
 
       return {
