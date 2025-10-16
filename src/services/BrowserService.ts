@@ -180,8 +180,8 @@ class BrowserService {
       showArrow: false,
       enableViewportScale: true,
       // @ts-expect-error - ToolBarType enum issue with plugin types
-      toolbarType: 'activity',
-      isPullToRefreshEnabled: true,
+      toolbarType: 'navigation', // Navigation toolbar with back/forward buttons
+      isPullToRefreshEnabled: true, // Pull-to-refresh already enabled!
       enabledSafeBottomMargin: true, // Handles navigation bar padding (20px)
     });
   }
