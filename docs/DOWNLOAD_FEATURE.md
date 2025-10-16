@@ -285,10 +285,13 @@ Download-Aktivität kann in den Console-Logs verfolgt werden:
 
 ### Dependencies
 
-- `@capacitor/filesystem` - Dateisystem-Zugriff
-- `@capacitor/local-notifications` - Download-Benachrichtigungen
-- `@capacitor/dialog` - User-Dialoge
-- `@capgo/inappbrowser` - WebView & Message-Passing
+- `@capacitor/filesystem` - Dateisystem-Zugriff ✅
+- `@capacitor/local-notifications` - Download-Benachrichtigungen ✅
+- `@capacitor/dialog` - User-Dialoge ✅
+- `@capgo/inappbrowser` - WebView & Message-Passing ✅
+- **Native fetch()** - HTTP-Downloads (built-in) ✅
+
+**Hinweis:** Wir verwenden native fetch() statt @capacitor/http, da es mit Capacitor 7 vollständig kompatibel ist und keine zusätzlichen Dependencies benötigt.
 
 ### Performance
 
