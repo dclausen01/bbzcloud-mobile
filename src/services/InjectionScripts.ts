@@ -241,33 +241,65 @@ export const GLOBAL_INJECTION: InjectionScript = {
        * Extract file information from SPA elements (like schul.cloud)
        */
       function extractFileInfoFromElement(element) {
+        console.log('[BBZCloud] Extracting file info from element:', element);
+        
         // Try to find URL from various attributes
         let url = element.getAttribute('href') ||
                  element.getAttribute('data-url') ||
                  element.getAttribute('data-file-url') ||
-                 element.getAttribute('data-download-url');
+                 element.getAttribute('data-download-url') ||
+                 element.getAttribute('data-attachment-url');
         
         // Try to find URL in onclick or ng-click attributes
         const onclick = element.getAttribute('onclick') || element.getAttribute('ng-click');
         if (!url && onclick) {
-          const urlMatch = onclick.match(/https?:[\\/]{2}[^\\s'"]+/);
+          const urlMatch = onclick.match(/https?:[\/]{2}[^\\s'"]+/);
           if (urlMatch) {
             url = urlMatch[0];
+          }
+        }
+        
+        // Look for download buttons in the vicinity
+        if (!url) {
+          const downloadButton = element.querySelector('[class*="download"], button[title*="download"], button[aria-label*="download"]');
+          if (downloadButton) {
+            url = downloadButton.getAttribute('href') ||
+                 downloadButton.getAttribute('data-url') ||
+                 downloadButton.getAttribute('data-download-url');
           }
         }
         
         // Try to find filename from text content or attributes
         let filename = element.getAttribute('data-filename') ||
                       element.getAttribute('title') ||
+                      element.getAttribute('aria-label') ||
                       element.textContent?.trim();
         
         // Look for filename in child elements
         if (!filename || filename.length > 100) {
-          const filenameElement = element.querySelector('[class*="filename"], [class*="name"], .title');
+          const filenameElement = element.querySelector('[class*="filename"], [class*="name"], .title, [class*="file-name"]');
           if (filenameElement) {
             filename = filenameElement.textContent?.trim();
           }
         }
+        
+        // Look for filename in parent elements
+        if (!filename || filename.length > 100) {
+          const parentFilename = element.closest('[class*="file"]')?.querySelector('[class*="filename"], [class*="name"], .title');
+          if (parentFilename) {
+            filename = parentFilename.textContent?.trim();
+          }
+        }
+        
+        // If still no URL, try to find any link in the element or its parents
+        if (!url) {
+          const linkElement = element.querySelector('a[href]') || element.closest('a[href]');
+          if (linkElement) {
+            url = linkElement.getAttribute('href');
+          }
+        }
+        
+        console.log('[BBZCloud] Extracted info:', { url, filename });
         
         if (url) {
           return { url, filename };
@@ -337,6 +369,141 @@ export const GLOBAL_INJECTION: InjectionScript = {
           console.error('[BBZCloud] mobileApp.postMessage not available');
         }
       }
+      
+      /**
+       * Enhanced download button detection for SPAs
+       */
+      function enhanceDownloadDetection() {
+        // Look for download buttons that might be added dynamically
+        const observer = new MutationObserver(function(mutations) {
+          mutations.forEach(function(mutation) {
+            mutation.addedNodes.forEach(function(node) {
+              if (node.nodeType === 1) {
+                // Check for download buttons
+                const downloadButtons = node.querySelectorAll ? 
+                  node.querySelectorAll('button[title*="download"], button[aria-label*="download"], [class*="download"]') : [];
+                
+                downloadButtons.forEach(button => {
+                  if (!button.hasAttribute('data-bbzcloud-enhanced')) {
+                    button.setAttribute('data-bbzcloud-enhanced', 'true');
+                    button.addEventListener('click', function(e) {
+                      console.log('[BBZCloud] Enhanced download button clicked:', button);
+                      
+                      // Try to find the file container
+                      const fileContainer = button.closest('[class*="file"], [class*="attachment"]');
+                      if (fileContainer) {
+                        const fileInfo = extractFileInfoFromElement(fileContainer);
+                        if (fileInfo && fileInfo.url) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleDownload(fileInfo.url, fileInfo.filename, getAuthHeaders());
+                          return false;
+                        }
+                      }
+                      
+                      // If no URL found, try to trigger the original download and intercept the network request
+                      console.log('[BBZCloud] No direct URL found, monitoring network requests...');
+                    });
+                  }
+                });
+              }
+            });
+          });
+        });
+        
+        observer.observe(document.body, {
+          childList: true,
+          subtree: true
+        });
+      }
+      
+      /**
+       * Network request interception (fallback)
+       */
+      function setupNetworkInterception() {
+        // Override XMLHttpRequest to catch download requests
+        const originalXHROpen = XMLHttpRequest.prototype.open;
+        const originalXHRSend = XMLHttpRequest.prototype.send;
+        
+        XMLHttpRequest.prototype.open = function(method, url, ...args) {
+          this._bbzcloud_method = method;
+          this._bbzcloud_url = url;
+          return originalXHROpen.apply(this, [method, url, ...args]);
+        };
+        
+        XMLHttpRequest.prototype.send = function(data) {
+          const xhr = this;
+          
+          // Check if this looks like a download request
+          if (xhr._bbzcloud_url && isDownloadUrl(xhr._bbzcloud_url)) {
+            console.log('[BBZCloud] Intercepted XHR download request:', xhr._bbzcloud_url);
+            
+            // Listen for the response
+            const originalOnReadyStateChange = xhr.onreadystatechange;
+            xhr.onreadystatechange = function() {
+              if (xhr.readyState === 4 && xhr.status === 200) {
+                // Try to get filename from Content-Disposition header
+                const contentDisposition = xhr.getResponseHeader('Content-Disposition');
+                let filename = null;
+                
+                if (contentDisposition) {
+                  const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                  if (filenameMatch && filenameMatch[1]) {
+                    filename = filenameMatch[1].replace(/['"]/g, '');
+                  }
+                }
+                
+                // Create blob URL and trigger download
+                const blob = new Blob([xhr.response], { type: xhr.getResponseHeader('Content-Type') || 'application/octet-stream' });
+                const blobUrl = URL.createObjectURL(blob);
+                
+                handleDownload(xhr._bbzcloud_url, filename, getAuthHeaders());
+                
+                // Clean up
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+              }
+              
+              if (originalOnReadyStateChange) {
+                originalOnReadyStateChange.apply(this, arguments);
+              }
+            };
+          }
+          
+          return originalXHRSend.apply(this, data);
+        };
+        
+        // Override fetch to catch download requests
+        const originalFetch = window.fetch;
+        window.fetch = function(url, options = {}) {
+          if (typeof url === 'string' && isDownloadUrl(url)) {
+            console.log('[BBZCloud] Intercepted fetch download request:', url);
+            
+            return originalFetch.apply(this, arguments).then(response => {
+              if (response.ok) {
+                const contentDisposition = response.headers.get('Content-Disposition');
+                let filename = null;
+                
+                if (contentDisposition) {
+                  const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                  if (filenameMatch && filenameMatch[1]) {
+                    filename = filenameMatch[1].replace(/['"]/g, '');
+                  }
+                }
+                
+                handleDownload(url, filename, getAuthHeaders());
+              }
+              
+              return response;
+            });
+          }
+          
+          return originalFetch.apply(this, arguments);
+        };
+      }
+      
+      // Initialize enhanced detection
+      setTimeout(enhanceDownloadDetection, 1000);
+      setTimeout(setupNetworkInterception, 1500);
       
       console.log('[BBZCloud] Download interception ready');
     })();
