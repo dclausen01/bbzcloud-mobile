@@ -19,6 +19,7 @@ export interface DownloadRequest {
   mimeType?: string;
   method?: 'GET' | 'POST';
   formData?: Record<string, string | number | boolean>;
+  source?: 'native' | 'javascript' | 'javascript-fallback' | 'network';
 }
 
 export interface DownloadProgress {
