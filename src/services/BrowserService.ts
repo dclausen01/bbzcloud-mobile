@@ -85,22 +85,26 @@ class BrowserService {
             return;
           }
 
+          // Log source of download for debugging
+          console.log(`[BrowserService] Download source: ${event.detail.source || 'javascript'}`);
+          
           // Process download with progress tracking
           const result = await DownloadService.downloadFile(
             {
               url: event.detail.url,
               filename: event.detail.filename,
               headers: event.detail.headers,
-              mimeType: event.detail.mimeType,
+              mimeType: event.detail.mimeType || event.detail.mimetype, // Support both naming conventions
               method: event.detail.method,
               formData: event.detail.formData,
+              source: event.detail.source, // Track download source
             },
             {
               showInNotification: true, // Show progress in notification
             },
             (progress) => {
               // Log progress for debugging
-              console.log(`[BrowserService] Download progress: ${progress.percentage}%`);
+              console.log(`[BrowserService] Download progress: ${progress.percentage}% (${event.detail.source || 'javascript'})`);
             }
           );
 

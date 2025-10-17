@@ -356,6 +356,42 @@ export interface TodoState {
 }
 
 // ============================================================================
+// DOWNLOAD TYPES
+// ============================================================================
+
+export interface DownloadRequest {
+  url: string;
+  filename?: string;
+  headers?: Record<string, string>;
+  mimeType?: string;
+  method?: 'GET' | 'POST';
+  formData?: Record<string, string>;
+  source?: 'native' | 'javascript' | 'network';
+}
+
+export interface DownloadProgress {
+  bytesReceived: number;
+  bytesTotal: number;
+  percentage: number;
+  speed: number;
+  timeRemaining: number;
+}
+
+export interface DownloadOptions {
+  directory?: string;
+  showInNotification?: boolean;
+  retryCount?: number;
+  timeout?: number;
+}
+
+export interface DownloadResult {
+  success: boolean;
+  filePath?: string;
+  fileSize?: number;
+  error?: string;
+}
+
+// ============================================================================
 // UTILITY TYPES
 // ============================================================================
 
