@@ -73,27 +73,47 @@ class BrowserService {
 
     // Set up download message listener
     this.downloadListener = await InAppBrowser.addListener('messageFromWebview', async (event) => {
+      console.log('[BrowserService] Message received from WebView:', event);
+      
       if (event.detail && event.detail.type === 'download') {
         console.log('[BrowserService] Download request received:', event.detail);
         
-        // Process download with progress tracking
-        await DownloadService.downloadFile(
-          {
-            url: event.detail.url,
-            filename: event.detail.filename,
-            headers: event.detail.headers,
-            mimeType: event.detail.mimeType,
-          },
-          {
-            showInNotification: true, // Show progress in notification
-          },
-          (progress) => {
-            // Log progress for debugging
-            console.log(`[BrowserService] Download progress: ${progress.percentage}%`);
+        try {
+          // Validate download request
+          if (!event.detail.url) {
+            console.error('[BrowserService] Download request missing URL');
+            return;
           }
-        );
+
+          // Process download with progress tracking
+          const result = await DownloadService.downloadFile(
+            {
+              url: event.detail.url,
+              filename: event.detail.filename,
+              headers: event.detail.headers,
+              mimeType: event.detail.mimeType,
+              method: event.detail.method,
+              formData: event.detail.formData,
+            },
+            {
+              showInNotification: true, // Show progress in notification
+            },
+            (progress) => {
+              // Log progress for debugging
+              console.log(`[BrowserService] Download progress: ${progress.percentage}%`);
+            }
+          );
+
+          console.log('[BrowserService] Download result:', result);
+        } catch (error) {
+          console.error('[BrowserService] Error processing download:', error);
+        }
+      } else {
+        console.log('[BrowserService] Non-download message received:', event.detail);
       }
     });
+
+    console.log('[BrowserService] Download listener initialized');
   }
 
   /**

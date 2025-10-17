@@ -45,21 +45,24 @@ class DownloadService {
     onProgress?: (progress: DownloadProgress) => void
   ): Promise<ApiResponse> {
     let filename = request.filename || this.extractFilenameFromUrl(request.url);
-    const targetDirectory = options?.directory || Directory.Documents;
+    let targetDirectory = options?.directory;
     
     try {
       console.log('[DownloadService] Starting download from URL:', request.url);
       console.log('[DownloadService] Initial filename:', filename);
-      console.log('[DownloadService] Target directory:', targetDirectory);
+      console.log('[DownloadService] Target directory option:', targetDirectory);
 
       // Show directory selection dialog if needed
-      if (!options?.directory) {
+      if (!targetDirectory) {
         const selectedDir = await this.showDirectorySelectionDialog();
-        if (selectedDir) {
+        if (!selectedDir) {
           // User cancelled
-          return { success: false, error: 'Download cancelled by user' };
+          return { success: false, error: 'Download vom Benutzer abgebrochen' };
         }
+        targetDirectory = selectedDir;
       }
+
+      console.log('[DownloadService] Final target directory:', targetDirectory);
 
       // Create abort controller for this download
       const abortController = new AbortController();
@@ -95,10 +98,24 @@ class DownloadService {
 
       // Perform download with fetch in native context
       // fetch automatically follows redirects
+      console.log('[DownloadService] Starting fetch request to:', request.url);
+      console.log('[DownloadService] Fetch options:', {
+        method: fetchOptions.method,
+        headers: fetchOptions.headers,
+        hasBody: !!fetchOptions.body
+      });
+
       const response = await fetch(request.url, fetchOptions);
 
+      console.log('[DownloadService] Fetch response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries()),
+        url: response.url
+      });
+
       if (!response.ok) {
-        throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+        throw new Error(`Download fehlgeschlagen: ${response.status} ${response.statusText}`);
       }
 
       // Validate final URL after redirects
@@ -424,17 +441,26 @@ class DownloadService {
    */
   private async showDirectorySelectionDialog(): Promise<Directory | null> {
     try {
+      console.log('[DownloadService] Showing directory selection dialog');
+      
       const result = await Dialog.confirm({
         title: 'Speicherort wählen',
         message: 'Wo möchten Sie die Datei speichern?',
         okButtonTitle: 'Dokumente',
-        cancelButtonTitle: 'Downloads',
+        cancelButtonTitle: 'Abbrechen',
       });
 
-      // okButton = Documents, cancelButton = Downloads
-      return result.value ? Directory.Documents : Directory.Documents;
-      // Note: Capacitor Filesystem doesn't have a Downloads directory on all platforms
-      // Using Documents for both for now
+      console.log('[DownloadService] Dialog result:', result);
+
+      // If user cancelled (result.value is false), return null
+      if (!result.value) {
+        console.log('[DownloadService] User cancelled directory selection');
+        return null;
+      }
+
+      // User confirmed, use Documents directory
+      console.log('[DownloadService] User selected Documents directory');
+      return Directory.Documents;
     } catch (error) {
       console.error('[DownloadService] Error showing directory dialog:', error);
       return null;
@@ -536,6 +562,78 @@ class DownloadService {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get file info',
       };
+    }
+  }
+
+  /**
+   * Test download functionality with a sample file
+   */
+  async testDownload(): Promise<ApiResponse> {
+    try {
+      console.log('[DownloadService] Testing download functionality...');
+      
+      // Test with a small public file
+      const testUrl = 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
+      const testFilename = 'test_download.pdf';
+      
+      const result = await this.downloadFile(
+        {
+          url: testUrl,
+          filename: testFilename,
+        },
+        {
+          showInNotification: true,
+        },
+        (progress) => {
+          console.log(`[DownloadService] Test download progress: ${progress.percentage}%`);
+        }
+      );
+
+      console.log('[DownloadService] Test download result:', result);
+      return result;
+    } catch (error) {
+      console.error('[DownloadService] Test download failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Test download failed',
+      };
+    }
+  }
+
+  /**
+   * Debug method to check download setup
+   */
+  async debugDownloadSetup(): Promise<void> {
+    console.log('[DownloadService] === Download Setup Debug ===');
+    
+    try {
+      // Check filesystem permissions
+      console.log('[DownloadService] Checking filesystem access...');
+      const testResult = await Filesystem.writeFile({
+        path: 'debug_test.txt',
+        data: 'test',
+        directory: Directory.Documents,
+        recursive: true,
+      });
+      console.log('[DownloadService] Filesystem write test:', testResult);
+      
+      // Clean up test file
+      await Filesystem.deleteFile({
+        path: 'debug_test.txt',
+        directory: Directory.Documents,
+      });
+      console.log('[DownloadService] Test file cleaned up');
+      
+      // Check notification permissions
+      const notificationPermission = await LocalNotifications.requestPermissions();
+      console.log('[DownloadService] Notification permission:', notificationPermission);
+      
+      // Check dialog functionality
+      console.log('[DownloadService] Dialog functionality available');
+      
+      console.log('[DownloadService] === Debug Complete ===');
+    } catch (error) {
+      console.error('[DownloadService] Debug failed:', error);
     }
   }
 }
