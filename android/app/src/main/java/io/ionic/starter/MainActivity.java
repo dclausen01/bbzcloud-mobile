@@ -19,7 +19,7 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         
         // Setup native download listener after bridge is ready
-        this.getBridge().webView.postDelayed(() -> {
+        this.getBridge().getWebView().postDelayed(() -> {
             setupDownloadListener();
         }, 1000);
     }
@@ -40,7 +40,7 @@ public class MainActivity extends BridgeActivity {
                         Log.d(TAG, "  Content-Length: " + contentLength);
                         
                         // Extract filename from content disposition or URL
-                        String filename = extractFilename(contentDisposition, url);
+                        String filename = extractFilename(contentDisposition, url, mimetype);
                         
                         // Send download info to JavaScript
                         String jsCode = String.format(
@@ -84,7 +84,7 @@ public class MainActivity extends BridgeActivity {
         }
     }
     
-    private String extractFilename(String contentDisposition, String url) {
+    private String extractFilename(String contentDisposition, String url, String mimetype) {
         // First try to extract from Content-Disposition header
         if (contentDisposition != null && !contentDisposition.isEmpty()) {
             try {
