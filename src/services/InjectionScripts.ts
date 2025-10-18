@@ -28,12 +28,29 @@ export const GLOBAL_INJECTION: InjectionScript = {
     }
   `,
   js: `
-    // SIMPLIFIED DOWNLOAD INTERCEPTION v2.0
+    // SIMPLIFIED DOWNLOAD INTERCEPTION v2.1 - WITH BRIDGE FIX
     (function() {
       'use strict';
       
       console.log('[BBZCloud] Simplified download interception initialized');
       console.log('[BBZCloud] Native download listener should handle most downloads');
+      
+      // CREATE THE MISSING BRIDGE!
+      window.mobileApp = {
+        postMessage: function(data) {
+          console.log('[BBZCloud] Sending message via bridge:', data);
+          
+          if (window.CapacitorWebView && window.CapacitorWebView.postMessage) {
+            window.CapacitorWebView.postMessage(JSON.stringify(data));
+          } else if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.cordova_iab) {
+            window.webkit.messageHandlers.cordova_iab.postMessage(JSON.stringify(data));
+          } else {
+            console.error('[BBZCloud] No message bridge available');
+          }
+        }
+      };
+      
+      console.log('[BBZCloud] mobileApp bridge created');
       
       /**
        * Minimal fallback download interception for SPA downloads
@@ -43,18 +60,14 @@ export const GLOBAL_INJECTION: InjectionScript = {
         console.log('[BBZCloud] Fallback download interception:', url);
         
         // Send download request to native app
-        if (window.mobileApp && window.mobileApp.postMessage) {
-          window.mobileApp.postMessage({
-            detail: {
-              type: 'download',
-              url: url,
-              filename: filename,
-              source: 'javascript-fallback'
-            }
-          });
-        } else {
-          console.error('[BBZCloud] mobileApp.postMessage not available for fallback');
-        }
+        window.mobileApp.postMessage({
+          detail: {
+            type: 'download',
+            url: url,
+            filename: filename,
+            source: 'javascript-fallback'
+          }
+        });
       }
       
       /**
