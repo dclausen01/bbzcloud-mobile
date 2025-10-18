@@ -28,29 +28,37 @@ export const GLOBAL_INJECTION: InjectionScript = {
     }
   `,
   js: `
-    // SIMPLIFIED DOWNLOAD INTERCEPTION v2.1 - WITH BRIDGE FIX
+    // SIMPLIFIED DOWNLOAD INTERCEPTION v2.2 - DEBUG VERSION
     (function() {
       'use strict';
       
       console.log('[BBZCloud] Simplified download interception initialized');
-      console.log('[BBZCloud] Native download listener should handle most downloads');
+      console.log('[BBZCloud] Checking for window.mobileApp...', typeof window.mobileApp);
       
-      // CREATE THE MISSING BRIDGE!
-      window.mobileApp = {
-        postMessage: function(data) {
-          console.log('[BBZCloud] Sending message via bridge:', data);
-          
-          if (window.CapacitorWebView && window.CapacitorWebView.postMessage) {
-            window.CapacitorWebView.postMessage(JSON.stringify(data));
-          } else if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.cordova_iab) {
-            window.webkit.messageHandlers.cordova_iab.postMessage(JSON.stringify(data));
-          } else {
-            console.error('[BBZCloud] No message bridge available');
+      // Check if plugin already provides window.mobileApp
+      if (typeof window.mobileApp === 'undefined') {
+        console.log('[BBZCloud] window.mobileApp not found, creating fallback');
+        
+        // Fallback: Create our own bridge
+        window.mobileApp = {
+          postMessage: function(data) {
+            console.log('[BBZCloud] Using fallback bridge:', data);
+            
+            if (window.CapacitorWebView && window.CapacitorWebView.postMessage) {
+              window.CapacitorWebView.postMessage(JSON.stringify(data));
+            } else if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.cordova_iab) {
+              window.webkit.messageHandlers.cordova_iab.postMessage(JSON.stringify(data));
+            } else {
+              console.error('[BBZCloud] No message bridge available');
+            }
+          },
+          close: function() {
+            console.log('[BBZCloud] Close called on fallback bridge');
           }
-        }
-      };
-      
-      console.log('[BBZCloud] mobileApp bridge created');
+        };
+      } else {
+        console.log('[BBZCloud] window.mobileApp exists (from plugin)');
+      }
       
       /**
        * Minimal fallback download interception for SPA downloads
